@@ -20,4 +20,5 @@ Esta herramienta tiene **carácter informativo**.
 No sustituye información oficial emitida por organismos competentes.
 
 ## Uso
-Repositorio de uso interno.
+(Repositorio interno)
+
