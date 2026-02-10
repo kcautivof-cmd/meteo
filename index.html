@@ -1,0 +1,2010 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>METEOROLOGIA APLICADA</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/suncalc@1.9.0/suncalc.js"></script>
+
+    <!-- LEAFLET (MAPA INTERACTIVO) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+
+    <style>
+        :root {
+            --bg: #ffffff;
+            --text: #111111;
+            --muted: #4f4f4f;
+            --border: #b9b9b9;
+            --panel: #f4f4f4;
+            --panel2: #e9e9e9; /* títulos */
+            --accent: #2f2f2f;
+            --orange: #2f2f2f;
+            --cyan: #2f2f2f;
+            --red: #2f2f2f;
+            --yellow: #2f2f2f;
+        }
+
+body {
+            background-color: var(--bg); color: var(--text);
+            font-family: 'Consolas', monospace; font-size: 11px;
+            margin: 0; padding: 10px; text-transform: uppercase; overflow-x: hidden;
+        }
+
+        /* SPLASH */
+        #splashScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--bg); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.5s ease-out; }
+        .splash-content { text-align: center; border: 1px solid var(--border); padding: 40px; background: var(--panel); box-shadow: none; min-width: 300px; }
+        .splash-title { font-size: 3em; color: var(--text); margin: 0 0 30px 0; text-shadow: none; letter-spacing: 4px; }
+        .enter-btn { background: var(--bg); color: var(--text); border: 1px solid var(--border); padding: 15px 50px; font-size: 1.2em; font-family: 'Consolas', monospace; cursor: pointer; text-transform: uppercase; font-weight: bold; transition: all 0.2s; }
+        .enter-btn:hover { filter: brightness(0.98); }
+        .loading-text { margin-top: 15px; color: var(--muted); font-size: 0.9em; }
+
+        /* HEADER */
+        .header { text-align: center; border-bottom: 1px solid var(--border); padding-bottom: 5px; margin-bottom: 5px; position: relative; min-height: 60px; display: flex; align-items: center; justify-content: center; }
+        .header-content { width: 100%; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
+        .header h1 { margin: 0; font-size: 1.6em; letter-spacing: 2px; text-shadow: none; }
+        .status { font-size: 0.9em; font-weight: bold; margin-top:5px; display:block;}
+        #printDateLabel { display: none; font-size: 1.2em; font-weight: bold; margin-top:5px; padding: 2px 10px; border: 2px solid var(--panel); }
+
+        /* CLOCK & LOGO */
+        .tactical-clock { text-align: left; border: 1px solid var(--border); padding: 5px 10px; background: var(--panel); font-size: 1.1em; width: fit-content; }
+        .clock-row { display: block; }
+        .zulu-time { color: var(--cyan); }
+        .logo-container { width: 55px; height: 55px; border-radius: 50%; border: 1px solid var(--border); overflow: hidden; background: var(--panel); box-shadow: none; display: flex; align-items: center; justify-content: center; margin-left: auto; }
+        .unit-logo { width: 100%; height: 100%; object-fit: cover; }
+
+        .source-bar { text-align: center; color: var(--muted); font-size: 0.9em; margin-bottom: 10px; border: 1px dashed var(--border); padding: 4px; background: var(--panel); }
+
+        /* CONTROLS */
+        .control-bar { display: flex; gap: 10px; border: 1px solid var(--border); padding: 10px; margin-bottom: 10px; align-items: center; background: var(--panel); flex-wrap: wrap; }
+        input, select, button { background: var(--bg); color: var(--text); border: 1px solid var(--border); padding: 8px; font-family: 'Consolas', monospace; text-transform: uppercase; font-size: 11px; }
+        input { width: 200px; }
+        button { cursor: pointer; border: 1px solid var(--text); background: var(--panel); font-weight: bold; }
+        button:hover { filter: brightness(0.98); }
+        select { width: 250px; }
+        .print-btn { background: var(--bg); color: var(--text); border: 1px solid var(--text); padding: 5px 10px; font-size: 1.5em; line-height: 1; width: 40px; text-align: center; }
+        .print-btn:hover { background: var(--text); color: var(--text); }
+
+        /* GRID */
+        .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+        .panel { border: 1px solid var(--border); padding: 10px; background: var(--panel); }
+        .panel-title {
+            color: var(--text);
+            font-weight: bold;
+            border-bottom: 1px solid var(--border);
+            padding: 6px 8px;
+            margin: -10px -10px 10px -10px;
+            background: var(--panel2);
+            display: block;
+        }
+
+        .surface-data { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .big-value { font-size: 3em; color: var(--text); display: block; line-height: 1; margin-bottom: 5px; text-shadow: none; }
+        .current-weather-text { color: var(--text); font-size: 1.1em; font-weight: bold; margin-bottom: 5px; display: block; }
+
+        .twilight-display { border: 1px solid var(--border); background: var(--bg); padding: 5px; margin-top: 5px; text-align: center; }
+        .tw-label { font-size: 0.7em; color: var(--muted); display: block; }
+        .tw-time { font-size: 1.4em; color: var(--cyan); font-weight: bold; }
+
+        .data-row { display: flex; justify-content: space-between; font-size: 0.9em; margin-bottom: 4px; color: var(--muted); border-bottom: 1px solid var(--panel); padding-bottom: 2px; }
+        .data-row span:last-child { color: var(--text); font-weight: bold; }
+
+        .sources-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }
+        .source-btn { background: var(--panel); border: 1px solid var(--border); color: var(--text); padding: 8px; text-decoration: none; text-align: center; display: block; font-size: 10px; transition: 0.2s; cursor: pointer; }
+        .source-btn:hover { border-color: var(--orange); color: var(--orange); background: var(--panel); }
+
+        /* TIMELINE SCROLL */
+        .timeline-container { border: 1px solid var(--border); padding: 10px; overflow-x: auto; white-space: nowrap; background: var(--panel); margin-bottom: 10px; height: 520px; }
+        .day-card { width: 230px; background: var(--panel); border: 1px solid var(--border); padding: 8px; display: inline-block; vertical-align: top; margin-right: 5px; }
+        .day-card.today { border: 2px solid var(--border); background: var(--panel); transform: scale(1.02); }
+        .day-card.past { border-top: 3px solid #555; opacity: 0.6; filter: grayscale(100%); }
+        .day-card.future { border-top: 3px solid var(--cyan); }
+
+        .t-date { color: var(--orange); font-weight: bold; font-size: 1.1em; border-bottom: 1px solid #222; margin-bottom: 4px; text-align: center; }
+        .t-weather-row { text-align:center; font-size:0.85em; color: var(--text); margin-bottom:5px; height:30px; white-space: normal; line-height:1; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border); }
+        .card-row { display: flex; justify-content: space-between; font-size: 0.85em; margin-bottom: 2px; color: var(--muted); border-bottom: 1px solid var(--panel); padding: 1px 0; }
+        .card-row span:last-child { color: var(--text); font-weight: bold; }
+        .peak-time { font-size: 0.85em; color: var(--cyan); }
+        .op-status { margin-top:5px; background: var(--panel); padding:4px; font-size:0.9em; text-align:center; color: var(--text); border: 1px dashed var(--border); font-weight:bold; }
+
+        .extras-container { display: grid; grid-template-columns: 50% 50%; gap: 10px; height: 400px; overflow: hidden; }
+        .map-box { border: 1px solid var(--border); width: 100%; height: 100%; padding: 0; background: var(--panel); }
+        iframe { width: 100%; height: 100%; border: none; }
+        .chart-box { border: 1px solid var(--border); background: var(--panel); position: relative; padding: 10px; height: 100%; box-sizing: border-box; }
+
+        #mainChart { width: 100% !important; height: 320px !important; }
+
+
+        /* ALERTAS */
+        #alertContainer { margin-bottom:10px; }
+        .alert-box-dmc { border: 2px solid var(--text); background: var(--panel); padding: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .dmc-btn { background: var(--text); color: var(--text); border: 1px solid var(--text); padding: 5px 10px; font-weight: bold; cursor: pointer; text-decoration: none; font-size: 0.9em; }
+        .dmc-btn:hover { background: #fff; color: var(--text); }
+
+        /* CONCLUSION */
+        #autoConclusion { display: none; margin-bottom: 10px; border: 1px solid var(--panel); padding: 10px; background: var(--panel); }
+        .conclusion-title { font-weight: bold; font-size: 1.1em; margin-bottom: 5px; display: block; color: var(--text); border-bottom: 1px solid #ccc; padding-bottom:3px; }
+        .conclusion-body { font-size: 0.9em; line-height: 1.4; color: var(--text); white-space: pre-wrap; }
+
+        /* IMPRESION GRAFICOS */
+        #printCharts { display: none; margin-top: 10px; page-break-inside: avoid; }
+        .print-chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+        .print-chart-wrapper { border: 1px solid var(--panel); padding: 5px; height: 150px; background: #fff; }
+
+        @media print {
+            @page { size: landscape; margin: 5mm; }
+            body { background-color: var(--text) !important; color: var(--panel) !important; font-family: 'Arial Narrow', sans-serif !important; padding: 0 !important; -webkit-print-color-adjust: exact; }
+
+            #splashScreen, .control-bar, .source-btn, .dmc-btn, #volcanoStatus, #alertContainer, .map-box, .extras-container, .day-card.past { display: none !important; }
+
+            .header { border-bottom: 2px solid var(--panel) !important; margin-bottom: 5px !important; min-height: 40px !important; }
+            .header h1 { color: var(--panel) !important; text-shadow: none !important; font-size: 1.6em !important; padding: 0 !important; }
+            #statusMsg { display: none !important; }
+            #printDateLabel { display: block !important; color: var(--panel) !important; text-align: center; }
+
+            .tactical-clock { border: 1px solid var(--panel) !important; background: #fff !important; color: var(--panel) !important; padding: 2px !important; font-size: 0.9em !important; }
+            .zulu-time { color: var(--panel) !important; font-weight: bold; }
+            .logo-container { border: 2px solid var(--panel) !important; box-shadow: none !important; width:45px !important; height:45px !important; }
+
+            .source-bar { border: 1px solid var(--panel) !important; background: #fff !important; color: var(--panel) !important; margin-bottom: 5px !important; font-size: 0.7em !important; }
+            .source-bar span { color: var(--panel) !important; }
+            .main-grid { display: block !important; }
+            .panel { border: 1px solid var(--panel) !important; background: #fff !important; padding: 5px !important; margin-bottom: 0 !important; }
+            .panel-title { color: var(--panel) !important; border-bottom: 1px solid var(--panel) !important; background: #ddd !important; padding: 2px !important; font-size: 0.9em !important; }
+
+            .big-value { color: var(--panel) !important; text-shadow: none !important; font-size: 2em !important; }
+            .current-weather-text { color: var(--panel) !important; font-size: 1em !important; }
+            .data-row, .card-row { color: var(--panel) !important; border-bottom: 1px dotted #999 !important; font-size: 0.8em !important; margin-bottom: 2px !important; }
+            .data-row span:last-child, .card-row span:last-child { color: var(--panel) !important; font-weight: bold !important; }
+            .twilight-display { border: 1px solid var(--panel) !important; background: #fff !important; padding: 2px !important; }
+            .tw-time { color: var(--panel) !important; font-size: 1em !important; }
+            #valCloudBase { color: var(--panel) !important; }
+
+            #autoConclusion { display: block !important; margin: 5px 0 !important; font-size: 0.9em !important; }
+
+            .timeline-container {
+                height: auto !important;
+                display: grid !important;
+                grid-template-columns: repeat(6, 1fr) !important;
+                gap: 3px !important;
+                border: none !important;
+                padding: 0 !important;
+                margin-bottom: 5px !important;
+            }
+            .day-card { width: 100% !important; background: #fff !important; border: 1px solid var(--panel) !important; padding: 3px !important; font-size: 0.7em !important; }
+            .day-card.today { border: 2px solid var(--panel) !important; transform: none !important; }
+            .t-date { color: var(--panel) !important; background: #ccc; font-size: 1.1em !important; }
+            .t-weather-row { color: var(--panel) !important; font-weight: bold; height: auto !important; margin: 2px 0 !important; }
+            .op-status { background: #eee !important; color: var(--panel) !important; border: 1px solid var(--panel) !important; padding: 2px !important; }
+
+            #printCharts { display: block !important; page-break-before: auto; }
+            canvas { filter: none !important; }
+            .sources-grid { display: none !important; }
+        }
+    
+        /* MAPA SELECCIÓN DE PUNTO (ANCHO COMPLETO) */
+        .fullwidth-panel { border: 1px solid var(--border); padding: 10px; background: var(--panel); margin-bottom: 10px; }
+        #pickMap { width: 100%; height: 520px; border: 1px solid var(--border); background: var(--panel); }
+        .map-hint { font-size: 10px; color: var(--muted); margin-top: 6px; text-align: center; }
+
+    
+        /* CHART CONTROLS */
+        .chart-controls { display:none; /* oculto, reemplazado por menú inferior */
+            
+            position: static;
+            left: 6px;
+            top: 6px;
+            z-index: 12;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+            background: rgba(255,255,255,0.92);
+            padding: 6px;
+            border: 1px solid var(--border);
+            max-width: calc(100% - 140px);
+            box-sizing: border-box;
+        }
+        .chart-controls select, .chart-controls input, .chart-controls button {
+            width: auto !important;
+            padding: 4px 6px !important;
+            font-size: 10px !important;
+            border: 1px solid #333 !important;
+        }
+        .chart-subcontrols {
+            display: none;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .chart-subcontrols.show { display: flex; }
+
+        .ctl-group { display:flex; flex-direction:column; gap:2px; }
+        .ctl-label { font-size:9px; color:#9a9a9a; letter-spacing:1px; }
+        .chart-controls { display:none; /* oculto, reemplazado por menú inferior */
+             border-radius:4px; }
+
+
+        /* CHART MENU BOTTOM (PRO) */
+        .chart-menu-bottom{
+            margin-top: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: flex-end;
+            justify-content: center;
+            padding: 8px;
+            border: 1px solid var(--border);
+            background: var(--panel);
+        }
+        .chart-menu-bottom .group{
+            display:flex;
+            flex-direction:column;
+            gap:4px;
+            min-width: 150px;
+        }
+        .chart-menu-bottom label{
+            font-size: 10px;
+            color: var(--muted);
+            letter-spacing: .5px;
+        }
+        .chart-menu-bottom select, .chart-menu-bottom input{
+            width: 100%;
+            background: var(--bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 8px;
+            font-family: 'Consolas', monospace;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+        .chart-menu-bottom .row{
+            display:flex;
+            gap:10px;
+            flex-wrap: wrap;
+            width:100%;
+            justify-content:center;
+        }
+        
+
+/* === AJUSTE CONTRASTE + TEXTO NEGRO (REQUERIDO) === */
+:root{
+  --bg:#ffffff;
+  --panel:#f2f2f2;
+  --panel2:#e4e4e4;
+  --border:#9c9c9c;
+  --text:#111111;
+  --muted:#333333;
+  --accent:#111111;
+  --orange:#111111;
+  --cyan:#111111;
+  --red:#111111;
+  --yellow:#111111;
+}
+body, body * { color: var(--text) !important; }
+::placeholder { color: #666 !important; opacity: 1; }
+a { color: var(--text) !important; }
+.source-btn:hover { color: var(--text) !important; border-color: var(--border) !important; }
+.zulu-time, .tw-time, .peak-time { color: var(--text) !important; }
+#volcanoStatus { color: var(--text) !important; }
+
+/* Cajas de títulos (gris suave) */
+.panel-title{ background: var(--panel2) !important; }
+
+/* Leaflet control estilo sobrio */
+.leaflet-control, .leaflet-control * { color: var(--text) !important; font-family: 'Consolas', monospace !important; text-transform: uppercase; }
+.leaflet-control { background: rgba(255,255,255,0.95) !important; border: 1px solid var(--border) !important; box-shadow: none !important; }
+
+</style>
+</head>
+<body>
+
+    <div id="splashScreen">
+        <div class="splash-content">
+            
+            <h1 class="splash-title">METEOROLOGIA</h1>
+            <button class="enter-btn" onclick="enterSystem()">ACCEDER AL SISTEMA</button>
+            <div class="loading-text" id="loadingStatus">INICIALIZANDO SATÉLITES...</div>
+        </div>
+    </div>
+
+    <div id="mainSystem">
+        <div class="header">
+            <div class="header-content">
+                <div class="tactical-clock">
+                    <div class="clock-row">LOC: <span id="clockLocal">--:--:--</span></div>
+                    <div class="clock-row zulu-time">UTC: <span id="clockZulu">--:--:-- Z</span></div>
+                </div>
+
+                <div>
+                    <h1>METEOROLOGIA</h1>
+                    <div class="status" id="statusMsg">SISTEMA ACTIVO - DATOS RECIBIDOS</div>
+                    <div id="printDateLabel">--/--/---- --:--</div>
+                </div>
+
+                <div class="logo-container">
+                    
+                    <div class="logo-placeholder" style="display:none;">CPDI<br>MI</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="source-bar" id="sourceInfo"></div>
+
+        <div id="autoConclusion">
+            <span class="conclusion-title">CONCLUSIÓN:</span>
+            <span id="conclusionText" class="conclusion-body">Generando análisis...</span>
+        </div>
+
+        <div class="control-bar">
+            <div>
+                <span>UBICACIÓN:</span>
+                <input type="text" id="cityInput" value="" placeholder="Ciudad, País">
+            </div>
+
+            <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                <label style="display:flex; gap:6px; align-items:center;">
+                    <input type="checkbox" id="useManualCoords" style="width:auto;" checked>
+                    <span>COORD. MANUALES (GMS)</span>
+                </label>
+
+                <input type="text" id="latDms" value="20°12\'50&quot;S" placeholder='LAT (EJ: 20°12\'30"S)' style="width: 220px;">
+                <input type="text" id="lonDms" value="70°09\'07&quot;W" placeholder='LON (EJ: 70°08\'15"W)' style="width: 220px;">
+            </div>
+
+            <button onclick="executeSearch()">ACTUALIZAR DATOS</button>
+
+            <div style="margin-left: auto; display: flex; gap: 10px; align-items: center;">
+                                <span>MODELO:</span>
+                <select id="modelSelect" onchange="executeSearch()">
+                    <option value="ecmwf_ifs04">ECMWF (EUROPA - RECOMENDADO)</option>
+                    <option value="best_match" selected>AUTO (OPTIMIZADO)</option>
+                    <option value="gfs_seamless">GFS (NOAA - USA)</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="alertContainer">
+            <div class="alert-box-dmc">
+                <span style="color:var(--text); font-weight:bold;">⚠ ESTADO DE ALERTAS OFICIALES (DMC)</span>
+                <a href="https://www.meteochile.gob.cl/PortalDMC-web/index.xhtml" target="_blank" class="dmc-btn">VERIFICAR ALERTAS ACTIVAS ↗</a>
+            </div>
+        </div>
+
+        <div class="main-grid">
+            <div class="panel">
+                <span class="panel-title">REPORTE SITUACIONAL: <span id="lblCity" style="color: var(--text)">--</span></span>
+
+                <div class="surface-data">
+                    <div>
+                        <span style="color:var(--muted); font-size:0.8em">CONDICIÓN ACTUAL</span>
+                        <span class="current-weather-text" id="valWeatherDesc">--</span>
+                        <span class="big-value" id="valTemp">--°</span>
+
+                        <div class="data-row"><span>SENSACIÓN:</span> <span id="valApparent">--°</span></div>
+                        <div class="data-row"><span>HUMEDAD:</span> <span id="valHum">--%</span></div>
+                        <div class="data-row"><span>VIENTO:</span> <span id="valWind">--</span></div>
+                    </div>
+                    <div>
+                        <span style="color:var(--muted); font-size:0.8em">AERONÁUTICA & ASTRONOMÍA</span>
+
+                        <div class="twilight-display" style="border-color:var(--yellow)">
+                            <span class="tw-label" style="color:var(--yellow)">TECHO NUBES (ESTIMADO)</span>
+                            <span class="tw-time" id="valCloudBase" style="color: var(--text); font-size:1.1em">-- M / -- FT</span>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; margin-top:5px;">
+                            <div class="twilight-display">
+                                <span class="tw-label">INICIO (CCCM)</span>
+                                <span class="tw-time" id="valCccm">--:--</span>
+                            </div>
+                            <div class="twilight-display">
+                                <span class="tw-label">TÉRMINO (TCCV)</span>
+                                <span class="tw-time" id="valTccv" style="color:var(--orange)">--:--</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top:10px; padding-top:5px; border-top:1px solid var(--border); display:flex; justify-content:space-between; font-size:0.9em;">
+                    <span>VISIBILIDAD: <span id="valVis" style="color: var(--text); font-weight:bold">--</span></span>
+                    <span>RÁFAGAS: <span id="valGust" style="color:var(--red); font-weight:bold">--</span></span>
+                    <span>UV: <span id="valUv" style="color:yellow; font-weight:bold">--</span></span>
+                </div>
+            </div>
+
+            <div class="panel">
+                <span class="panel-title">FUENTES DE INFORMACIÓN</span>
+                <div class="sources-grid">
+                    <a onclick="window.open('https://www.meteochile.gob.cl/')" class="source-btn">DMC / METEOCHILE.CL</a>
+                    <a onclick="window.open('https://www.meteored.cl/')" class="source-btn">METEORED.CL</a>
+                    <a onclick="window.open('https://www.cr2.cl/')" class="source-btn">CR2 (CLIMA/RESILIENCIA)</a>
+                    <a onclick="window.open('https://servimet.armada.mil.cl/')" class="source-btn">ARMADA (SERVIMET)</a>
+                    <a onclick="window.open('http://www.shoa.cl/')" class="source-btn">SHOA (OCEANOGRAFÍA)</a>
+                    <a onclick="window.open('https://senapred.cl/informate/eventos')" class="source-btn">SENAPRED (ALERTAS)</a>
+                    <a onclick="window.open('https://www.saf.cl/')" class="source-btn">SAF (AEROFOTOGRAMETRÍA)</a>
+                    <a onclick="window.open('https://www.sernageomin.cl/')" class="source-btn">SERNAGEOMIN</a>
+                    <a onclick="window.open('https://www.windy.com/')" class="source-btn">WINDY</a>
+                    <a onclick="window.open('https://open-meteo.com/')" class="source-btn">OPEN-METEO API</a>
+                </div>
+                <div id="volcanoStatus" style="font-size: 10px; margin-top:10px; text-align: center; color:#666;">SCANNEANDO RED SERNAGEOMIN...</div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <span class="panel-title">LÍNEA DE TIEMPO</span>
+            <div class="timeline-container" id="timelineBox"></div>
+        </div>
+
+        <div class="extras-container">
+            <div class="map-box">
+                <iframe id="windyEmbed" src=""></iframe>
+            </div>
+            <div class="chart-box">
+<div class="chart-controls"><div class="chart-controls">
+                    <div class="ctl-group">
+                        <span class="ctl-label">MODO</span>
+                        <select id="timeMode" onchange="onTimeControlsChanged()">
+                            <option value="daily">DIARIO</option>
+                            <option value="hourly">HORARIO</option>
+                        </select>
+                    </div>
+
+                    <div class="ctl-group">
+                        <span class="ctl-label">RANGO</span>
+                        <select id="rangeMode" onchange="onTimeControlsChanged()">
+                            <option value="past7_today">7D + HOY</option>
+                            <option value="today_future10">HOY + 10</option>
+                            <option value="all_loaded">TODO (CARGADO)</option>
+                            <option value="archive_custom">AÑOS PASADOS (ARCHIVO)</option>
+                        </select>
+                    </div>
+
+                    <div class="ctl-group">
+                        <span class="ctl-label">SUAVIZADO</span>
+                        <select id="smoothMode" onchange="updateChart()">
+                            <option value="none">SIN</option>
+                            <option value="ma3">MEDIA 3</option>
+                            <option value="ma5">MEDIA 5</option>
+                        </select>
+                    </div>
+
+                    <div id="hourlyControls" class="chart-subcontrols">
+                        <div class="ctl-group">
+                            <span class="ctl-label">DÍA</span>
+                            <select id="hourDay" onchange="updateChart()"></select>
+                        </div>
+                        <div class="ctl-group">
+                            <span class="ctl-label">VENTANA</span>
+                            <select id="hourWindow" onchange="updateChart()">
+                                <option value="24">24H</option>
+                                <option value="48">48H</option>
+                                <option value="72">72H</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="archiveControls" class="chart-subcontrols">
+                        <div class="ctl-group">
+                            <span class="ctl-label">DESDE</span>
+                            <input type="date" id="archFrom" onchange="updateChart()">
+                        </div>
+                        <div class="ctl-group">
+                            <span class="ctl-label">HASTA</span>
+                            <input type="date" id="archTo" onchange="updateChart()">
+                        </div>
+                        <div class="ctl-group">
+                            <span class="ctl-label">AGREGAR</span>
+                            <select id="archAgg" onchange="updateChart()">
+                                <option value="daily">DIARIO</option>
+                                <option value="monthly">MES</option>
+                                <option value="yearly">AÑO</option>
+                            </select>
+                        </div>
+                        <button onclick="refreshArchiveAndChart()">APLICAR</button>
+                    </div>
+                </div></div>
+
+                <canvas id="mainChart"></canvas>
+
+                <div class="chart-menu-bottom" id="chartMenuBottom">
+                    <div class="row">
+                        <div class="group">
+                            <label>VARIABLE</label>
+                            <select id="chartVar" onchange="updateChart()">
+                                <option value="temp">TEMPERATURA</option>
+                                <option value="wind">VIENTO</option>
+                                <option value="precip">PRECIPITACIÓN</option>
+                                <option value="pressure">PRESIÓN</option>
+                                <option value="humidity">HUMEDAD</option>
+                                <option value="clouds">NUBOSIDAD</option>
+                            </select>
+                        </div>
+
+                        <div class="group">
+                            <label>ESCALA</label>
+                            <select id="uiScale" onchange="__syncMenuVisibility(); __syncChartMenu();">
+                                <option value="hour">HORA</option>
+                                <option value="day" selected>DÍA</option>
+                                <option value="month">MES</option>
+                                <option value="year">AÑO</option>
+                            </select>
+                        </div>
+
+                        <div class="group">
+                            <label>RANGO</label>
+                            <select id="uiRange" onchange="__syncMenuVisibility(); __syncChartMenu();">
+                                <option value="last7" selected>ÚLTIMOS 7 DÍAS</option>
+                                <option value="today10">HOY + 10</option>
+                                <option value="last30">ÚLTIMOS 30 DÍAS</option>
+                                <option value="archive">AÑOS PASADOS (ARCHIVO)</option>
+                            </select>
+                        </div>
+
+                        <div class="group">
+                            <label>SUAVIZADO</label>
+                            <select id="uiSmooth" onchange="__syncChartMenu();">
+                                <option value="none" selected>SIN</option>
+                                <option value="ma3">MEDIA 3</option>
+                                <option value="ma5">MEDIA 5</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row" id="uiHourlyRow" style="display:none;">
+                        <div class="group">
+                            <label>DÍA (HORARIO)</label>
+                            <select id="uiHourDay" onchange="document.getElementById('hourDay').value=this.value; updateChart();"></select>
+                        </div>
+                        <div class="group">
+                            <label>VENTANA</label>
+                            <select id="uiHourWindow" onchange="document.getElementById('hourWindow').value=this.value; updateChart();">
+                                <option value="24" selected>24H</option>
+                                <option value="48">48H</option>
+                                <option value="72">72H</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row" id="uiArchiveRow" style="display:none;">
+                        <div class="group">
+                            <label>DESDE</label>
+                            <input type="date" id="uiArchFrom" onchange="document.getElementById('archFrom').value=this.value; refreshArchiveAndChart();">
+                        </div>
+                        <div class="group">
+                            <label>HASTA</label>
+                            <input type="date" id="uiArchTo" onchange="document.getElementById('archTo').value=this.value; refreshArchiveAndChart();">
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        
+        <div class="fullwidth-panel">
+            <span class="panel-title">MAPA</span>
+            <div id="pickMap"></div>
+            <div class="map-hint">CLICK EN EL MAPA PARA ACTUALIZAR LA UBICACIÓN (ACTIVA COORD. MANUALES GMS Y EJECUTA ACTUALIZACIÓN)</div>
+        
+        <div class="fullwidth-panel" id="dataQueryWrap" style="display:none;">
+            <span class="panel-title">DATOS CONSULTADOS</span>
+            <div id="dataQueryMeta" style="margin-bottom:8px; font-size:11px; text-transform:none; color: var(--text);"></div>
+            <div id="dataQueryTable" style="overflow-x:auto;"></div>
+        </div>
+
+</div>
+
+<div id="printCharts">
+            <div class="panel-title" style="color:var(--panel); border-bottom:1px solid var(--panel); margin-bottom:5px;">ANÁLISIS GRÁFICO DETALLADO</div>
+            <div class="print-chart-row">
+                <div class="print-chart-wrapper"><canvas id="pChartTemp"></canvas></div>
+                <div class="print-chart-wrapper"><canvas id="pChartWind"></canvas></div>
+            </div>
+            <div class="print-chart-row">
+                <div class="print-chart-wrapper"><canvas id="pChartHum"></canvas></div>
+                <div class="print-chart-wrapper"><canvas id="pChartClouds"></canvas></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let globalData = null;
+        let chartInstance = null;
+        let pcTemp, pcWind, pcHum, pcClouds;
+        let currentStatusText = "--";
+        let lastLat = null;
+        let lastLon = null;
+
+        // ARCHIVO CLIMÁTICO (AÑOS PASADOS)
+        let archiveData = null;
+        let archiveKey = null;
+
+        // MAPA INTERACTIVO (LEAFLET)
+        let __pickMap = null;
+        let __pickMarker = null;
+
+        function initPickMap(lat, lon) {
+            try {
+                const mapDiv = document.getElementById('pickMap');
+                if (!mapDiv) return;
+
+                // Evita reinicialización si ya existe
+                if (__pickMap) {
+                    __pickMap.setView([lat, lon], Math.max(__pickMap.getZoom(), 8));
+                    if (__pickMarker) __pickMarker.setLatLng([lat, lon]);
+                    return;
+                }
+
+                __pickMap = L.map('pickMap', { zoomControl: true }).setView([lat, lon], 8);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 18,
+                    attribution: '&copy; OpenStreetMap'
+                }).addTo(__pickMap);
+
+                __pickMarker = L.marker([lat, lon]).addTo(__pickMap);
+
+                // Control "Consultar datos"
+                __dqMakeControl(__pickMap);
+                __dqUpdateCoordLabel();
+
+
+                __pickMap.on('click', (e) => {
+                    const newLat = e.latlng.lat;
+                    const newLon = e.latlng.lng;
+
+                    // Mueve marcador
+                    if (__pickMarker) __pickMarker.setLatLng(e.latlng);
+
+                    // Activa coords manuales y rellena GMS para copiar/pegar
+                    const chk = document.getElementById('useManualCoords');
+                    if (chk) chk.checked = true;
+
+                    const latD = document.getElementById('latDms');
+                    const lonD = document.getElementById('lonDms');
+                    if (latD) latD.value = decimalToDMS(newLat, 'lat');
+                    if (lonD) lonD.value = decimalToDMS(newLon, 'lon');
+
+                    // Ejecuta actualización
+                    __dqUpdateCoordLabel();
+                    executeSearch();
+                });
+            } catch (err) {
+                console.warn('MAPA: no se pudo inicializar', err);
+            }
+        }
+
+        /* === CONTROL MAPA: CONSULTAR DATOS (ARCHIVO CLIMÁTICO) === */
+        let __dqControl = null;
+
+        function __dqFmtDate(d){
+            if(!d) return "";
+            try { return new Date(d).toLocaleDateString('es-CL'); } catch { return d; }
+        }
+
+        function __dqYMD(d){
+            return d.toISOString().slice(0,10);
+        }
+
+        function __dqDefaultRange(){
+            const now = new Date();
+            const end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const start = new Date(end.getFullYear()-10, end.getMonth(), end.getDate());
+            return {from: __dqYMD(start), to: __dqYMD(end)};
+        }
+
+        function __dqMakeControl(map){
+            if(__dqControl) return;
+
+            const C = L.Control.extend({
+                options: { position: 'topright' },
+                onAdd: function(){
+                    const div = L.DomUtil.create('div', 'dq-box');
+                    const dr = __dqDefaultRange();
+                    div.innerHTML = `
+                        <div style="font-weight:bold; margin-bottom:6px; background: var(--panel2); padding:6px 8px; border-bottom:1px solid var(--border);">
+                            CONSULTAR DATOS
+                        </div>
+                        <div style="display:grid; grid-template-columns: 1fr; gap:8px; padding:8px;">
+                            <div style="font-size:10px; color:#444;">
+                                COORD: <span id="dqCoordLbl" style="font-weight:bold;">--</span>
+                            </div>
+
+                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+                                <div>
+                                    <div style="font-size:10px; margin-bottom:4px;">DESDE</div>
+                                    <input id="dqFrom" type="date" value="${dr.from}" style="width:100%;">
+                                </div>
+                                <div>
+                                    <div style="font-size:10px; margin-bottom:4px;">HASTA</div>
+                                    <input id="dqTo" type="date" value="${dr.to}" style="width:100%;">
+                                </div>
+                            </div>
+
+                            <div>
+                                <div style="font-size:10px; margin-bottom:4px;">ESCALA</div>
+                                <select id="dqAgg" style="width:100%;">
+                                    <option value="yearly" selected>AÑO</option>
+                                    <option value="monthly">MES</option>
+                                    <option value="daily">DÍA</option>
+                                    <option value="hourly">HORA</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <div style="font-size:10px; margin-bottom:4px;">VARIABLES</div>
+                                <div style="display:grid; grid-template-columns:1fr; gap:4px; font-size:10px;">
+                                    <label><input type="checkbox" id="dqV_temp" checked> TEMPERATURA (MAX)</label>
+                                    <label><input type="checkbox" id="dqV_precip" checked> PRECIPITACIÓN (SUMA)</label>
+                                    <label><input type="checkbox" id="dqV_hum"> HUMEDAD (MEDIA)</label>
+                                    <label><input type="checkbox" id="dqV_wind"> VIENTO (MAX)</label>
+                                    <label><input type="checkbox" id="dqV_press"> PRESIÓN (MEDIA)</label>
+                                    <label><input type="checkbox" id="dqV_cloud"> NUBOSIDAD (MEDIA)</label>
+                                </div>
+                            </div>
+
+                            <button id="dqRunBtn" style="width:100%; padding:10px; background: var(--panel); border:1px solid var(--text); font-weight:bold; cursor:pointer;">
+                                CONSULTAR DATOS
+                            </button>
+                            <div id="dqMsg" style="font-size:10px; color:#444; text-align:center;"></div>
+                        </div>
+                    `;
+                    L.DomEvent.disableClickPropagation(div);
+                    return div;
+                }
+            });
+
+            __dqControl = new C();
+            map.addControl(__dqControl);
+
+            // Hook botón
+            setTimeout(() => {
+                const btn = document.getElementById('dqRunBtn');
+                if(btn){
+                    btn.addEventListener('click', async () => {
+                        try { await runDataQuery(); } catch(e){ console.error(e); }
+                    });
+                }
+                __dqUpdateCoordLabel();
+            }, 0);
+        }
+
+        function __dqUpdateCoordLabel(){
+            const el = document.getElementById('dqCoordLbl');
+            if(!el) return;
+            const lat = lastLat ?? parseDMS(document.getElementById('latDms')?.value || '', 'lat') ?? -20.214;
+            const lon = lastLon ?? parseDMS(document.getElementById('lonDms')?.value || '', 'lon') ?? -70.152;
+            el.textContent = `${decimalToDMS(lat,'lat')}  ${decimalToDMS(lon,'lon')}`;
+        }
+
+        function __dqSelectedVars(){
+            const vars = [];
+            if(document.getElementById('dqV_temp')?.checked) vars.push('temp');
+            if(document.getElementById('dqV_precip')?.checked) vars.push('precip');
+            if(document.getElementById('dqV_hum')?.checked) vars.push('humidity');
+            if(document.getElementById('dqV_wind')?.checked) vars.push('wind');
+            if(document.getElementById('dqV_press')?.checked) vars.push('pressure');
+            if(document.getElementById('dqV_cloud')?.checked) vars.push('clouds');
+            return vars;
+        }
+
+        function __dqSetMsg(t){
+            const el = document.getElementById('dqMsg');
+            if(el) el.textContent = t || "";
+        }
+
+        function __dqAggKey(dateStr, agg){
+            if(agg === 'monthly') return dateStr.slice(0,7);
+            if(agg === 'yearly') return dateStr.slice(0,4);
+            return dateStr; // daily
+        }
+
+        function __dqAggSeries(dates, values, agg, mode){
+            // mode: 'mean' or 'sum'
+            const buckets = new Map();
+            for(let i=0;i<dates.length;i++){
+                const d = dates[i];
+                const v = values[i];
+                if(v===null || v===undefined || Number.isNaN(v)) continue;
+                const k = __dqAggKey(d, agg);
+                if(!buckets.has(k)) buckets.set(k, []);
+                buckets.get(k).push(v);
+            }
+            const keys = Array.from(buckets.keys()).sort();
+            const out = keys.map(k=>{
+                const arr = buckets.get(k);
+                if(mode==='sum'){
+                    const s = arr.reduce((a,b)=>a+b,0);
+                    return Math.round(s*10)/10;
+                }
+                const s = arr.reduce((a,b)=>a+b,0);
+                return Math.round((s/arr.length)*10)/10;
+            });
+            return {keys, out};
+        }
+
+        async function __dqFetchArchive(lat, lon, from, to){
+            // Pedimos diarios + hourly (para variables medias)
+            const base = "https://archive-api.open-meteo.com/v1/archive";
+            const dailyVars = [
+                "temperature_2m_max",
+                "precipitation_sum",
+                "wind_speed_10m_max"
+            ];
+            const hourlyVars = [
+                "relative_humidity_2m",
+                "pressure_msl",
+                "cloud_cover",
+                "temperature_2m",
+                "precipitation",
+                "wind_speed_10m"
+            ];
+            const url = `${base}?latitude=${lat}&longitude=${lon}&start_date=${from}&end_date=${to}`
+              + `&daily=${dailyVars.join(",")}`
+              + `&hourly=${hourlyVars.join(",")}`
+              + `&timezone=auto`;
+            const res = await fetch(url);
+            if(!res.ok) throw new Error("ARCHIVO: fallo API");
+            return await res.json();
+        }
+
+        function __dqDailyMeanFromHourly(js, field){
+            const dates = js.daily?.time || [];
+            const H = js.hourly || {};
+            const arr = H[field];
+            const out = new Array(dates.length).fill(null);
+            if(!arr || !Array.isArray(arr)) return out;
+            for(let d=0; d<dates.length; d++){
+                let sum=0,cnt=0;
+                const base = d*24;
+                for(let h=0; h<24; h++){
+                    const v = arr[base+h];
+                    if(v===null || v===undefined || Number.isNaN(v)) continue;
+                    sum += v; cnt++;
+                }
+                out[d] = cnt ? Math.round((sum/cnt)*10)/10 : null;
+            }
+            return out;
+        }
+
+        function __dqRenderTable(aggKeys, cols){
+            // cols: [{key, label, unit, values}]
+            const wrap = document.getElementById('dataQueryWrap');
+            const meta = document.getElementById('dataQueryMeta');
+            const tableDiv = document.getElementById('dataQueryTable');
+            if(!wrap || !meta || !tableDiv) return;
+
+            wrap.style.display = 'block';
+
+            const now = new Date();
+            meta.innerHTML = `DATOS CONSULTADOS EL ${now.toLocaleDateString('es-CL')} A LAS ${now.toLocaleTimeString('es-CL',{hour12:false})}`;
+
+            let html = `<table style="border-collapse:collapse; width:100%; min-width:720px; background:#fff;">
+                <thead>
+                  <tr>
+                    <th style="border:1px solid var(--border); padding:8px; background:var(--panel2); text-align:left;">TIEMPO</th>
+                    ${cols.map(c=>`<th style="border:1px solid var(--border); padding:8px; background:var(--panel2); text-align:left;">${c.label} ${c.unit?`(${c.unit})`:``}</th>`).join('')}
+                  </tr>
+                </thead>
+                <tbody>
+                  ${aggKeys.map((k,ri)=>{
+                      return `<tr>
+                        <td style="border:1px solid var(--border); padding:8px; background:var(--panel);">${k}</td>
+                        ${cols.map(c=>{
+                            const v = c.values[ri];
+                            const vv = (v===null || v===undefined) ? "N/D" : v;
+                            return `<td style="border:1px solid var(--border); padding:8px;">${vv}</td>`;
+                        }).join('')}
+                      </tr>`;
+                  }).join('')}
+                </tbody>
+            </table>`;
+            tableDiv.innerHTML = html;
+
+            // Scroll a resultados (suave)
+            setTimeout(()=>{ wrap.scrollIntoView({behavior:'smooth', block:'start'}); }, 50);
+        }
+
+        async function runDataQuery(){
+            __dqSetMsg("CONSULTANDO...");
+            const agg = document.getElementById('dqAgg')?.value || 'yearly';
+            const from = document.getElementById('dqFrom')?.value;
+            const to = document.getElementById('dqTo')?.value;
+            const vars = __dqSelectedVars();
+
+            if(!from || !to){ __dqSetMsg("FECHAS INVÁLIDAS"); return; }
+            if(!vars.length){ __dqSetMsg("SELECCIONE AL MENOS 1 VARIABLE"); return; }
+
+            const lat = lastLat ?? parseDMS(document.getElementById('latDms')?.value || '', 'lat') ?? -20.214;
+            const lon = lastLon ?? parseDMS(document.getElementById('lonDms')?.value || '', 'lon') ?? -70.152;
+
+            try{
+                const js = await __dqFetchArchive(lat, lon, from, to);
+
+                // Base daily series
+                const dates = js.daily.time;
+
+                const cols = [];
+                let aggKeys = [];
+
+                function addCol(key, label, unit, values){
+                    // agrega/actualiza aggKeys
+                    if(!aggKeys.length){
+                        aggKeys = __dqAggSeries(dates, values, agg==='hourly'?'daily':agg, 'mean').keys;
+                    }
+                    cols.push({key, label, unit, values});
+                }
+
+                // Para hourly en este menú: mostramos 24h del día seleccionado (simple)
+                if(agg === 'hourly'){
+                    // Tomamos el primer día del rango como default
+                    const day = dates[0];
+                    const idx0 = js.hourly.time.indexOf(day+"T00:00");
+                    const labels = js.hourly.time.slice(idx0, idx0+24).map(t=>t.slice(11,16));
+                    aggKeys = labels;
+
+                    const H = js.hourly;
+
+                    for(const v of vars){
+                        let arr = [];
+                        let label="", unit="";
+                        if(v==='temp'){ arr = H.temperature_2m.slice(idx0, idx0+24); label="TEMPERATURA"; unit="°C"; }
+                        if(v==='precip'){ arr = H.precipitation.slice(idx0, idx0+24); label="PRECIPITACIÓN"; unit="MM/H"; }
+                        if(v==='humidity'){ arr = H.relative_humidity_2m.slice(idx0, idx0+24); label="HUMEDAD"; unit="%"; }
+                        if(v==='wind'){ arr = H.wind_speed_10m.slice(idx0, idx0+24); label="VIENTO"; unit="KM/H"; }
+                        if(v==='pressure'){ arr = H.pressure_msl.slice(idx0, idx0+24); label="PRESIÓN"; unit="HPA"; }
+                        if(v==='clouds'){ arr = H.cloud_cover.slice(idx0, idx0+24); label="NUBOSIDAD"; unit="%"; }
+                        cols.push({key:v, label, unit, values: arr.map(x=> (x===null||x===undefined)?null: Math.round(x*10)/10 )});
+                    }
+                    __dqRenderTable(aggKeys, cols);
+                    __dqSetMsg("LISTO");
+                    return;
+                }
+
+                // Daily helper series
+                const dailyTempMax = js.daily.temperature_2m_max;
+                const dailyPrecipSum = js.daily.precipitation_sum;
+                const dailyWindMax = js.daily.wind_speed_10m_max;
+
+                const dailyHumMean = __dqDailyMeanFromHourly(js, "relative_humidity_2m");
+                const dailyPressMean = __dqDailyMeanFromHourly(js, "pressure_msl");
+                const dailyCloudMean = __dqDailyMeanFromHourly(js, "cloud_cover");
+
+                for(const v of vars){
+                    if(v==='temp'){
+                        const ag = __dqAggSeries(dates, dailyTempMax, agg, 'mean');
+                        aggKeys = ag.keys;
+                        addCol(v, "TEMPERATURA", "°C", ag.out);
+                    }
+                    if(v==='precip'){
+                        const ag = __dqAggSeries(dates, dailyPrecipSum, agg, 'sum');
+                        if(!aggKeys.length) aggKeys = ag.keys;
+                        addCol(v, "PRECIPITACIÓN", "MM", ag.out);
+                    }
+                    if(v==='humidity'){
+                        const ag = __dqAggSeries(dates, dailyHumMean, agg, 'mean');
+                        if(!aggKeys.length) aggKeys = ag.keys;
+                        addCol(v, "HUMEDAD", "%", ag.out);
+                    }
+                    if(v==='wind'){
+                        const ag = __dqAggSeries(dates, dailyWindMax, agg, 'mean');
+                        if(!aggKeys.length) aggKeys = ag.keys;
+                        addCol(v, "VIENTO", "KM/H", ag.out);
+                    }
+                    if(v==='pressure'){
+                        const ag = __dqAggSeries(dates, dailyPressMean, agg, 'mean');
+                        if(!aggKeys.length) aggKeys = ag.keys;
+                        addCol(v, "PRESIÓN", "HPA", ag.out);
+                    }
+                    if(v==='clouds'){
+                        const ag = __dqAggSeries(dates, dailyCloudMean, agg, 'mean');
+                        if(!aggKeys.length) aggKeys = ag.keys;
+                        addCol(v, "NUBOSIDAD", "%", ag.out);
+                    }
+                }
+
+                __dqRenderTable(aggKeys, cols);
+                __dqSetMsg("LISTO");
+            }catch(e){
+                console.error(e);
+                __dqSetMsg("ERROR EN CONSULTA");
+                alert("No se pudo consultar archivo. Verifique conexión y rango de fechas.");
+            }
+        }
+
+
+        function enterSystem() {
+            const splash = document.getElementById('splashScreen');
+            splash.style.opacity = '0';
+            setTimeout(() => { splash.style.display = 'none'; }, 500);
+
+            // Inicializa mapa después de entrar (no bloquea el sistema si falla)
+            setTimeout(() => {
+                try {
+                    // Usa coordenadas actuales (si ya hay GMS rellenado) o Iquique por defecto
+                    const latDec = parseDMS(document.getElementById('latDms')?.value || '', 'lat');
+                    const lonDec = parseDMS(document.getElementById('lonDms')?.value || '', 'lon');
+                    const lat0 = (latDec !== null) ? latDec : -20.214;   // Iquique aprox
+                    const lon0 = (lonDec !== null) ? lonDec : -70.152;
+                    initPickMap(lat0, lon0);
+                } catch(e) {}
+            }, 300);
+        }
+
+        function printReport() {
+            const now = new Date();
+            document.getElementById('printDateLabel').innerText = `${now.toLocaleDateString('es-CL')} ${now.toLocaleTimeString('es-CL')}`;
+            window.print();
+        }
+
+        function updateClocks() {
+            const now = new Date();
+            document.getElementById('clockLocal').innerText = now.toLocaleTimeString('es-CL', { hour12: false });
+            const zuluH = now.getUTCHours().toString().padStart(2, '0');
+            const zuluM = now.getUTCMinutes().toString().padStart(2, '0');
+            const zuluS = now.getUTCSeconds().toString().padStart(2, '0');
+            document.getElementById('clockZulu').innerText = `${zuluH}:${zuluM}:${zuluS} Z`;
+        }
+        setInterval(updateClocks, 1000);
+        updateClocks();
+
+        window.onload = async function() { await executeSearch(); onTimeControlsChanged(); try{ __syncMenuVisibility(); }catch(e){} };
+        document.getElementById('cityInput').addEventListener('keypress', (e) => { if(e.key === 'Enter') executeSearch(); });
+
+        function parseDMS(input, kind /* 'lat' | 'lon' */) {
+            if (!input) return null;
+
+            const s = input.trim().toUpperCase()
+                .replace(/,/g, '.')
+                .replace(/[º°]/g, ' ')
+                .replace(/[’']/g, ' ')
+                .replace(/[“”"]/g, ' ')
+                .replace(/\s+/g, ' ');
+
+            const hemiMatch = s.match(/[NSEW]/);
+            const hemi = hemiMatch ? hemiMatch[0] : null;
+
+            const nums = s.replace(/[NSEW]/g, '').trim().split(' ').filter(Boolean);
+            if (nums.length === 0) return null;
+
+            const deg = parseFloat(nums[0]);
+            const min = nums.length >= 2 ? parseFloat(nums[1]) : 0;
+            const sec = nums.length >= 3 ? parseFloat(nums[2]) : 0;
+
+            if (![deg, min, sec].every(v => Number.isFinite(v))) return null;
+
+            let dec = Math.abs(deg) + (Math.abs(min) / 60) + (Math.abs(sec) / 3600);
+
+            const negBySign = deg < 0;
+            const negByHemi = hemi ? (hemi === 'S' || hemi === 'W') : false;
+            const negative = hemi ? negByHemi : negBySign;
+
+            dec = negative ? -dec : dec;
+
+            if (kind === 'lat' && (dec < -90 || dec > 90)) return null;
+            if (kind === 'lon' && (dec < -180 || dec > 180)) return null;
+
+            return dec;
+        }
+
+        function decimalToDMS(dec, kind /* 'lat' | 'lon' */) {
+            const hemi = kind === 'lat'
+                ? (dec < 0 ? 'S' : 'N')
+                : (dec < 0 ? 'W' : 'E');
+
+            const abs = Math.abs(dec);
+            const deg = Math.floor(abs);
+            const minFloat = (abs - deg) * 60;
+            const min = Math.floor(minFloat);
+            const sec = Math.round((minFloat - min) * 60);
+
+            return `${deg}°${String(min).padStart(2,'0')}'${String(sec).padStart(2,'0')}"${hemi}`;
+        }
+
+        function getAstroDataFromCoords(dateStr, lat, lon) {
+            const d = new Date(dateStr + "T12:00:00");
+            const times = SunCalc.getTimes(d, lat, lon);
+
+            const fmt = (dt) => {
+                if (!dt || isNaN(dt.getTime())) return "N/D";
+                const hh = String(dt.getHours()).padStart(2, "0");
+                const mm = String(dt.getMinutes()).padStart(2, "0");
+                return `${hh}:${mm}`;
+            };
+
+            return { c: fmt(times.dawn), t: fmt(times.dusk) };
+        }
+
+        async function executeSearch() {
+            const model = document.getElementById('modelSelect').value;
+            const statusMsg = document.getElementById('statusMsg');
+            const loadText = document.getElementById('loadingStatus');
+
+            statusMsg.innerText = "ACTUALIZANDO DATOS...";
+            statusMsg.style.color = "yellow";
+            if(loadText) loadText.innerText = "CONECTANDO SATÉLITE...";
+
+            try {
+                let latitude, longitude, name, country;
+
+                const manual = document.getElementById('useManualCoords').checked;
+
+                if (manual) {
+                    const latIn = document.getElementById('latDms').value;
+                    const lonIn = document.getElementById('lonDms').value;
+
+                    const latDec = parseDMS(latIn, 'lat');
+                    const lonDec = parseDMS(lonIn, 'lon');
+
+                    if (latDec === null || lonDec === null) {
+                        alert("Coordenadas GMS inválidas. Ej: 20°12'30\"S y 70°08'15\"W");
+                        return;
+                    }
+
+                    latitude = latDec;
+                    longitude = lonDec;
+                    // Etiqueta amigable si es el punto por defecto (Iquique)
+                    const cityTxt = (document.getElementById("cityInput")?.value || "").trim();
+                    if (!cityTxt && Math.abs(latitude + 20.214) < 0.02 && Math.abs(longitude + 70.152) < 0.02) {
+                        name = "IQUIQUE";
+                        country = "CHILE";
+                    } else {
+                        name = "COORDENADAS MANUALES";
+                        country = "—";
+                    }
+                } else {
+                    const city = document.getElementById('cityInput').value;
+                    const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=es&format=json`;
+                    const geoRes = await fetch(geoUrl);
+                    const geoData = await geoRes.json();
+
+                    if (!geoData.results) { alert("Ciudad no encontrada. Pruebe formato: Ciudad, País"); return; }
+                    ({ latitude, longitude, name, country } = geoData.results[0]);
+
+                    // Auto-rellenar inputs GMS para copiar/pegar
+                    document.getElementById('latDms').value = decimalToDMS(latitude, 'lat');
+                    document.getElementById('lonDms').value = decimalToDMS(longitude, 'lon');
+                }
+
+                lastLat = latitude;
+                lastLon = longitude;
+
+                document.getElementById('windyEmbed').src = `https://embed.windy.com/embed2.html?lat=${latitude}&lon=${longitude}&detailLat=${latitude}&detailLon=${longitude}&width=650&height=450&zoom=10&level=surface&overlay=wind&product=ecmwf&menu=&message=&marker=&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=km%2Fh&metricTemp=%C2%B0C&radarRange=-1`;
+
+                // Sincroniza mapa de selección con la ubicación actual
+                initPickMap(latitude, longitude);
+
+                let weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,dew_point_2m,apparent_temperature,precipitation,visibility,wind_speed_10m,wind_gusts_10m,uv_index,cloud_cover,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,wind_speed_10m_max,uv_index_max,weather_code&hourly=temperature_2m,precipitation,cloud_cover,cloud_cover_mid,wind_speed_10m,wind_gusts_10m,pressure_msl,relative_humidity_2m&past_days=7&forecast_days=11&timezone=auto&models=${model}`;
+
+                let res = await fetch(weatherUrl);
+                let usedModel = document.getElementById('modelSelect').options[document.getElementById('modelSelect').selectedIndex].text;
+
+                if (!res.ok) {
+                    weatherUrl = weatherUrl.replace(`models=${model}`, `models=best_match`);
+                    res = await fetch(weatherUrl);
+                    usedModel = "AUTO (RESPALDO)";
+                }
+
+                if(!res.ok) throw new Error("Fallo API");
+
+                const data = await res.json();
+                globalData = data;
+
+                renderHeader(name, country, usedModel, latitude, longitude);
+                renderCurrent(data, latitude, longitude);
+                renderTimeline(data, latitude, longitude);
+                await updateChart();
+                populateHourDaySelect();
+                renderPrintCharts(data);
+                generateTacticalSummary(data);
+                checkVolcanoes();
+
+                statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
+                statusMsg.style.color = "var(--text)";
+                if(loadText) loadText.innerText = "SISTEMA LISTO. HAGA CLICK EN ACCEDER.";
+
+            } catch (e) {
+                console.error(e);
+                statusMsg.innerText = "ERROR DE CONEXIÓN";
+                statusMsg.style.color = "red";
+                if(loadText) loadText.innerText = "ERROR DE CONEXIÓN. REINTENTE.";
+            }
+        }
+
+        function generateTacticalSummary(data) {
+            const todayIdx = 7;
+            const cur = data.current;
+            const maxTemp = data.daily.temperature_2m_max[todayIdx];
+            const maxWind = data.daily.wind_speed_10m_max[todayIdx];
+            const uv = data.daily.uv_index_max[todayIdx];
+
+            let summary = [];
+
+            if (maxWind > 40) summary.push("⚠ ALERTA DE VIENTO: Ráfagas superan umbral seguro. Operaciones aéreas restringidas.");
+            else if (maxWind > 25) summary.push("PRECAUCIÓN: Vientos moderados. Afectación posible a drones ligeros.");
+            else summary.push("CONDICIÓN EÓLICA: Favorable para operaciones aéreas y terrestres.");
+
+            if (maxTemp > 30) summary.push("ALERTA TÉRMICA: Calor extremo. Riesgo de deshidratación. Hidratación obligatoria.");
+            else if (maxTemp < 5) summary.push("ALERTA TÉRMICA: Bajas temperaturas. Riesgo de hipotermia en exposición prolongada.");
+            else summary.push("CONDICIÓN TÉRMICA: Temperaturas operativas normales.");
+
+            if (cur.relative_humidity_2m > 90) summary.push("VISIBILIDAD: Reducida por alta humedad/niebla costera. Precaución en desplazamientos.");
+            else summary.push("VISIBILIDAD: Óptima. Baja probabilidad de obstrucción visual.");
+
+            if (uv > 8) summary.push("RADIACIÓN: Índice UV Extremo. Protección solar obligatoria para personal en terreno.");
+
+            document.getElementById('conclusionText').innerText = summary.join("\n");
+        }
+
+        function renderHeader(city, country, model, lat, lon) {
+            const latDms = decimalToDMS(lat, 'lat');
+            const lonDms = decimalToDMS(lon, 'lon');
+
+            document.getElementById('lblCity').innerText = `${city.toUpperCase()}, ${country.toUpperCase()}`;
+
+            // Coordenadas clickeables para copiar
+            const coordSpan = `<span id="coordCopy" style="color: var(--text); cursor:pointer; text-decoration:underline;" title="Click para copiar">${latDms}, ${lonDms} 📋</span>`;
+            document.getElementById('sourceInfo').innerHTML = `FUENTE: <span style="color: var(--text)">OPEN-METEO</span> | MODELO: <span style="color: var(--text)">${model}</span> | COORD: ${coordSpan}`;
+
+            setTimeout(() => {
+                const el = document.getElementById('coordCopy');
+                if (el) {
+                    el.onclick = async () => {
+                        const txt = `${latDms}, ${lonDms}`;
+                        try {
+                            await navigator.clipboard.writeText(txt);
+                            el.innerHTML = `${latDms}, ${lonDms} ✅`;
+                            setTimeout(() => { el.innerHTML = `${latDms}, ${lonDms} 📋`; }, 800);
+                        } catch {
+                            alert("No se pudo copiar. Copia manualmente: " + txt);
+                        }
+                    };
+                }
+            }, 0);
+        }
+
+        function calculateWeatherText(code, cloudCover, humidity, isDay) {
+            if (code >= 51) return decodeWMO(code);
+            if (humidity >= 95 && code <= 48) return "BRUMA / NIEBLA";
+            if (code <= 3 && cloudCover < 50) return isDay ? "DESPEJADO (SOLEADO)" : "DESPEJADO";
+            if (code <= 3 && cloudCover < 85) return "PARCIALMENTE NUBLADO";
+            return decodeWMO(code);
+        }
+
+        function renderCurrent(data, lat, lon) {
+            const cur = data.current;
+            const todayIdx = 7;
+
+            const todayDate = data.daily.time[todayIdx];
+            const astroToday = getAstroDataFromCoords(todayDate, lat, lon);
+
+            document.getElementById('valCccm').innerText = astroToday.c;
+            document.getElementById('valTccv').innerText = astroToday.t;
+
+            let cloudBaseM = 0;
+            let cloudBaseFt = 0;
+            let cbText = "SIN TECHO";
+
+            if(cur.temperature_2m !== undefined && cur.dew_point_2m !== undefined) {
+                const spread = cur.temperature_2m - cur.dew_point_2m;
+                cloudBaseM = Math.round(spread * 125);
+                if (cloudBaseM < 0) cloudBaseM = 0;
+                cloudBaseFt = Math.round(cloudBaseM * 3.28084);
+
+                if (cur.cloud_cover < 20) {
+                    cbText = "ILIMITADO (CAVOK)";
+                    document.getElementById('valCloudBase').style.color = "var(--text)";
+                } else {
+                    cbText = `${cloudBaseM} M / ${cloudBaseFt} FT`;
+                    document.getElementById('valCloudBase').style.color = "#fff";
+                }
+            }
+            document.getElementById('valCloudBase').innerText = cbText;
+
+            let weatherDesc = calculateWeatherText(cur.weather_code, cur.cloud_cover, cur.relative_humidity_2m, cur.is_day);
+            currentStatusText = weatherDesc;
+            document.getElementById('valWeatherDesc').innerText = weatherDesc;
+
+            const val = (id, v, u) => document.getElementById(id).innerText = (v !== undefined) ? v + u : "--";
+            val('valTemp', Math.round(cur.temperature_2m), "°");
+            val('valApparent', Math.round(cur.apparent_temperature), "°");
+            val('valHum', cur.relative_humidity_2m, "%");
+            val('valWind', cur.wind_speed_10m, " KM/H");
+            val('valVis', (cur.visibility/1000).toFixed(1), " KM");
+            val('valGust', cur.wind_gusts_10m, " KM/H");
+            val('valUv', cur.uv_index, "");
+        }
+
+        function safeVal(v) { return (v !== undefined && v !== null) ? Math.round(v) : '-'; }
+
+        function renderTimeline(data, lat, lon) {
+            const container = document.getElementById('timelineBox');
+            container.innerHTML = "";
+            const daily = data.daily;
+            const hourly = data.hourly;
+
+            daily.time.forEach((t, i) => {
+                let type = "past";
+                let statusText = "HISTORIAL";
+                if(i === 7) { type = "today"; statusText = "ESTADO ACTUAL"; }
+                if(i > 7) { type = "future"; statusText = "DATO PROYECTADO"; }
+
+                const date = new Date(t + "T12:00");
+                const dayStr = date.toLocaleDateString('es-CL', {weekday:'short', day:'2-digit'});
+                const dateNum = t.slice(8,10) + "-" + t.slice(5,7);
+                const moon = getMoonPhase(date);
+
+                const astroDay = getAstroDataFromCoords(t, lat, lon);
+
+                const startHour = i * 24;
+                let maxIccm = 0, maxIccmTime = "00:00";
+                let maxTccv = 0, maxTccvTime = "00:00";
+                let minWind = 999;
+                let humMin = 100, humMax = 0, cloudSum = 0, count = 0;
+
+                if(hourly && hourly.cloud_cover) {
+                    for(let h=0; h<24; h++) {
+                        const idx = startHour + h;
+                        if(hourly.time && !hourly.time[idx]) break;
+
+                        if(hourly.relative_humidity_2m && hourly.relative_humidity_2m[idx] !== undefined) {
+                            let valH = hourly.relative_humidity_2m[idx];
+                            if(valH < humMin) humMin = valH;
+                            if(valH > humMax) humMax = valH;
+                            cloudSum += hourly.cloud_cover[idx]; count++;
+                        }
+                        if(hourly.cloud_cover_mid && hourly.cloud_cover_mid[idx] > maxIccm) { maxIccm = hourly.cloud_cover_mid[idx]; maxIccmTime = (h<10?"0"+h:h)+":00"; }
+                        if(hourly.cloud_cover && hourly.cloud_cover[idx] > maxTccv) { maxTccv = hourly.cloud_cover[idx]; maxTccvTime = (h<10?"0"+h:h)+":00"; }
+                        if(hourly.wind_speed_10m && hourly.wind_speed_10m[idx] < minWind) { minWind = hourly.wind_speed_10m[idx]; }
+                    }
+                }
+                if(minWind === 999) minWind = "-";
+                if(humMin === 100) humMin = 0;
+
+                let weatherText = "";
+                if(i === 7) {
+                    weatherText = currentStatusText;
+                } else {
+                    let dailyCloudAvg = count > 0 ? (cloudSum / count) : 50;
+                    weatherText = calculateWeatherText(daily.weather_code[i], dailyCloudAvg, humMax, 1);
+                }
+
+                const div = document.createElement('div');
+                div.className = `day-card ${type}`;
+                div.innerHTML = `
+                    <div class="t-date">${dayStr}</div>
+                    <div style="text-align:center;color:var(--muted);font-size:0.9em;border-bottom:1px solid var(--border);margin-bottom:5px;">${dateNum}</div>
+                    <div class="t-weather-row" style="color:${weatherText.includes('SOLEADO')||weatherText.includes('DESPEJADO')?'var(--text)':'#fff'}">${weatherText}</div>
+                    <div class="card-row"><span>T° MAX/MIN:</span> <span>${safeVal(daily.temperature_2m_max[i])}° / ${safeVal(daily.temperature_2m_min[i])}°</span></div>
+                    <div class="card-row"><span>SENS MAX/MIN:</span> <span>${safeVal(daily.apparent_temperature_max[i])}° / ${safeVal(daily.apparent_temperature_min[i])}°</span></div>
+                    <div class="card-row"><span>HUMEDAD:</span> <span style="color:#3399ff; font-size:0.9em">${humMin}% - ${humMax}%</span></div>
+                    <div class="card-row"><span>VIENTO MAX:</span> <span style="color:var(--orange)">${safeVal(daily.wind_speed_10m_max[i])} KM/H</span></div>
+                    <div class="card-row"><span>VIENTO MIN:</span> <span>${minWind} KM/H</span></div>
+                    <div class="card-row"><span>UV MAX:</span> <span style="color:yellow">${safeVal(daily.uv_index_max[i])}</span></div>
+
+                    <div style="border-top:1px dashed var(--border); margin:4px 0"></div>
+
+                    <div class="card-row"><span>ICCM <span class="peak-time">(${maxIccmTime})</span>:</span> <span>${maxIccm}%</span></div>
+                    <div class="card-row"><span>TCCV <span class="peak-time">(${maxTccvTime})</span>:</span> <span>${maxTccv}%</span></div>
+
+                    <div class="card-row"><span>CCCM:</span> <span style="color:var(--cyan)">${astroDay.c}</span></div>
+                    <div class="card-row"><span>TCCV:</span> <span style="color:var(--orange)">${astroDay.t}</span></div>
+
+                    <div style="border-top:1px dashed var(--border); margin:4px 0"></div>
+
+                    <div class="card-row"><span>FASE:</span> <span style="font-size:0.8em">${moon.phase}</span></div>
+                    <div class="card-row"><span>ILUMINACIÓN:</span> <span>${moon.illum}%</span></div>
+
+                    <div class="op-status">${statusText}</div>
+                `;
+                container.appendChild(div);
+                if(i === 7) setTimeout(() => div.scrollIntoView({ inline: "center", behavior: "smooth" }), 500);
+            });
+        }
+
+        function decodeWMO(code) {
+            switch(code) {
+                case 0: return "DESPEJADO";
+                case 1: return "MAYORMENTE DESPEJADO";
+                case 2: return "NUBOSIDAD PARCIAL";
+                case 3: return "NUBLADO";
+                case 45: return "NIEBLA";
+                case 48: return "NIEBLA ESCARCHADA";
+                case 51: return "LLOVIZNA LIGERA";
+                case 53: return "LLOVIZNA MODERADA";
+                case 55: return "LLOVIZNA DENSA";
+                case 61: return "LLUVIA LIGERA";
+                case 63: return "LLUVIA MODERADA";
+                case 65: return "LLUVIA FUERTE";
+                case 71: return "NEVADA LIGERA";
+                case 73: return "NEVADA MODERADA";
+                case 75: return "NEVADA FUERTE";
+                case 80: return "CHUBASCOS LIGEROS";
+                case 81: return "CHUBASCOS MODERADOS";
+                case 82: return "CHUBASCOS VIOLENTOS";
+                case 95: return "TORMENTA ELÉCTRICA";
+                case 96: return "TORMENTA C/ GRANIZO";
+                case 99: return "TORMENTA SEVERA";
+                default: return "SIN DATOS";
+            }
+        }
+
+        function getMoonPhase(date) {
+            const lp = 2551443;
+            const new_moon = new Date(1970, 0, 7, 20, 35, 0);
+            const phaseSec = ((date.getTime() - new_moon.getTime()) / 1000) % lp;
+            const days = Math.floor(phaseSec / (24 * 3600));
+            const percent = Math.round((phaseSec / lp) * 100);
+            let name = "NUEVA";
+            if(days < 2) name = "NUEVA"; else if(days < 7) name = "CRECIENTE"; else if(days === 7) name = "CUARTO CREC.";
+            else if(days < 14) name = "GIBOSA CREC."; else if(days === 14) name = "LLENA"; else if(days < 21) name = "GIBOSA MENG.";
+            else if(days === 21) name = "CUARTO MENG."; else name = "MENGUANTE";
+            return { phase: name, illum: percent };
+        }
+
+        
+        /* === CONTROLES DE GRÁFICO (TIEMPO / ARCHIVO) === */
+
+        /* === UI PRO (ESCALA: HORA/DÍA/MES/AÑO) - SIN CAMBIAR LÓGICA INTERNA === */
+        function __syncChartMenu() {
+            const uiScale = document.getElementById('uiScale')?.value || 'day';
+            const uiRange = document.getElementById('uiRange')?.value || 'last7';
+            const uiSmooth = document.getElementById('uiSmooth')?.value || 'none';
+
+            // Mapea UI -> controles internos existentes
+            const timeMode = document.getElementById('timeMode');
+            const rangeMode = document.getElementById('rangeMode');
+            const smoothMode = document.getElementById('smoothMode');
+
+            if (smoothMode) smoothMode.value = uiSmooth;
+
+            // Escala
+            if (uiScale === 'hour') {
+                if (timeMode) timeMode.value = 'hourly';
+                if (rangeMode) rangeMode.value = 'all_loaded';
+            } else {
+                if (timeMode) timeMode.value = 'daily';
+
+                // Rango (diario / archivo)
+                if (uiRange === 'archive') {
+                    if (rangeMode) rangeMode.value = 'archive_custom';
+                } else if (uiRange === 'today10') {
+                    if (rangeMode) rangeMode.value = 'today_future10';
+                } else if (uiRange === 'last30') {
+                    // No existe directo: usamos ARCHIVO 30 días como fallback robusto
+                    if (rangeMode) rangeMode.value = 'archive_custom';
+                    // 30 días atrás -> hoy
+                    const now = new Date();
+                    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                    const start = new Date(end.getTime() - 30*24*3600*1000);
+                    const uiF = document.getElementById('uiArchFrom'); const uiT = document.getElementById('uiArchTo');
+                    const f = document.getElementById('archFrom'); const t = document.getElementById('archTo');
+                    const yyyy = (d)=>d.toISOString().slice(0,10);
+                    if (uiF) uiF.value = yyyy(start);
+                    if (uiT) uiT.value = yyyy(end);
+                    if (f) f.value = yyyy(start);
+                    if (t) t.value = yyyy(end);
+                    const agg = document.getElementById('archAgg');
+                    if (agg) agg.value = 'daily';
+                } else {
+                    if (rangeMode) rangeMode.value = 'past7_today';
+                }
+
+                // Agregación Mes/Año usando archivo (para análisis climático)
+                const agg = document.getElementById('archAgg');
+                if (uiScale === 'month') {
+                    if (rangeMode) rangeMode.value = 'archive_custom';
+                    if (agg) agg.value = 'monthly';
+                } else if (uiScale === 'year') {
+                    if (rangeMode) rangeMode.value = 'archive_custom';
+                    if (agg) agg.value = 'yearly';
+                } else {
+                    // día: mantener daily salvo que sea archivo
+                    if (agg && (uiRange !== 'archive' && uiRange !== 'last30')) agg.value = 'daily';
+                }
+            }
+
+            // Sincroniza subcontroles
+            onTimeControlsChanged();
+
+            // Sincroniza controles horario
+            const uiHourDay = document.getElementById('uiHourDay');
+            const uiHourWindow = document.getElementById('uiHourWindow');
+            const hourDay = document.getElementById('hourDay');
+            const hourWindow = document.getElementById('hourWindow');
+            if (uiHourDay && hourDay) hourDay.value = uiHourDay.value || hourDay.value;
+            if (uiHourWindow && hourWindow) hourWindow.value = uiHourWindow.value || hourWindow.value;
+
+            // Sincroniza archivo
+            const uiAF = document.getElementById('uiArchFrom');
+            const uiAT = document.getElementById('uiArchTo');
+            const af = document.getElementById('archFrom');
+            const at = document.getElementById('archTo');
+            if (uiAF && af && uiAF.value) af.value = uiAF.value;
+            if (uiAT && at && uiAT.value) at.value = uiAT.value;
+
+            // Actualiza gráfico
+            updateChart();
+        }
+
+        function __syncMenuVisibility() {
+            const uiScale = document.getElementById('uiScale')?.value || 'day';
+            const uiRange = document.getElementById('uiRange')?.value || 'last7';
+
+            const hr = document.getElementById('uiHourlyRow');
+            const ar = document.getElementById('uiArchiveRow');
+
+            if (hr) hr.style.display = (uiScale === 'hour') ? 'flex' : 'none';
+            if (ar) ar.style.display = (uiScale === 'month' || uiScale === 'year' || uiRange === 'archive' || uiRange === 'last30') ? 'flex' : 'none';
+        }
+
+        function onTimeControlsChanged() {
+            const timeMode = document.getElementById('timeMode').value;
+            const rangeMode = document.getElementById('rangeMode').value;
+
+            const hourlyBox = document.getElementById('hourlyControls');
+            const archiveBox = document.getElementById('archiveControls');
+
+            hourlyBox.classList.remove('show');
+            archiveBox.classList.remove('show');
+
+            if (timeMode === 'hourly') {
+                hourlyBox.classList.add('show');
+                // archivo no aplica en hourly (por costo); se mantiene daily
+                document.getElementById('rangeMode').value = 'all_loaded';
+            } else {
+                // daily
+                if (rangeMode === 'archive_custom') archiveBox.classList.add('show');
+            }
+
+            // Asegura valores por defecto de fechas archivo (últimos 5 años)
+            if (document.getElementById('rangeMode').value === 'archive_custom') {
+                ensureArchiveDatesDefaults();
+            }
+
+            populateHourDaySelect();
+            updateChart();
+
+            try{ __syncMenuVisibility(); }catch(e){}
+        }
+
+        function ensureArchiveDatesDefaults() {
+            const fromEl = document.getElementById('archFrom');
+            const toEl = document.getElementById('archTo');
+            if (!fromEl.value || !toEl.value) {
+                const now = new Date();
+                const end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                const start = new Date(now.getFullYear() - 5, now.getMonth(), now.getDate());
+                fromEl.value = start.toISOString().slice(0,10);
+                toEl.value = end.toISOString().slice(0,10);
+            }
+        }
+
+        function populateHourDaySelect() {
+            if (!globalData || !globalData.daily || !globalData.daily.time) return;
+            const daySel = document.getElementById('hourDay');
+            if (!daySel) return;
+            const cur = daySel.value;
+            daySel.innerHTML = "";
+            globalData.daily.time.forEach((d, i) => {
+                const opt = document.createElement('option');
+                opt.value = d;
+                opt.textContent = d;
+                daySel.appendChild(opt);
+            });
+            // por defecto HOY (índice 7) si existe
+            if (!cur) {
+                daySel.value = globalData.daily.time[Math.min(7, globalData.daily.time.length-1)];
+            } else {
+                daySel.value = cur;
+            }
+        }
+
+            // UI PRO (menú inferior)
+            const uiSel = document.getElementById('uiHourDay');
+            if (uiSel) {
+                const cur2 = uiSel.value;
+                uiSel.innerHTML = daySel.innerHTML;
+                uiSel.value = cur2 || daySel.value;
+            }
+
+
+        function movingAverage(arr, k) {
+            if (!arr || !arr.length) return arr;
+            const out = new Array(arr.length).fill(null);
+            const half = Math.floor(k/2);
+            for (let i=0;i<arr.length;i++){
+                let sum = 0, cnt = 0;
+                for (let j=i-half;j<=i+half;j++){
+                    if (j<0 || j>=arr.length) continue;
+                    const v = arr[j];
+                    if (v === null || v === undefined || Number.isNaN(v)) continue;
+                    sum += v; cnt++;
+                }
+                out[i] = cnt ? Math.round((sum/cnt)*10)/10 : null;
+            }
+            return out;
+        }
+
+        function aggregateDailyToMonthly(dates, values, agg) {
+            // agg: 'monthly' or 'yearly'
+            const buckets = new Map();
+            for (let i=0;i<dates.length;i++){
+                const d = dates[i];
+                const v = values[i];
+                if (v === null || v === undefined || Number.isNaN(v)) continue;
+                const key = agg === 'monthly' ? d.slice(0,7) : d.slice(0,4);
+                if (!buckets.has(key)) buckets.set(key, []);
+                buckets.get(key).push(v);
+            }
+            const labels = Array.from(buckets.keys()).sort();
+            const out = labels.map(k => {
+                const arr = buckets.get(k);
+                const sum = arr.reduce((a,b)=>a+b,0);
+                return Math.round((sum/arr.length)*10)/10;
+            });
+            return { labels, values: out };
+        }
+
+        async function fetchArchiveDaily(lat, lon, from, to, variable) {
+            // Por rendimiento pedimos un set mínimo de variables diarias.
+            // Para variables no soportadas directamente en daily, pedimos hourly y agregamos.
+            const base = "https://archive-api.open-meteo.com/v1/archive";
+            const tz = "auto";
+
+            // Variables diarias directas que usamos en análisis climático:
+            // temp_max, wind_max, precip_sum
+            const dailyVars = ["temperature_2m_max","wind_speed_10m_max","precipitation_sum"];
+
+            // Humedad/Presión/Nubosidad -> hourly para promediar
+            const needsHourly = ["humidity","pressure","clouds"].includes(variable);
+            const hourlyVars = needsHourly
+                ? ["relative_humidity_2m","pressure_msl","cloud_cover"]
+                : [];
+
+            const url = `${base}?latitude=${lat}&longitude=${lon}&start_date=${from}&end_date=${to}`
+                + `&daily=${dailyVars.join(",")}`
+                + (hourlyVars.length ? `&hourly=${hourlyVars.join(",")}` : "")
+                + `&timezone=${encodeURIComponent(tz)}`;
+
+            const res = await fetch(url);
+            if (!res.ok) throw new Error("ARCHIVO: fallo API");
+            const js = await res.json();
+
+            // Construye series diarias según variable
+            const dates = js.daily.time;
+
+            function dailyAvgFromHourly(hourlyArr) {
+                const out = new Array(dates.length).fill(null);
+                if (!hourlyArr || !Array.isArray(hourlyArr) || !js.hourly || !js.hourly.time) return out;
+                // hourlies están en orden; asumimos 24 por día en timezone auto
+                for (let d=0; d<dates.length; d++){
+                    let sum=0,cnt=0;
+                    const baseIdx = d*24;
+                    for (let h=0; h<24; h++){
+                        const v = hourlyArr[baseIdx+h];
+                        if (v === null || v === undefined || Number.isNaN(v)) continue;
+                        sum += v; cnt++;
+                    }
+                    out[d] = cnt ? Math.round((sum/cnt)*10)/10 : null;
+                }
+                return out;
+            }
+
+            let values = [];
+            let yLabel = "VALOR";
+
+            if (variable === "temp") { values = js.daily.temperature_2m_max; yLabel = "TEMPERATURA (°C)"; }
+            else if (variable === "wind") { values = js.daily.wind_speed_10m_max; yLabel = "VELOCIDAD (KM/H)"; }
+            else if (variable === "precip") { values = js.daily.precipitation_sum; yLabel = "PRECIPITACIÓN (MM)"; }
+            else if (variable === "humidity") { values = dailyAvgFromHourly(js.hourly?.relative_humidity_2m); yLabel = "HUMEDAD (%)"; }
+            else if (variable === "pressure") { values = dailyAvgFromHourly(js.hourly?.pressure_msl); yLabel = "PRESIÓN (HPA)"; }
+            else if (variable === "clouds") { values = dailyAvgFromHourly(js.hourly?.cloud_cover); yLabel = "COBERTURA (%)"; }
+            else { values = js.daily.temperature_2m_max; yLabel = "TEMPERATURA (°C)"; }
+
+            return { dates, values, yLabel };
+        }
+
+        async function refreshArchiveAndChart() {
+            // fuerza refetch
+            archiveData = null;
+            archiveKey = null;
+            await updateChart(true);
+        }
+
+        /* ✅ FUNCIÓN DE GRÁFICOS: DIARIO / HORARIO + RANGOS + ARCHIVO + SUAVIZADO */
+        async function updateChart(forceArchive = false) {
+            if (!globalData) return;
+
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            const variable = document.getElementById('chartVar').value;
+            const timeMode = document.getElementById('timeMode').value;
+            const rangeMode = document.getElementById('rangeMode').value;
+            const smoothMode = document.getElementById('smoothMode').value;
+
+            // Promedio diario desde arreglos horarios (24 valores por día)
+            function dailyAvg(arr) {
+                if (!arr || !Array.isArray(arr) || !globalData.hourly) return globalData.daily.time.map(() => null);
+                return globalData.daily.time.map((_, d) => {
+                    let sum = 0, count = 0;
+                    const base = d * 24;
+                    for (let h = 0; h < 24; h++) {
+                        const v = arr[base + h];
+                        if (v !== undefined && v !== null && !Number.isNaN(v)) { sum += v; count++; }
+                    }
+                    return count ? Math.round((sum / count) * 10) / 10 : null;
+                });
+            }
+
+            // === HORARIO (24/48/72) ===
+            if (timeMode === 'hourly') {
+                populateHourDaySelect();
+                const day = document.getElementById('hourDay').value;
+                const win = parseInt(document.getElementById('hourWindow').value, 10);
+
+                const times = globalData.hourly.time || [];
+                const idx0 = times.indexOf(day + "T00:00");
+                if (idx0 === -1) return;
+
+                const sliceTimes = times.slice(idx0, idx0 + win);
+                const labels = sliceTimes.map(t => t.slice(11,16)); // HH:MM
+
+                const H = globalData.hourly;
+
+                let dataArr = [];
+                let yLabel = "VALOR";
+                let color = "var(--text)";
+                let chartType = "line";
+                let fill = true;
+
+                if (variable === "temp") { dataArr = H.temperature_2m; yLabel="TEMPERATURA (°C)"; color="var(--text)"; }
+                else if (variable === "wind") { dataArr = H.wind_speed_10m; yLabel="VELOCIDAD (KM/H)"; color="#ff9900"; }
+                else if (variable === "precip") { dataArr = H.precipitation; yLabel="PRECIPITACIÓN (MM/H)"; color="var(--text)"; chartType="bar"; fill=false; }
+                else if (variable === "pressure") { dataArr = H.pressure_msl; yLabel="PRESIÓN (HPA)"; color="#ff00ff"; }
+                else if (variable === "humidity") { dataArr = H.relative_humidity_2m; yLabel="HUMEDAD (%)"; color="#3399ff"; }
+                else if (variable === "clouds") { dataArr = H.cloud_cover; yLabel="COBERTURA (%)"; color="#aaaaaa"; }
+                else { dataArr = H.temperature_2m; yLabel="TEMPERATURA (°C)"; }
+
+                const seg = dataArr.slice(idx0, idx0 + win);
+                let series = seg.map(v => (v === undefined ? null : v));
+
+                if (smoothMode === "ma3") series = movingAverage(series, 3);
+                if (smoothMode === "ma5") series = movingAverage(series, 5);
+
+                if (chartInstance) chartInstance.destroy();
+                chartInstance = new Chart(ctx, {
+                    type: chartType,
+                    data: { labels, datasets: [{ data: series, borderColor: color, borderWidth: 2,
+                        backgroundColor: chartType === 'bar' ? (color + '40') : (fill ? (color + '20') : 'transparent'),
+                        fill: chartType === 'bar' ? false : fill, pointRadius: 2, pointBackgroundColor: 'var(--panel)', pointBorderColor: color }]},
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { display: false },
+                            tooltip: { backgroundColor: 'rgba(255,255,255,0.98)', titleColor: '#111', bodyColor:color, borderColor:'#b9b9b9', borderWidth:1 }
+                        },
+                        scales: {
+                            x: { ticks: { color:'#888', font:{family:'Consolas'} }, grid:{ color:'#d0d0d0' },
+                                title:{ display:true, text:`HORARIO (${day})`, color:'#666', font:{family:'Consolas', size:10, weight:'bold'} } },
+                            y: { ticks: { color:'#888', font:{family:'Consolas'} }, grid:{ color:'#d0d0d0' },
+                                title:{ display:true, text:yLabel, color:color, font:{family:'Consolas', size:10, weight:'bold'} } }
+                        }
+                    }
+                });
+                return;
+            }
+
+            // === DIARIO (forecast/past_days o ARCHIVO) ===
+            const daily = globalData.daily;
+            const hourly = globalData.hourly || {};
+
+            let label = "Datos";
+            let dataArr = [];
+            let color = "var(--text)";
+            let yLabel = "VALOR";
+            let chartType = "line";
+            let fill = true;
+
+            // dataset base: global
+            function setDailySeriesFromGlobal() {
+                if (variable === 'temp') { label="T° Máx"; dataArr=daily.temperature_2m_max; color="var(--text)"; yLabel="TEMPERATURA (°C)"; chartType="line"; }
+                else if (variable === 'wind') { label="Viento Máx"; dataArr=daily.wind_speed_10m_max; color="#ff9900"; yLabel="VELOCIDAD (KM/H)"; chartType="line"; }
+                else if (variable === 'precip') { label="Lluvia"; dataArr=daily.precipitation_sum; color="var(--text)"; yLabel="PRECIPITACIÓN (MM)"; chartType="bar"; fill=false; }
+                else if (variable === 'pressure') { label="Presión Media"; dataArr=dailyAvg(hourly.pressure_msl); color="#ff00ff"; yLabel="PRESIÓN (HPA)"; chartType="line"; }
+                else if (variable === 'humidity') { label="Humedad Media"; dataArr=dailyAvg(hourly.relative_humidity_2m); color="#3399ff"; yLabel="HUMEDAD (%)"; chartType="line"; }
+                else if (variable === 'clouds') { label="Nubosidad Media"; dataArr=dailyAvg(hourly.cloud_cover); color="#aaaaaa"; yLabel="COBERTURA (%)"; chartType="line"; }
+                else { label="T° Máx"; dataArr=daily.temperature_2m_max; color="var(--text)"; yLabel="TEMPERATURA (°C)"; chartType="line"; }
+            }
+
+            let labelsFull = daily.time.slice();
+            setDailySeriesFromGlobal();
+            let seriesFull = dataArr ? dataArr.slice() : [];
+
+            // RANGOS (indices) usando HOY = 7 (por past_days=7)
+            let startIdx = 0;
+            let endIdx = labelsFull.length;
+
+            if (rangeMode === "past7_today") { startIdx = 0; endIdx = Math.min(8, labelsFull.length); }
+            else if (rangeMode === "today_future10") { startIdx = Math.min(7, labelsFull.length-1); endIdx = labelsFull.length; }
+            else if (rangeMode === "all_loaded") { startIdx = 0; endIdx = labelsFull.length; }
+
+            // ARCHIVO (AÑOS PASADOS)
+            let labels = labelsFull.slice(startIdx, endIdx);
+            let series = seriesFull.slice(startIdx, endIdx).map(v => (v === undefined ? null : v));
+
+            if (rangeMode === "archive_custom") {
+                ensureArchiveDatesDefaults();
+                const from = document.getElementById('archFrom').value;
+                const to = document.getElementById('archTo').value;
+                const agg = document.getElementById('archAgg').value;
+
+                const lat = lastLat ?? -20.214;
+                const lon = lastLon ?? -70.152;
+
+                const key = JSON.stringify({lat,lon,from,to,variable});
+                if (forceArchive || !archiveData || archiveKey !== key) {
+                    try {
+                        // Indicador en header
+                        const sm = document.getElementById('statusMsg');
+                        if (sm) { sm.innerText = "CARGANDO ARCHIVO CLIMÁTICO..."; sm.style.color = "yellow"; }
+
+                        const out = await fetchArchiveDaily(lat, lon, from, to, variable);
+                        archiveData = out;
+                        archiveKey = key;
+
+                        if (sm) { sm.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS"; sm.style.color = "var(--text)"; }
+                    } catch (e) {
+                        console.error(e);
+                        alert("No se pudo cargar ARCHIVO climático. Verifique fechas y conexión.");
+                        // fallback: usar datos cargados
+                    }
+                }
+
+                if (archiveData && archiveData.dates && archiveData.values) {
+                    labels = archiveData.dates.slice();
+                    series = archiveData.values.slice();
+                    yLabel = archiveData.yLabel || yLabel;
+                    // para precipitación, usa barras
+                    if (variable === "precip") { chartType = "bar"; fill=false; color="var(--text)"; }
+                }
+
+                // agregación
+                if (agg === "monthly" || agg === "yearly") {
+                    const ag = aggregateDailyToMonthly(labels, series, agg);
+                    labels = ag.labels;
+                    series = ag.values;
+                }
+            }
+
+            // suavizado
+            if (smoothMode === "ma3") series = movingAverage(series, 3);
+            if (smoothMode === "ma5") series = movingAverage(series, 5);
+
+            if (chartInstance) chartInstance.destroy();
+
+            // Etiquetas compactas: día del mes si formato YYYY-MM-DD
+            const compactLabels = labels.map(t => t.length === 10 ? t.slice(8,10) : t);
+
+            chartInstance = new Chart(ctx, {
+                type: chartType,
+                data: {
+                    labels: compactLabels,
+                    datasets: [{
+                        label: label,
+                        data: series,
+                        borderColor: color,
+                        borderWidth: 2,
+                        backgroundColor: chartType === 'bar' ? (color + '40') : (fill ? (color + '20') : 'transparent'),
+                        fill: chartType === 'bar' ? false : fill,
+                        pointRadius: 3,
+                        pointBackgroundColor: 'var(--panel)',
+                        pointBorderColor: color
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'var(--panel)',
+                            titleColor: '#fff',
+                            bodyColor: color,
+                            borderColor: '#333',
+                            borderWidth: 1
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#888', font: { family: 'Consolas' } },
+                            grid: { color: '#d0d0d0' },
+                            title: {
+                                display: true,
+                                text: (rangeMode === "archive_custom")
+                                    ? "ARCHIVO CLIMÁTICO"
+                                    : "DÍAS (CARGADO)",
+                                color: '#666',
+                                font: { family: 'Consolas', size: 10, weight: 'bold' },
+                                padding: { top: 10 }
+                            }
+                        },
+                        y: {
+                            ticks: { color: '#888', font: { family: 'Consolas' } },
+                            grid: { color: '#d0d0d0' },
+                            title: {
+                                display: true,
+                                text: yLabel,
+                                color: color,
+                                font: { family: 'Consolas', size: 10, weight: 'bold' }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // GENERADOR DE GRÁFICOS DE IMPRESIÓN (SIN FILTRO INVERT - NEGRO PURO)
+        function renderPrintCharts(data) {
+            const daily = data.daily;
+            const labels = daily.time.map(t => t.slice(8,10));
+            const commonOptions = {
+                responsive: true, maintainAspectRatio: false, animation: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { color: 'var(--panel)', font: {size:8} }, grid: { display:false } },
+                    y: { ticks: { color: 'var(--panel)', font: {size:8} }, grid: { color: '#ccc' } }
+                },
+                elements: { line: { borderColor: 'var(--panel)', borderWidth: 2 }, point: { radius: 0 } }
+            };
+
+            if(pcTemp) pcTemp.destroy();
+            pcTemp = new Chart(document.getElementById('pChartTemp'), {
+                type: 'line',
+                data: { labels: labels, datasets: [{ data: daily.temperature_2m_max, borderColor: 'var(--panel)', fill: false }] },
+                options: { ...commonOptions, plugins: { title: { display: true, text: 'TEMPERATURA MAX (°C)', color: 'var(--panel)' } } }
+            });
+
+            if(pcWind) pcWind.destroy();
+            pcWind = new Chart(document.getElementById('pChartWind'), {
+                type: 'bar',
+                data: { labels: labels, datasets: [{ data: daily.wind_speed_10m_max, backgroundColor: 'var(--panel)' }] },
+                options: { ...commonOptions, plugins: { title: { display: true, text: 'VIENTO MAX (KM/H)', color: 'var(--panel)' } } }
+            });
+
+            let humArr = [];
+            if(data.hourly.relative_humidity_2m) {
+                 humArr = daily.time.map((_, i) => { let s=0; for(let h=0;h<24;h++) s+=data.hourly.relative_humidity_2m[i*24+h]; return Math.round(s/24); });
+            }
+            if(pcHum) pcHum.destroy();
+            pcHum = new Chart(document.getElementById('pChartHum'), {
+                type: 'line',
+                data: { labels: labels, datasets: [{ data: humArr, borderColor: 'var(--panel)', fill: false }] },
+                options: { ...commonOptions, plugins: { title: { display: true, text: 'HUMEDAD PROM (%)', color: 'var(--panel)' } } }
+            });
+
+            let cloudArr = [];
+            if(data.hourly.cloud_cover) {
+                 cloudArr = daily.time.map((_, i) => { let s=0; for(let h=0;h<24;h++) s+=data.hourly.cloud_cover[i*24+h]; return Math.round(s/24); });
+            }
+            if(pcClouds) pcClouds.destroy();
+            pcClouds = new Chart(document.getElementById('pChartClouds'), {
+                type: 'line',
+                data: { labels: labels, datasets: [{ data: cloudArr, borderColor: 'var(--panel)', fill: true, backgroundColor: '#ccc' }] },
+                options: { ...commonOptions, plugins: { title: { display: true, text: 'COBERTURA NUBOSA (%)', color: 'var(--panel)' } } }
+            });
+        }
+
+        async function checkVolcanoes() {
+             const div = document.getElementById('volcanoStatus');
+             try {
+                const res = await fetch('https://volcanoes.usgs.gov/hans-public/api/volcano/getElevatedVolcanoes');
+                const data = await res.json();
+                const alert = data.find(v => v.vname.includes("Chile") || v.vname.includes("Lascar") || v.vname.includes("Villarrica"));
+                if(alert) div.innerHTML = `<span style="color:red; animation:blink 1s infinite">⚠ ALERTA ACTIVA: ${alert.vname} (${alert.colorcode})</span>`;
+                else div.innerText = "SERNAGEOMIN: SIN ACTIVIDAD CRÍTICA REPORTADA";
+             } catch(e) {}
+        }
+    </script>
+</body>
+</html>
