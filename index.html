@@ -119,9 +119,80 @@ body {
 
         /* ALERTAS */
         #alertContainer { margin-bottom:10px; }
-        .alert-box-dmc { border: 2px solid var(--text); background: var(--panel); padding: 8px; display: flex; justify-content: space-between; align-items: center; }
-        .dmc-btn { background: var(--text); color: var(--text); border: 1px solid var(--text); padding: 5px 10px; font-weight: bold; cursor: pointer; text-decoration: none; font-size: 0.9em; }
-        .dmc-btn:hover { background: #fff; color: var(--text); }
+        .alerts-list{
+            display:grid;
+            grid-template-columns: 1fr;
+            gap:6px;
+            max-height: 160px;
+            overflow:auto;
+            padding-right: 4px;
+        }
+        .alert-item{
+            border:1px solid var(--border);
+            background: var(--bg);
+            padding:8px;
+            display:flex;
+            flex-direction:column;
+            gap:4px;
+        }
+        .alert-top{
+            display:flex;
+            justify-content:space-between;
+            gap:10px;
+            align-items:flex-start;
+        }
+        .alert-title{
+            font-weight:bold;
+            font-size:11px;
+            line-height:1.2;
+        }
+        .alert-badges{ display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;}
+        .badge{
+            border:1px solid var(--border);
+            padding:2px 6px;
+            font-size:10px;
+            background: var(--panel);
+            white-space:nowrap;
+        }
+        .badge.red{ border-color:#b10000; }
+        .badge.orange{ border-color:#b35a00; }
+        .badge.yellow{ border-color:#9a7a00; }
+        .badge.green{ border-color:#2a7a2a; }
+
+        .alerts-controls{
+            display:flex;
+            gap:6px;
+            align-items:center;
+            margin-bottom:6px;
+            flex-wrap:wrap;
+        }
+        .alerts-select{
+            flex:1;
+            min-width: 140px;
+            padding:4px 6px;
+            border:1px solid var(--border);
+            background: var(--bg);
+            color: var(--text);
+            font-size:10px;
+        }
+        .badge.risk-high{ border-color:#b10000; background: rgba(177,0,0,0.08); }
+        .badge.risk-med{ border-color:#b35a00; background: rgba(179,90,0,0.08); }
+        .badge.risk-low{ border-color:#2a7a2a; background: rgba(42,122,42,0.08); }
+        .badge.risk-info{ border-color:#4f4f4f; background: rgba(79,79,79,0.08); }
+        .alert-item.is-new{ outline:2px solid rgba(0,0,0,0.10); }
+
+      .alert-meta{
+            font-size:10px;
+            color: var(--muted);
+            display:flex;
+            justify-content:space-between;
+            gap:10px;
+        }
+        .alert-link{
+            font-size:10px;
+            text-decoration:underline;
+            cursor:pointer;
+        }
 
         /* CONCLUSION */
         #autoConclusion { display: none; margin-bottom: 10px; border: 1px solid var(--panel); padding: 10px; background: var(--panel); }
@@ -239,12 +310,13 @@ body {
             border: 1px solid var(--border);
             background: var(--panel);
         }
+        \1
+
         .chart-menu-bottom .group{
-            display:flex;
-            flex-direction:column;
-            gap:4px;
-            min-width: 150px;
+            width: 180px;
+            min-width: 180px;
         }
+
         .chart-menu-bottom label{
             font-size: 10px;
             color: var(--muted);
@@ -297,6 +369,71 @@ a { color: var(--text) !important; }
 .leaflet-control, .leaflet-control * { color: var(--text) !important; font-family: 'Consolas', monospace !important; text-transform: uppercase; }
 .leaflet-control { background: rgba(255,255,255,0.95) !important; border: 1px solid var(--border) !important; box-shadow: none !important; }
 
+
+/* === UI PRO: CONTROL BAR (COMPACTO Y RESPONSIVO) === */
+.control-bar{
+  flex-wrap: nowrap !important;
+  overflow-x: hidden; /* evita sensación de que “falta pantalla” */
+  gap: 8px;
+  align-items: center;
+}
+.control-bar > div{ flex: 0 0 auto; }
+
+/* Compactar anchos para que quepa en pantalla */
+#cityInput{ width: 150px; }
+#latDms, #lonDms{ width: 150px !important; }
+#sourceSelect, #modelSelect{ width: 170px; }
+#themeMode{ width: 90px; }
+
+/* Inputs/Selects/Botones uniformes */
+.control-bar button, .control-bar select, .control-bar input{
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 6px;
+  box-sizing: border-box;
+  font-size: 10px;
+}
+.control-bar button{
+  min-width: 140px;
+}
+
+/* Si la pantalla es chica, permitimos wrap (sin desorden) */
+@media (max-width: 1100px){
+  .control-bar{
+    flex-wrap: wrap !important;
+  }
+  .control-bar > div{
+    flex: 1 1 220px;
+    min-width: 220px;
+  }
+  #cityInput, #latDms, #lonDms, #sourceSelect, #modelSelect, #themeMode{
+    width: 100% !important;
+  }
+  .control-bar button{
+    width: 100%;
+    min-width: 0;
+  }
+}
+/* === TEMA OSCURO (LETRAS BLANCAS) === */
+body.dark-mode{
+  --bg:#0f172a;
+  --panel:#111827;
+  --panel2:#1f2937;
+  --border:#334155;
+  --text:#ffffff;
+  --muted:#cbd5e1;
+  --accent:#ffffff;
+  --orange:#ffffff;
+  --cyan:#ffffff;
+  --red:#ffffff;
+  --yellow:#ffffff;
+}
+body.dark-mode .leaflet-control{ background: rgba(15,23,42,0.95) !important; }
+
+
+/* FORCE MANUAL DATE RANGE VISIBLE */
+#uiArchiveRow{ display:flex !important; }
+
 </style>
 </head>
 <body>
@@ -344,7 +481,7 @@ a { color: var(--text) !important; }
                 <input type="text" id="cityInput" value="" placeholder="Ciudad, País">
             </div>
 
-            <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+            <div style="display:flex; gap:6px; align-items:center; flex-wrap:nowrap;">
                 <label style="display:flex; gap:6px; align-items:center;">
                     <input type="checkbox" id="useManualCoords" style="width:auto;" checked>
                     <span>COORD. MANUALES (GMS)</span>
@@ -356,7 +493,22 @@ a { color: var(--text) !important; }
 
             <button onclick="executeSearch()">ACTUALIZAR DATOS</button>
 
-            <div style="margin-left: auto; display: flex; gap: 10px; align-items: center;">
+            <div style="margin-left: auto; display: flex; gap: 10px; align-items: center; flex-wrap:nowrap;">
+
+                <span>MODO:</span>
+                <select id="themeMode">
+                    <option value="claro" selected>CLARO</option>
+                    <option value="oscuro">OSCURO</option>
+                </select>
+
+                                <span>FUENTE:</span>
+                <select id="sourceSelect" onchange="executeSearch()">
+                    <option value="auto" selected>AUTO</option>
+                    <option value="openmeteo">OPEN-METEO</option>
+                    <option value="meteoblue">METEOBLUE</option>
+                    <option value="pirate">PIRATE WEATHER</option>
+                </select>
+
                                 <span>MODELO:</span>
                 <select id="modelSelect" onchange="executeSearch()">
                     <option value="ecmwf_ifs04">ECMWF (EUROPA - RECOMENDADO)</option>
@@ -366,14 +518,29 @@ a { color: var(--text) !important; }
             </div>
         </div>
 
-        <div id="alertContainer">
-            <div class="alert-box-dmc">
-                <span style="color:var(--text); font-weight:bold;">⚠ ESTADO DE ALERTAS OFICIALES (DMC)</span>
-                <a href="https://www.meteochile.gob.cl/PortalDMC-web/index.xhtml" target="_blank" class="dmc-btn">VERIFICAR ALERTAS ACTIVAS ↗</a>
+        <div id="alertContainer" class="panel">
+            <span class="panel-title">ALERTAS OFICIALES (SENAPRED)</span>
+            <div id="alertsMeta" style="font-size:10px; color:var(--muted); margin-bottom:6px;">
+                CARGANDO ALERTAS... | ÚLTIMA ACTUALIZACIÓN: <span id="lastUpdateUTC">--:-- UTC</span>
             </div>
+            
+            <div class="alerts-controls">
+                <select id="alertsFilterRegion" class="alerts-select" title="Filtrar por región">
+                    <option value="__all__">REGIÓN: TODAS</option>
+                </select>
+                <select id="alertsFilterType" class="alerts-select" title="Filtrar por tipo">
+                    <option value="__all__">TIPO: TODOS</option>
+                    <option value="SIGMET">SIGMET</option>
+                    <option value="VOLCANICO">VOLCÁNICO</option>
+                    <option value="TORMENTAS">TORMENTAS</option>
+                    <option value="OTROS">OTROS</option>
+                </select>
+            </div>
+
+            <div id="alertsList" class="alerts-list"></div>
         </div>
 
-        <div class="main-grid">
+<div class="main-grid">
             <div class="panel">
                 <span class="panel-title">REPORTE SITUACIONAL: <span id="lblCity" style="color: var(--text)">--</span></span>
 
@@ -458,7 +625,7 @@ a { color: var(--text) !important; }
                             <option value="past7_today">7D + HOY</option>
                             <option value="today_future10">HOY + 10</option>
                             <option value="all_loaded">TODO (CARGADO)</option>
-                            <option value="archive_custom">AÑOS PASADOS (ARCHIVO)</option>
+                            <option value="archive_custom" selected>AÑOS PASADOS (ARCHIVO)</option>
                         </select>
                     </div>
 
@@ -489,11 +656,11 @@ a { color: var(--text) !important; }
                     <div id="archiveControls" class="chart-subcontrols">
                         <div class="ctl-group">
                             <span class="ctl-label">DESDE</span>
-                            <input type="date" id="archFrom" onchange="updateChart()">
+                            <input type="date" id="archFrom" onchange="document.getElementById('rangeMode').value='archive_custom'; updateChart(true)">
                         </div>
                         <div class="ctl-group">
                             <span class="ctl-label">HASTA</span>
-                            <input type="date" id="archTo" onchange="updateChart()">
+                            <input type="date" id="archTo" onchange="document.getElementById('rangeMode').value='archive_custom'; updateChart(true)">
                         </div>
                         <div class="ctl-group">
                             <span class="ctl-label">AGREGAR</span>
@@ -510,73 +677,40 @@ a { color: var(--text) !important; }
                 <canvas id="mainChart"></canvas>
 
                 <div class="chart-menu-bottom" id="chartMenuBottom">
-                    <div class="row">
-                        <div class="group">
-                            <label>VARIABLE</label>
-                            <select id="chartVar" onchange="updateChart()">
-                                <option value="temp">TEMPERATURA</option>
-                                <option value="wind">VIENTO</option>
-                                <option value="precip">PRECIPITACIÓN</option>
-                                <option value="pressure">PRESIÓN</option>
-                                <option value="humidity">HUMEDAD</option>
-                                <option value="clouds">NUBOSIDAD</option>
-                            </select>
-                        </div>
+    <div class="row" id="uiArchiveRow" style="display:flex;">
+        <div class="group">
+            <label>📅 DESDE</label>
+            <input type="date" id="uiArchFrom" onchange="document.getElementById('archFrom').value=this.value; refreshArchiveAndChart();">
+        </div>
 
-                        <div class="group">
-                            <label>ESCALA</label>
-                            <select id="uiScale" onchange="__syncMenuVisibility(); __syncChartMenu();">
-                                <option value="hour">HORA</option>
-                                <option value="day" selected>DÍA</option>
-                                <option value="month">MES</option>
-                                <option value="year">AÑO</option>
-                            </select>
-                        </div>
+        <div class="group">
+            <label>📅 HASTA</label>
+            <input type="date" id="uiArchTo" onchange="document.getElementById('archTo').value=this.value; refreshArchiveAndChart();">
+        </div>
 
-                        <div class="group">
-                            <label>RANGO</label>
-                            <select id="uiRange" onchange="__syncMenuVisibility(); __syncChartMenu();">
-                                <option value="last7" selected>ÚLTIMOS 7 DÍAS</option>
-                                <option value="today10">HOY + 10</option>
-                                <option value="last30">ÚLTIMOS 30 DÍAS</option>
-                                <option value="archive">AÑOS PASADOS (ARCHIVO)</option>
-                            </select>
-                        </div>
+        <div class="group">
+            <label>VARIABLE</label>
+            <select id="chartVar" onchange="updateChart()">
+                <option value="temp">TEMPERATURA</option>
+                <option value="wind">VIENTO</option>
+                <option value="precip">PRECIPITACIÓN</option>
+                <option value="snow">NIEVE</option>
+                <option value="pressure">PRESIÓN</option>
+                <option value="humidity">HUMEDAD</option>
+                <option value="clouds">NUBOSIDAD</option>
+            </select>
+        </div>
 
-                        <div class="group">
-                            <label>SUAVIZADO</label>
-                            <select id="uiSmooth" onchange="__syncChartMenu();">
-                                <option value="none" selected>SIN</option>
-                                <option value="ma3">MEDIA 3</option>
-                                <option value="ma5">MEDIA 5</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="row" id="uiHourlyRow" style="display:none;">
-                        <div class="group">
-                            <label>DÍA (HORARIO)</label>
-                            <select id="uiHourDay" onchange="document.getElementById('hourDay').value=this.value; updateChart();"></select>
-                        </div>
-                        <div class="group">
-                            <label>VENTANA</label>
-                            <select id="uiHourWindow" onchange="document.getElementById('hourWindow').value=this.value; updateChart();">
-                                <option value="24" selected>24H</option>
-                                <option value="48">48H</option>
-                                <option value="72">72H</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="row" id="uiArchiveRow" style="display:none;">
-                        <div class="group">
-                            <label>DESDE</label>
-                            <input type="date" id="uiArchFrom" onchange="document.getElementById('archFrom').value=this.value; refreshArchiveAndChart();">
-                        </div>
-                        <div class="group">
-                            <label>HASTA</label>
-                            <input type="date" id="uiArchTo" onchange="document.getElementById('archTo').value=this.value; refreshArchiveAndChart();">
-                        </div>
+        <div class="group">
+            <label>SUAVIZADO</label>
+            <select id="uiSmooth" onchange="__syncChartMenu();">
+                <option value="none" selected>SIN</option>
+                <option value="ma3">MEDIA 3</option>
+                <option value="ma5">MEDIA 5</option>
+            </select>
+        </div>
+    </div>
+</div>
                     </div>
                 </div>
 
@@ -618,6 +752,390 @@ a { color: var(--text) !important; }
         let lastLat = null;
         let lastLon = null;
 
+        // === MULTI-FUENTE (Worker) ===
+        // meteo-proxy.kcautivof.workers.dev.
+        // Ejemplo: "meteo-proxy.kcautivof.workers.dev"
+        // Si tu Worker está en el mismo dominio, puedes dejarlo como "".
+        const WORKER_BASE_URL = "https://meteo-proxy.kcautivof.workers.dev";
+
+        function buildWorkerUrl(params){
+            const base = (WORKER_BASE_URL || "").replace(/\/$/, "");
+            const url = base ? (base + "/forecast") : "/forecast";
+            const qs = new URLSearchParams(params);
+            return url + "?" + qs.toString();
+        }
+
+
+// === ALERTAS (SENAPRED via Worker /alerts) ===
+// Renderiza el formato REAL del Worker:
+// { count, updatedAt/updated_at, items/alertas: [{ titulo, fechaHora, riesgo, contenido, urlAccess, ... }] }
+
+function buildWorkerUrlPath(path, params){
+    const base = (WORKER_BASE_URL || "").replace(/\/$/, "");
+    const url = base ? (base + path) : path;
+    const qs = new URLSearchParams(params || {});
+    return qs.toString() ? (url + "?" + qs.toString()) : url;
+}
+
+function clean(input){
+    // Quita HTML y deja texto limpio (sin "HTML sucio")
+    if (input === null || input === undefined) return "";
+    try{
+        const s = String(input);
+        const doc = new DOMParser().parseFromString(s, "text/html");
+        const txt = (doc.body && doc.body.textContent) ? doc.body.textContent : s;
+        return txt.replace(/\s+/g, " ").trim();
+    }catch(e){
+        return String(input).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+    }
+}
+
+// --- ALERTAS (UI + filtros + mapa) ---
+let __alertsState = {
+    items: [],
+    lastFingerprints: new Set(),
+    layerGroup: null
+};
+
+function __alertsFingerprint(it){
+    const a = (it.id || it.uid || it.codigo || it.code || "").toString();
+    const b = (it.titulo || it.title || "").toString();
+    const c = (it.fechaHora || it.fecha_hora || it.date || it.fecha || "").toString();
+    const d = (it.urlAccess || it.url_access || it.url || "").toString();
+    return (a || (b + "|" + c + "|" + d)).slice(0, 500);
+}
+
+function __alertsClassifyRisk(it){
+    const raw = clean(it.riesgo || it.nivel || it.level || it.color || it.severity || "");
+    const hay = (raw + " " + (it.titulo||it.title||"")).toLowerCase();
+
+    // Mapeo típico Chile/SENAPRED
+    if(hay.includes("roja") || hay.includes("extrema") || hay.includes("alto")) return { label:"ALTO", cls:"risk-high" };
+    if(hay.includes("naranja") || hay.includes("moderad")) return { label:"MEDIO", cls:"risk-med" };
+    if(hay.includes("amarilla") || hay.includes("bajo")) return { label:"BAJO", cls:"risk-low" };
+    if(hay.includes("verde") || hay.includes("temprana") || hay.includes("inform")) return { label:"INFO", cls:"risk-info" };
+
+    // Fallback: si el Worker ya trae algo útil, lo mostramos pero con estilo neutro
+    return raw ? { label: raw.toUpperCase(), cls:"" } : { label:"", cls:"" };
+}
+
+function __alertsClassifyType(it){
+    const hay = ((it.tipo || it.type || "") + " " + (it.titulo||it.title||"") + " " + (it.contenido||it.descripcion||it.summary||"")).toLowerCase();
+    if(hay.includes("sigmet")) return "SIGMET";
+    if((hay.includes("va") && hay.includes("eru")) || hay.includes("volc") || hay.includes("lasc") || hay.includes("erup")) return "VOLCANICO";
+    if(hay.includes("torment") || hay.includes(" ts ") || hay.includes("thunder") || hay.includes("embd ts")) return "TORMENTAS";
+    return "OTROS";
+}
+
+function __alertsExtractRegions(it){
+    // Si vienen campos explícitos, prioriza eso
+    const direct = it.region || it.regionName || it.region_nombre || it.region_name || null;
+    if(direct) return [clean(direct)];
+
+    const regions = [];
+    const hay = ((it.zona||it.area||"") + " " + (it.titulo||it.title||"") + " " + (it.contenido||it.descripcion||it.summary||"")).toLowerCase();
+
+    const known = [
+        "tarapacá","tarapaca","antofagasta","atacama","coquimbo","valparaíso","valparaiso",
+        "metropolitana","o'higgins","ohiggins","maule","ñuble","nuble","biobío","biobio",
+        "araucanía","araucania","los ríos","los rios","los lagos","aysén","aysen",
+        "magallanes","arica","parinacota"
+    ];
+    known.forEach(k=>{
+        if(hay.includes(k)){
+            let name = k.toUpperCase();
+            name = name.replace("LOS RIOS","LOS RÍOS");
+            name = name.replace("AYSEN","AYSÉN");
+            name = name.replace("NUBLE","ÑUBLE");
+            name = name.replace("BIOBIO","BIOBÍO");
+            regions.push(name);
+        }
+    });
+
+    return regions.length ? Array.from(new Set(regions)) : ["NACIONAL"];
+}
+
+function __alertsGetGeometry(it){
+    // Buscamos un GeoJSON o geometría simple
+    const g = it.geometry || it.geojson || it.geometria || it.shape || it.areaGeojson || it.area_geojson || null;
+    if(!g) {
+        // bbox: [minLon, minLat, maxLon, maxLat]
+        const bb = it.bbox || it.bounds || it.boundingBox || it.bounding_box || null;
+        if(Array.isArray(bb) && bb.length===4){
+            return { kind:"bbox", bbox: bb.map(Number) };
+        }
+        // coords: [{lat,lon}] o [[lat,lon]] o [[lon,lat]]
+        const coords = it.coords || it.coordinates || it.polygon || it.poly || it.line || it.polyline || null;
+        if(coords) return { kind:"coords", coords };
+        return null;
+    }
+
+    // Si viene como string, intenta parsear
+    if(typeof g === "string"){
+        try { return { kind:"geojson", geojson: JSON.parse(g) }; } catch(_e){ return null; }
+    }
+    // Si viene como objeto ya
+    if(typeof g === "object") return { kind:"geojson", geojson: g };
+    return null;
+}
+
+function __alertsEnsureLayer(){
+    try{
+        if(typeof L === "undefined") return null;
+        if(!__pickMap) return null;
+
+        if(__alertsState.layerGroup) return __alertsState.layerGroup;
+        __alertsState.layerGroup = L.layerGroup().addTo(__pickMap);
+        return __alertsState.layerGroup;
+    }catch(_e){
+        return null;
+    }
+}
+
+function __alertsDrawOnMap(it){
+    const geom = __alertsGetGeometry(it);
+    if(!geom) return;
+
+    const lg = __alertsEnsureLayer();
+    if(!lg) return;
+
+    lg.clearLayers();
+
+    try{
+        if(geom.kind === "geojson" && geom.geojson){
+            const layer = L.geoJSON(geom.geojson, { style: { weight: 2 } });
+            layer.addTo(lg);
+            try{ __pickMap.fitBounds(layer.getBounds(), { padding: [18,18] }); }catch(_e){}
+            return;
+        }
+
+        if(geom.kind === "bbox"){
+            const [minLon, minLat, maxLon, maxLat] = geom.bbox;
+            const b = L.latLngBounds([minLat, minLon], [maxLat, maxLon]);
+            L.rectangle(b, { weight: 2 }).addTo(lg);
+            __pickMap.fitBounds(b, { padding: [18,18] });
+            return;
+        }
+
+        if(geom.kind === "coords"){
+            const c = geom.coords;
+            let pts = [];
+            if(Array.isArray(c)){
+                if(c.length && typeof c[0] === "object" && c[0] && ("lat" in c[0] || "lon" in c[0] || "lng" in c[0])){
+                    pts = c.map(p=>[Number(p.lat), Number(p.lon ?? p.lng)]);
+                }else if(c.length && Array.isArray(c[0])){
+                    pts = c.map(p=>{
+                        const a=Number(p[0]), b=Number(p[1]);
+                        // heurística: Chile lat ~ -17..-56, lon ~ -66..-76
+                        if(a < 0 && a > -90 && b < 0 && b > -180){
+                            // probablemente [lat,lon]
+                            return [a,b];
+                        }
+                        // probablemente [lon,lat]
+                        return [b,a];
+                    });
+                }
+            }
+            if(pts.length >= 3){
+                const poly = L.polygon(pts, { weight:2 }).addTo(lg);
+                __pickMap.fitBounds(poly.getBounds(), { padding: [18,18] });
+            }else if(pts.length >= 2){
+                const line = L.polyline(pts, { weight:2 }).addTo(lg);
+                __pickMap.fitBounds(line.getBounds(), { padding: [18,18] });
+            }else if(pts.length === 1){
+                L.marker(pts[0]).addTo(lg);
+                __pickMap.setView(pts[0], 8);
+            }
+        }
+    }catch(e){
+        console.warn("No se pudo dibujar geometría:", e);
+    }
+}
+
+function __alertsPopulateRegionFilter(items){
+    const sel = document.getElementById("alertsFilterRegion");
+    if(!sel) return;
+
+    const prev = sel.value || "__all__";
+    const set = new Set();
+    items.forEach(it=>{
+        __alertsExtractRegions(it).forEach(r=> set.add((r||"NACIONAL").toUpperCase()));
+    });
+    const regions = Array.from(set).sort((a,b)=>a.localeCompare(b, 'es'));
+
+    sel.innerHTML = `<option value="__all__">REGIÓN: TODAS</option>` + regions.map(r=>`<option value="${r}">${r}</option>`).join("");
+    if(regions.includes(prev)) sel.value = prev;
+}
+
+function __alertsApplyFilters(items){
+    const rSel = document.getElementById("alertsFilterRegion");
+    const tSel = document.getElementById("alertsFilterType");
+    const regionVal = rSel ? rSel.value : "__all__";
+    const typeVal = tSel ? tSel.value : "__all__";
+
+    return items.filter(it=>{
+        const t = __alertsClassifyType(it);
+        const regs = __alertsExtractRegions(it).map(x=>(x||"NACIONAL").toUpperCase());
+
+        const okType = (typeVal==="__all__") ? true : (t === typeVal);
+        const okReg  = (regionVal==="__all__") ? true : regs.includes(regionVal);
+
+        return okType && okReg;
+    });
+}
+
+function __alertsRender(){
+    const meta = document.getElementById('alertsMeta');
+    const list = document.getElementById('alertsList');
+    if(!meta || !list) return;
+
+    const items = __alertsApplyFilters(__alertsState.items);
+
+    // Orden: riesgo alto primero, luego fecha desc
+    const riskScore = (it)=>{
+        const r = __alertsClassifyRisk(it).cls;
+        if(r==="risk-high") return 3;
+        if(r==="risk-med") return 2;
+        if(r==="risk-low") return 1;
+        return 0;
+    };
+
+    __alertsState.filtered = null;
+
+    const sorted = items.slice().sort((a,b)=>{
+        const ra = riskScore(a), rb = riskScore(b);
+        if(rb !== ra) return rb - ra;
+        const da = new Date(a.fechaHora || a.fecha_hora || a.date || a.fecha || 0).getTime() || 0;
+        const db = new Date(b.fechaHora || b.fecha_hora || b.date || b.fecha || 0).getTime() || 0;
+        return db - da;
+    });
+
+    __alertsState.filtered = sorted;
+
+    if(!sorted.length){
+        list.innerHTML = `
+            <div class="alert-item">
+                <div class="alert-title">SIN ALERTAS (FILTRO ACTUAL)</div>
+                <div class="alert-meta"><span>—</span><span>—</span></div>
+            </div>`;
+        return;
+    }
+
+    list.innerHTML = sorted.map((it, idx)=>{
+        const titulo = clean(it.titulo || it.title || "ALERTA").toUpperCase();
+        const fechaRaw = it.fechaHora || it.fecha_hora || it.date || it.fecha || null;
+        const dt = fechaRaw ? new Date(fechaRaw) : null;
+        const fecha = (dt && !isNaN(dt.getTime())) ? dt.toLocaleDateString('es-CL') : "N/D";
+        const hora  = (dt && !isNaN(dt.getTime())) ? dt.toLocaleTimeString('es-CL',{hour12:false}).slice(0,5) : "";
+        const contenido = clean(it.contenido || it.descripcion || it.summary || it.body || "");
+        const href = (it.urlAccess || it.url_access || it.url || "").toString();
+
+        const risk = __alertsClassifyRisk(it);
+        const type = __alertsClassifyType(it);
+        const regs = __alertsExtractRegions(it).map(x=>(x||"NACIONAL").toUpperCase());
+        const regionLabel = regs[0] || "NACIONAL";
+
+        const fp = __alertsFingerprint(it);
+        const isNew = !__alertsState.lastFingerprints.has(fp);
+
+        const hasGeom = !!__alertsGetGeometry(it);
+
+        // click: centra/dibuja si hay geometría
+
+        return `
+            <div class="alert-item ${isNew ? "is-new":""}" data-fp="${fp}">
+                <div class="alert-top">
+                    <div class="alert-title">${titulo}</div>
+                    <div class="alert-badges">
+                        ${risk.label ? `<span class="badge ${risk.cls}">${risk.label}</span>` : ``}
+                        <span class="badge">${type}</span>
+                        ${regionLabel ? `<span class="badge">${regionLabel}</span>` : ``}
+                        ${hora ? `<span class="badge">${hora}</span>` : ``}
+                    </div>
+                </div>
+                <div class="alert-meta">
+                    <span>${fecha}${hora?` ${hora}`:""}</span>
+                    <span>${hasGeom ? "MAPA" : (href ? "WEB" : "—")}</span>
+                </div>
+                ${contenido ? `<div style="font-size:10px; color: var(--muted); line-height:1.3;">${contenido}</div>` : ``}
+                <div style="display:flex; gap:8px; align-items:center; margin-top:4px;">
+                    ${href ? `<div class="alert-link" onclick="window.open('${href}','_blank')">VER DETALLE ↗</div>` : ``}
+                    ${hasGeom ? `<div class="alert-link" onclick="__alertsDrawOnMap(__alertsState.filtered[${idx}])">VER EN MAPA ⤢</div>` : ``}
+                </div>
+            </div>`;
+    }).join('');
+}
+
+async function fetchAlerts(){
+    const meta = document.getElementById('alertsMeta');
+    const list = document.getElementById('alertsList');
+    if(!meta || !list) return;
+
+    try{
+        meta.textContent = "ACTUALIZANDO ALERTAS...";
+        const url = buildWorkerUrlPath("/alerts", { region: "nacional", limit: "40" });
+        const r = await fetch(url, { headers: { "Accept": "application/json" } });
+        if(!r.ok) throw new Error("HTTP " + r.status);
+        const js = await r.json();
+
+        const itemsRaw = js.items || js.alertas || js.alerts || js.data || [];
+        const items = Array.isArray(itemsRaw) ? itemsRaw : [];
+
+        const count = Number.isFinite(js.count) ? js.count : items.length;
+
+        const updatedStr = js.updatedAt || js.updated_at || js.updated || js.lastUpdate || null;
+        const updated = updatedStr ? new Date(updatedStr) : null;
+
+        meta.textContent =
+            `FUENTE: SENAPRED (WORKER) | ${count} ALERTAS | ACTUALIZADO: ` +
+            `${updated && !isNaN(updated.getTime()) ? updated.toLocaleString('es-CL',{hour12:false}) : "N/D"}`;
+
+        
+        try{ __setLastUpdateUTC(); }catch(e){}
+// ✅ Mensaje “Sin alertas activas” cuando count=0
+        if(!count){
+            __alertsState.items = [];
+            __alertsPopulateRegionFilter([]);
+            list.innerHTML = `
+                <div class="alert-item">
+                    <div class="alert-title">SIN ALERTAS ACTIVAS</div>
+                    <div class="alert-meta"><span>—</span><span>—</span></div>
+                </div>`;
+            return;
+        }
+
+        __alertsState.items = items;
+
+        // filtros
+        __alertsPopulateRegionFilter(items);
+
+        // render
+        __alertsRender();
+
+        // actualiza “nuevas” después del primer render
+        __alertsState.lastFingerprints = new Set(items.map(__alertsFingerprint));
+
+        // listeners (solo una vez)
+        const rSel = document.getElementById("alertsFilterRegion");
+        const tSel = document.getElementById("alertsFilterType");
+        if(rSel && !rSel.__bound){
+            rSel.addEventListener("change", __alertsRender);
+            rSel.__bound = true;
+        }
+        if(tSel && !tSel.__bound){
+            tSel.addEventListener("change", __alertsRender);
+            tSel.__bound = true;
+        }
+
+    }catch(e){
+        console.error(e);
+        meta.textContent = "ERROR: NO SE PUDIERON CARGAR ALERTAS (REVISE WORKER / CORS).";
+        try{ __setLastUpdateUTC(); }catch(e){}
+        list.innerHTML = `<div class="alert-item"><div class="alert-title">ERROR DE ALERTAS</div><div class="alert-meta"><span>${clean(e)}</span><span>—</span></div></div>`;
+    }
+}
+
+
         // ARCHIVO CLIMÁTICO (AÑOS PASADOS)
         let archiveData = null;
         let archiveKey = null;
@@ -637,6 +1155,80 @@ a { color: var(--text) !important; }
                     if (__pickMarker) __pickMarker.setLatLng([lat, lon]);
                     return;
                 }
+
+        function buildWorkerUrlPath(path, params){
+            const base = (WORKER_BASE_URL || "").replace(/\/$/, "");
+            const url = base ? (base + path) : path;
+            const qs = new URLSearchParams(params || {});
+            return qs.toString() ? (url + "?" + qs.toString()) : url;
+        }
+
+        // === ALERTAS (SENAPRED via Worker /alerts) ===
+        async function fetchAlerts(){
+            const meta = document.getElementById('alertsMeta');
+            const list = document.getElementById('alertsList');
+            if(!meta || !list) return;
+
+            try{
+                meta.textContent = "ACTUALIZANDO ALERTAS...";
+                const url = buildWorkerUrlPath("/alerts", { region: "nacional", limit: "8" });
+                const r = await fetch(url, { headers: { "Accept": "application/json" } });
+                if(!r.ok) throw new Error("HTTP " + r.status);
+                const js = await r.json();
+
+                const items = Array.isArray(js.items) ? js.items : [];
+                const updated = js.updated_at ? new Date(js.updated_at) : null;
+                meta.textContent = `FUENTE: SENAPRED (WEB) | REGIÓN: ${js.region || "NACIONAL"} | ${items.length} ALERTAS | ACTUALIZADO: ${updated ? updated.toLocaleString('es-CL',{hour12:false}) : "N/D"}`;
+
+                if(!items.length){
+                    list.innerHTML = `<div class="alert-item"><div class="alert-title">SIN ALERTAS PUBLICADAS (O SIN ACCESO)</div><div class="alert-meta"><span>—</span><span>—</span></div></div>`;
+                    return;
+                }
+
+                const badgeClass = (t) => {
+                    const s = (t||"").toLowerCase();
+                    if(s.includes("roja")) return "red";
+                    if(s.includes("amarilla")) return "yellow";
+                    if(s.includes("temprana")) return "green";
+                    if(s.includes("alerta")) return "orange";
+                    return "";
+                };
+
+                list.innerHTML = items.map(it=>{
+                    const title = (it.title || "ALERTA").toString().toUpperCase();
+                    const date = it.date ? new Date(it.date).toLocaleDateString('es-CL') : "N/D";
+                    const time = it.date ? new Date(it.date).toLocaleTimeString('es-CL',{hour12:false}).slice(0,5) : "";
+                    const color = it.level || it.color || "";
+                    const cls = badgeClass(title + " " + color);
+                    const area = (it.area || "").toString().toUpperCase();
+                    const kind = (it.kind || "").toString().toUpperCase();
+                    const href = it.url || "";
+
+                    return `
+                    <div class="alert-item">
+                        <div class="alert-top">
+                            <div class="alert-title">${title}</div>
+                            <div class="alert-badges">
+                                ${color ? `<span class="badge ${cls}">${String(color).toUpperCase()}</span>` : ``}
+                                ${kind ? `<span class="badge">${kind}</span>` : ``}
+                            </div>
+                        </div>
+                        <div class="alert-meta">
+                            <span>${area || "—"}</span>
+                            <span>${date}${time?` ${time}`:""}</span>
+                        </div>
+                        ${href ? `<div class="alert-link" onclick="window.open('${href}','_blank')">VER DETALLE ↗</div>` : ``}
+                    </div>`;
+                }).join('');
+            }catch(e){
+                console.error(e);
+                meta.textContent = "ERROR: NO SE PUDIERON CARGAR ALERTAS (REVISE WORKER / CORS).";
+        try{ __setLastUpdateUTC(); }catch(e){}
+                list.innerHTML = `<div class="alert-item"><div class="alert-title">ERROR DE ALERTAS</div><div class="alert-meta"><span>${String(e)}</span><span>—</span></div></div>`;
+            }
+        }
+
+
 
                 __pickMap = L.map('pickMap', { zoomControl: true }).setView([lat, lon], 8);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -1050,7 +1642,48 @@ a { color: var(--text) !important; }
         setInterval(updateClocks, 1000);
         updateClocks();
 
-        window.onload = async function() { await executeSearch(); onTimeControlsChanged(); try{ __syncMenuVisibility(); }catch(e){} };
+        
+
+        // === TEMA (CLARO / OSCURO) ===
+        (function initTheme(){
+            const sel = document.getElementById('themeMode');
+            if(!sel) return;
+
+            const saved = localStorage.getItem('themeMode');
+            if(saved === 'oscuro'){
+                document.body.classList.add('dark-mode');
+                sel.value = 'oscuro';
+            } else {
+                document.body.classList.remove('dark-mode');
+                sel.value = 'claro';
+            }
+
+            sel.addEventListener('change', () => {
+                if(sel.value === 'oscuro'){
+                    document.body.classList.add('dark-mode');
+                    localStorage.setItem('themeMode','oscuro');
+                } else {
+                    document.body.classList.remove('dark-mode');
+                    localStorage.setItem('themeMode','claro');
+                }
+            });
+        })();
+
+        // === ÚLTIMA ACTUALIZACIÓN (UTC) ===
+        function __setLastUpdateUTC(){
+            const el = document.getElementById('lastUpdateUTC');
+            if(!el) return;
+            const now = new Date();
+            const hh = String(now.getUTCHours()).padStart(2,'0');
+            const mm = String(now.getUTCMinutes()).padStart(2,'0');
+            el.textContent = `${hh}:${mm} UTC`;
+        }
+
+// alertas cada 15 min
+        setInterval(()=>{ try{ fetchAlerts(); }catch(e){} }, 15*60*1000);
+window.onload = async function() {
+  /* uiRange eliminado */
+ await executeSearch(); onTimeControlsChanged(); try{ __syncMenuVisibility(); }catch(e){}; try{ await fetchAlerts(); }catch(e){} };
         document.getElementById('cityInput').addEventListener('keypress', (e) => { if(e.key === 'Enter') executeSearch(); });
 
         function parseDMS(input, kind /* 'lat' | 'lon' */) {
@@ -1176,21 +1809,60 @@ a { color: var(--text) !important; }
                 // Sincroniza mapa de selección con la ubicación actual
                 initPickMap(latitude, longitude);
 
-                let weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,dew_point_2m,apparent_temperature,precipitation,visibility,wind_speed_10m,wind_gusts_10m,uv_index,cloud_cover,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,wind_speed_10m_max,uv_index_max,weather_code&hourly=temperature_2m,precipitation,cloud_cover,cloud_cover_mid,wind_speed_10m,wind_gusts_10m,pressure_msl,relative_humidity_2m&past_days=7&forecast_days=11&timezone=auto&models=${model}`;
+                
+                const sourceSel = (document.getElementById('sourceSelect')?.value || 'auto').toLowerCase();
 
-                let res = await fetch(weatherUrl);
-                let usedModel = document.getElementById('modelSelect').options[document.getElementById('modelSelect').selectedIndex].text;
+                // Si eliges OPEN-METEO explícito, usamos la URL directa (rápido y sin depender del Worker).
+                // Para AUTO / METEOBLUE / PIRATE -> llamamos a tu Worker (que debe manejar el routing / llaves / normalización).
+                let res, usedModel, usedSource, usedUrl;
 
-                if (!res.ok) {
-                    weatherUrl = weatherUrl.replace(`models=${model}`, `models=best_match`);
-                    res = await fetch(weatherUrl);
-                    usedModel = "AUTO (RESPALDO)";
+                usedModel = document.getElementById('modelSelect').options[document.getElementById('modelSelect').selectedIndex].text;
+
+                if (sourceSel === "openmeteo") {
+                    usedSource = "OPEN-METEO (DIRECTO)";
+                    usedUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,dew_point_2m,apparent_temperature,precipitation,visibility,wind_speed_10m,wind_gusts_10m,uv_index,cloud_cover,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,wind_speed_10m_max,uv_index_max,weather_code,snowfall_sum&hourly=temperature_2m,precipitation,cloud_cover,cloud_cover_mid,wind_speed_10m,wind_gusts_10m,pressure_msl,relative_humidity_2m,snowfall&past_days=7&forecast_days=11&timezone=auto&models=${model}`;
+                    res = await fetch(usedUrl);
+
+                    // Fallback a best_match si el modelo no existe en la ubicación
+                    if (!res.ok) {
+                        usedUrl = usedUrl.replace(`models=${model}`, `models=best_match`);
+                        res = await fetch(usedUrl);
+                        usedModel = "AUTO (RESPALDO)";
+                    }
+                } else {
+                    // Worker (AUTO/Meteoblue/Pirate)
+                    usedSource = (sourceSel === "auto") ? "AUTO (WORKER)" : sourceSel.toUpperCase() + " (WORKER)";
+                    usedUrl = buildWorkerUrl({
+                        lat: latitude,
+                        lon: longitude,
+                        source: sourceSel,   // auto | meteoblue | pirate | openmeteo (si tu worker lo soporta)
+                        model: model         // ecmwf_ifs04 | best_match | gfs_seamless (si tu worker lo soporta)
+                    });
+
+                    try{
+                        res = await fetch(usedUrl);
+                        // Si el Worker no tiene el endpoint o falla, caemos a Open-Meteo directo
+                        if(!res.ok) throw new Error("WORKER_HTTP_" + res.status);
+                        // Validación mínima: debe ser JSON
+                        const ct = (res.headers.get("content-type") || "").toLowerCase();
+                        if(!ct.includes("application/json")) throw new Error("WORKER_NOT_JSON");
+                    }catch(e){
+                        // Fallback robusto: Open-Meteo directo (para que la UI no quede sin datos)
+                        usedSource = "OPEN-METEO (FALLBACK)";
+                        usedUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,dew_point_2m,apparent_temperature,precipitation,visibility,wind_speed_10m,wind_gusts_10m,uv_index,cloud_cover,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,wind_speed_10m_max,uv_index_max,weather_code,snowfall_sum&hourly=temperature_2m,precipitation,cloud_cover,cloud_cover_mid,wind_speed_10m,wind_gusts_10m,pressure_msl,relative_humidity_2m,snowfall&past_days=7&forecast_days=11&timezone=auto&models=${model}`;
+                        res = await fetch(usedUrl);
+                        if (!res.ok) {
+                            usedUrl = usedUrl.replace(`models=${model}`, `models=best_match`);
+                            res = await fetch(usedUrl);
+                            usedModel = "AUTO (RESPALDO)";
+                        }
+                    }
                 }
 
-                if(!res.ok) throw new Error("Fallo API");
+                if (!res.ok) throw new Error("Fallo API");
 
                 const data = await res.json();
-                globalData = data;
+globalData = data;
 
                 renderHeader(name, country, usedModel, latitude, longitude);
                 renderCurrent(data, latitude, longitude);
@@ -1201,13 +1873,16 @@ a { color: var(--text) !important; }
                 generateTacticalSummary(data);
                 checkVolcanoes();
 
-                statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
+                                try{ await fetchAlerts(); }catch(e){}
+
+statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
                 statusMsg.style.color = "var(--text)";
                 if(loadText) loadText.innerText = "SISTEMA LISTO. HAGA CLICK EN ACCEDER.";
 
             } catch (e) {
                 console.error(e);
                 statusMsg.innerText = "ERROR DE CONEXIÓN";
+                try{ console.warn("URL FALLIDA:", window.__lastDataUrl); }catch(e){}
                 statusMsg.style.color = "red";
                 if(loadText) loadText.innerText = "ERROR DE CONEXIÓN. REINTENTE.";
             }
@@ -1246,7 +1921,7 @@ a { color: var(--text) !important; }
 
             // Coordenadas clickeables para copiar
             const coordSpan = `<span id="coordCopy" style="color: var(--text); cursor:pointer; text-decoration:underline;" title="Click para copiar">${latDms}, ${lonDms} 📋</span>`;
-            document.getElementById('sourceInfo').innerHTML = `FUENTE: <span style="color: var(--text)">OPEN-METEO</span> | MODELO: <span style="color: var(--text)">${model}</span> | COORD: ${coordSpan}`;
+            document.getElementById('sourceInfo').innerHTML = `FUENTE: <span style="color: var(--text)">${(window.__lastSourceLabel||'OPEN-METEO')}</span> | MODELO: <span style="color: var(--text)">${model}</span> | COORD: ${coordSpan}`;
 
             setTimeout(() => {
                 const el = document.getElementById('coordCopy');
@@ -1449,8 +2124,8 @@ a { color: var(--text) !important; }
 
         /* === UI PRO (ESCALA: HORA/DÍA/MES/AÑO) - SIN CAMBIAR LÓGICA INTERNA === */
         function __syncChartMenu() {
-            const uiScale = document.getElementById('uiScale')?.value || 'day';
-            const uiRange = document.getElementById('uiRange')?.value || 'last7';
+            const uiScale = 'day';
+            const uiRange = 'custom';
             const uiSmooth = document.getElementById('uiSmooth')?.value || 'none';
 
             // Mapea UI -> controles internos existentes
@@ -1472,6 +2147,10 @@ a { color: var(--text) !important; }
                     if (rangeMode) rangeMode.value = 'archive_custom';
                 } else if (uiRange === 'today10') {
                     if (rangeMode) rangeMode.value = 'today_future10';
+                } else if (uiRange === 'custom') {
+                    if (rangeMode) rangeMode.value = 'archive_custom';
+                    const agg = document.getElementById('archAgg');
+                    if (agg) agg.value = 'daily';
                 } else if (uiRange === 'last30') {
                     // No existe directo: usamos ARCHIVO 30 días como fallback robusto
                     if (rangeMode) rangeMode.value = 'archive_custom';
@@ -1530,14 +2209,8 @@ a { color: var(--text) !important; }
         }
 
         function __syncMenuVisibility() {
-            const uiScale = document.getElementById('uiScale')?.value || 'day';
-            const uiRange = document.getElementById('uiRange')?.value || 'last7';
-
-            const hr = document.getElementById('uiHourlyRow');
             const ar = document.getElementById('uiArchiveRow');
-
-            if (hr) hr.style.display = (uiScale === 'hour') ? 'flex' : 'none';
-            if (ar) ar.style.display = (uiScale === 'month' || uiScale === 'year' || uiRange === 'archive' || uiRange === 'last30') ? 'flex' : 'none';
+            if (ar) ar.style.display = 'flex';
         }
 
         function onTimeControlsChanged() {
@@ -1656,7 +2329,7 @@ a { color: var(--text) !important; }
 
             // Variables diarias directas que usamos en análisis climático:
             // temp_max, wind_max, precip_sum
-            const dailyVars = ["temperature_2m_max","wind_speed_10m_max","precipitation_sum"];
+            const dailyVars = ["temperature_2m_max","wind_speed_10m_max","precipitation_sum","snowfall_sum"];
 
             // Humedad/Presión/Nubosidad -> hourly para promediar
             const needsHourly = ["humidity","pressure","clouds"].includes(variable);
@@ -1699,6 +2372,7 @@ a { color: var(--text) !important; }
             if (variable === "temp") { values = js.daily.temperature_2m_max; yLabel = "TEMPERATURA (°C)"; }
             else if (variable === "wind") { values = js.daily.wind_speed_10m_max; yLabel = "VELOCIDAD (KM/H)"; }
             else if (variable === "precip") { values = js.daily.precipitation_sum; yLabel = "PRECIPITACIÓN (MM)"; }
+            else if (variable === "snow") { values = js.daily.snowfall_sum; yLabel = "NIEVE (CM EQ. AGUA)"; }
             else if (variable === "humidity") { values = dailyAvgFromHourly(js.hourly?.relative_humidity_2m); yLabel = "HUMEDAD (%)"; }
             else if (variable === "pressure") { values = dailyAvgFromHourly(js.hourly?.pressure_msl); yLabel = "PRESIÓN (HPA)"; }
             else if (variable === "clouds") { values = dailyAvgFromHourly(js.hourly?.cloud_cover); yLabel = "COBERTURA (%)"; }
@@ -1756,12 +2430,13 @@ a { color: var(--text) !important; }
                 let dataArr = [];
                 let yLabel = "VALOR";
                 let color = "var(--text)";
-                let chartType = "line";
-                let fill = true;
+                let chartType = "bar";
+                let fill = false;
 
                 if (variable === "temp") { dataArr = H.temperature_2m; yLabel="TEMPERATURA (°C)"; color="var(--text)"; }
                 else if (variable === "wind") { dataArr = H.wind_speed_10m; yLabel="VELOCIDAD (KM/H)"; color="#ff9900"; }
                 else if (variable === "precip") { dataArr = H.precipitation; yLabel="PRECIPITACIÓN (MM/H)"; color="var(--text)"; chartType="bar"; fill=false; }
+                else if (variable === "snow") { dataArr = H.snowfall; yLabel="NIEVE (CM/H EQ. AGUA)"; color="var(--text)"; chartType="bar"; fill=false; }
                 else if (variable === "pressure") { dataArr = H.pressure_msl; yLabel="PRESIÓN (HPA)"; color="#ff00ff"; }
                 else if (variable === "humidity") { dataArr = H.relative_humidity_2m; yLabel="HUMEDAD (%)"; color="#3399ff"; }
                 else if (variable === "clouds") { dataArr = H.cloud_cover; yLabel="COBERTURA (%)"; color="#aaaaaa"; }
@@ -1770,10 +2445,25 @@ a { color: var(--text) !important; }
                 const seg = dataArr.slice(idx0, idx0 + win);
                 let series = seg.map(v => (v === undefined ? null : v));
 
-                if (smoothMode === "ma3") series = movingAverage(series, 3);
+                
+                // FORZAR UNIFORMIDAD: TODO EN BARRAS
+                chartType = 'bar';
+                fill = false;
+if (smoothMode === "ma3") series = movingAverage(series, 3);
                 if (smoothMode === "ma5") series = movingAverage(series, 5);
 
                 if (chartInstance) chartInstance.destroy();
+
+            // RANGO DINÁMICO ARRIBA DEL GRÁFICO (EJ: 2016–2025)
+            const __rangeText = (() => {
+                try{
+                    if(!labels || !labels.length) return "";
+                    const y1 = String(labels[0]).slice(0,4);
+                    const y2 = String(labels[labels.length-1]).slice(0,4);
+                    if(/^[0-9]{4}$/.test(y1) && /^[0-9]{4}$/.test(y2)) return `${y1}–${y2}`;
+                    return "";
+                }catch(e){ return ""; }
+            })();
                 chartInstance = new Chart(ctx, {
                     type: chartType,
                     data: { labels, datasets: [{ data: series, borderColor: color, borderWidth: 2,
@@ -1781,10 +2471,12 @@ a { color: var(--text) !important; }
                         fill: chartType === 'bar' ? false : fill, pointRadius: 2, pointBackgroundColor: 'var(--panel)', pointBorderColor: color }]},
                     options: {
                         responsive: true, maintainAspectRatio: false,
-                        plugins: { legend: { display: false },
+                        plugins: {
+                        legend: { display: false },
+                        title: { display: true, text: __rangeText || '', padding: { bottom: 6 }, font: { family: 'Consolas', size: 12, weight: 'bold' }, color: '#666' },
                             tooltip: { backgroundColor: 'rgba(255,255,255,0.98)', titleColor: '#111', bodyColor:color, borderColor:'#b9b9b9', borderWidth:1 }
-                        },
-                        scales: {
+                    },
+                    scales: {
                             x: { ticks: { color:'#888', font:{family:'Consolas'} }, grid:{ color:'#d0d0d0' },
                                 title:{ display:true, text:`HORARIO (${day})`, color:'#666', font:{family:'Consolas', size:10, weight:'bold'} } },
                             y: { ticks: { color:'#888', font:{family:'Consolas'} }, grid:{ color:'#d0d0d0' },
@@ -1803,14 +2495,15 @@ a { color: var(--text) !important; }
             let dataArr = [];
             let color = "var(--text)";
             let yLabel = "VALOR";
-            let chartType = "line";
-            let fill = true;
+            let chartType = "bar";
+            let fill = false;
 
             // dataset base: global
             function setDailySeriesFromGlobal() {
                 if (variable === 'temp') { label="T° Máx"; dataArr=daily.temperature_2m_max; color="var(--text)"; yLabel="TEMPERATURA (°C)"; chartType="line"; }
                 else if (variable === 'wind') { label="Viento Máx"; dataArr=daily.wind_speed_10m_max; color="#ff9900"; yLabel="VELOCIDAD (KM/H)"; chartType="line"; }
                 else if (variable === 'precip') { label="Lluvia"; dataArr=daily.precipitation_sum; color="var(--text)"; yLabel="PRECIPITACIÓN (MM)"; chartType="bar"; fill=false; }
+                else if (variable === 'snow') { label="Nieve"; dataArr=daily.snowfall_sum; color="var(--text)"; yLabel="NIEVE (CM EQ. AGUA)"; chartType="bar"; fill=false; }
                 else if (variable === 'pressure') { label="Presión Media"; dataArr=dailyAvg(hourly.pressure_msl); color="#ff00ff"; yLabel="PRESIÓN (HPA)"; chartType="line"; }
                 else if (variable === 'humidity') { label="Humedad Media"; dataArr=dailyAvg(hourly.relative_humidity_2m); color="#3399ff"; yLabel="HUMEDAD (%)"; chartType="line"; }
                 else if (variable === 'clouds') { label="Nubosidad Media"; dataArr=dailyAvg(hourly.cloud_cover); color="#aaaaaa"; yLabel="COBERTURA (%)"; chartType="line"; }
@@ -1881,12 +2574,46 @@ a { color: var(--text) !important; }
             if (smoothMode === "ma3") series = movingAverage(series, 3);
             if (smoothMode === "ma5") series = movingAverage(series, 5);
 
-            if (chartInstance) chartInstance.destroy();
+            
+            // FORZAR UNIFORMIDAD: TODO EN BARRAS
+            chartType = 'bar';
+            fill = false;
+if (chartInstance) chartInstance.destroy();
 
             // Etiquetas compactas: día del mes si formato YYYY-MM-DD
-            const compactLabels = labels.map(t => t.length === 10 ? t.slice(8,10) : t);
+            // Etiquetas determinísticas para eje X (sin locale)
+// Etiquetas determinísticas para eje X (sin depender del locale)
+const compactLabels = labels.map(t => {
+    const MONTHS = ["ENE","FEB","MAR","ABR","MAY","JUN","JUL","AGO","SEP","OCT","NOV","DIC"];
+    if (typeof t !== "string") return t;
 
-            chartInstance = new Chart(ctx, {
+    // Horario: YYYY-MM-DDTHH:MM...
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(t)) return t.slice(11,16);
+
+    // Anual: YYYY
+    if (/^\d{4}$/.test(t)) return t;
+
+    // Mensual: YYYY-MM -> MMM YYYY
+    if (/^\d{4}-\d{2}$/.test(t)) {
+        const yyyy = t.slice(0,4);
+        const mm = parseInt(t.slice(5,7),10);
+        const m = MONTHS[mm-1] || "";
+        return `${m} ${yyyy}`;
+    }
+
+    // Diario: YYYY-MM-DD -> DD MMM YYYY
+    if (/^\d{4}-\d{2}-\d{2}$/.test(t)) {
+        const yyyy = t.slice(0,4);
+        const mm = parseInt(t.slice(5,7),10);
+        const dd = t.slice(8,10);
+        const m = MONTHS[mm-1] || "";
+        return `${dd} ${m} ${yyyy}`;
+    }
+
+    return t;
+});
+
+chartInstance = new Chart(ctx, {
                 type: chartType,
                 data: {
                     labels: compactLabels,
