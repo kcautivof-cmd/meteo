@@ -96,7 +96,7 @@ body {
         .source-btn:hover { border-color: var(--orange); color: var(--orange); background: var(--panel); }
 
         /* TIMELINE SCROLL */
-        .timeline-container { border: 1px solid var(--border); padding: 10px; overflow-x: auto; white-space: nowrap; background: var(--panel); margin-bottom: 10px; height: 520px; }
+        .timeline-container { border: 1px solid var(--border); padding: 10px; overflow-x: auto; white-space: nowrap; background: var(--panel); margin-bottom: 10px; height: auto; }
         .day-card { width: 230px; background: var(--panel); border: 1px solid var(--border); padding: 8px; display: inline-block; vertical-align: top; margin-right: 5px; }
         .day-card.today { border: 2px solid var(--border); background: var(--panel); transform: scale(1.02); }
         .day-card.past { border-top: 3px solid #555; opacity: 0.6; filter: grayscale(100%); }
@@ -114,7 +114,7 @@ body {
         iframe { width: 100%; height: 100%; border: none; }
         .chart-box { border: 1px solid var(--border); background: var(--panel); position: relative; padding: 10px; height: 100%; box-sizing: border-box; }
 
-        #mainChart { width: 100% !important; height: 320px !important; }
+        #mainChart { width: 100% !important; height: 230px !important; }
 
 
         /* ALERTAS */
@@ -434,6 +434,63 @@ body.dark-mode .leaflet-control{ background: rgba(15,23,42,0.95) !important; }
 /* FORCE MANUAL DATE RANGE VISIBLE */
 #uiArchiveRow{ display:flex !important; }
 
+
+/* === ANALISIS PLEGABLE (LIVIANO / PRO) === */
+.analysis-toggle-wrap{
+  margin: 0 0 8px 0;
+  border: 1px solid var(--border);
+  background: var(--panel);
+}
+.analysis-toggle-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:6px 8px;
+  background: var(--panel2);
+  border-bottom: 1px solid var(--border);
+}
+.analysis-btn{
+  width:auto !important;
+  padding:6px 10px !important;
+  font-size:10px !important;
+  border:1px solid var(--border) !important;
+  background: var(--bg) !important;
+}
+.analysis-btn:hover{ filter: brightness(0.98); }
+.analysis-title{
+  font-weight:bold;
+  letter-spacing: 1px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.analysis-body{
+  display:none;
+  padding:8px;
+  background: var(--panel);
+}
+.analysis-grid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:6px 14px;
+}
+.analysis-row{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  padding: 3px 0;
+}
+.analysis-row span:first-child{ color: var(--muted); }
+.analysis-row span:last-child{ font-weight:bold; }
+.analysis-note{
+  margin-top:6px;
+  font-size:10px;
+  color: var(--muted);
+  border-top: 1px dashed var(--border);
+  padding-top:6px;
+}
+
 </style>
 </head>
 <body>
@@ -674,7 +731,20 @@ body.dark-mode .leaflet-control{ background: rgba(15,23,42,0.95) !important; }
                     </div>
                 </div></div>
 
-                <canvas id="mainChart"></canvas>
+                
+                <!-- ANALISIS (PLEGABLE) -->
+                <div class="analysis-toggle-wrap" id="analysisWrap">
+                    <div class="analysis-toggle-head">
+                        <div class="analysis-title">ANÁLISIS</div>
+                        <button class="analysis-btn" id="btnToggleAnalysis" type="button">VER ANÁLISIS</button>
+                    </div>
+                    <div class="analysis-body" id="analysisBody">
+                        <div class="analysis-grid" id="analysisGrid"></div>
+                        <div class="analysis-note" id="analysisNote"></div>
+                    </div>
+                </div>
+
+<canvas id="mainChart"></canvas>
 
                 <div class="chart-menu-bottom" id="chartMenuBottom">
     <div class="row" id="uiArchiveRow" style="display:flex;">
@@ -1667,6 +1737,7 @@ async function fetchAlerts(){
                     localStorage.setItem('themeMode','claro');
                 }
             });
+            /* análisis se actualiza dentro de updateChart()/refreshArchiveAndChart() */
         })();
 
         // === ÚLTIMA ACTUALIZACIÓN (UTC) ===
@@ -2284,6 +2355,642 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
             }
 
 
+        
+        /* === ANALISIS PLEGABLE (METRICAS RAPIDAS, SIN BLOQUEAR) === */
+        (function initAnalysisToggle(){
+            const btn = document.getElementById('btnToggleAnalysis');
+            const body = document.getElementById('analysisBody');
+            if(!btn || !body) return;
+            btn.addEventListener('click', ()=>{
+                const open = body.style.display === 'block';
+                body.style.display = open ? 'none' : 'block';
+                btn.textContent = open ? 'VER ANÁLISIS' : 'OCULTAR ANÁLISIS';
+            });
+        })();
+
+        function __isFiniteNumber(v){
+            return v !== null && v !== undefined && typeof v === 'number' && Number.isFinite(v);
+        }
+
+        function __calcStats(series){
+            const vals = [];
+            for(const v of series || []){
+                if(__isFiniteNumber(v)) vals.push(v);
+            }
+            const n = vals.length;
+            if(!n) return { n:0, mean:null, min:null, max:null, std:null, last:null };
+
+            let sum = 0;
+            let min = vals[0], max = vals[0];
+            for(const v of vals){
+                sum += v;
+                if(v < min) min = v;
+                if(v > max) max = v;
+            }
+            const mean = sum / n;
+
+            // std (sample)
+            let s2 = 0;
+            for(const v of vals){
+                const d = v - mean;
+                s2 += d*d;
+            }
+            const std = (n > 1) ? Math.sqrt(s2 / (n - 1)) : 0;
+
+            // last finite
+            let last = null;
+            for(let i=series.length-1; i>=0; i--){
+                if(__isFiniteNumber(series[i])) { last = series[i]; break; }
+            }
+
+            return { n, mean, min, max, std, last };
+        }
+
+        function __calcTrend(series){
+            // tendencia por regresión lineal (índice vs valor), robusta y barata
+            const xs = [];
+            const ys = [];
+            for(let i=0;i<(series||[]).length;i++){
+                const v = series[i];
+                if(__isFiniteNumber(v)){
+                    xs.push(i);
+                    ys.push(v);
+                }
+            }
+            const n = ys.length;
+            if(n < 3) return { label:"N/D", slope:0 };
+
+            let sx=0, sy=0, sxx=0, sxy=0;
+            for(let i=0;i<n;i++){
+                const x = xs[i], y = ys[i];
+                sx += x; sy += y; sxx += x*x; sxy += x*y;
+            }
+            const denom = (n*sxx - sx*sx);
+            const slope = denom ? ((n*sxy - sx*sy) / denom) : 0;
+
+            // umbral relativo
+            const st = __calcStats(series);
+            const std = st.std || 0;
+            const thr = (std > 0) ? (0.05 * std) : 0.02; // fallback
+            if(Math.abs(slope) < thr) return { label:"ESTABLE", slope };
+            return { label: slope > 0 ? "CRECIENTE" : "DESCENDENTE", slope };
+        }
+
+        function __fmtNum(v){
+            if(v === null || v === undefined || !Number.isFinite(v)) return "N/D";
+            const abs = Math.abs(v);
+            const dec = abs >= 100 ? 0 : (abs >= 10 ? 1 : 2);
+            return (Math.round(v * (10**dec)) / (10**dec)).toString();
+        }
+
+        function __setAnalysisRow(grid, k, v){
+            const div = document.createElement('div');
+            div.className = 'analysis-row';
+            div.innerHTML = `<span>${k}</span><span>${v}</span>`;
+            grid.appendChild(div);
+        }
+
+        function __pct(values, p){
+    const arr = [];
+    for(const v of values || []){
+        if(__isFiniteNumber(v)) arr.push(v);
+    }
+    if(!arr.length) return null;
+    arr.sort((a,b)=>a-b);
+    const idx = (arr.length - 1) * p;
+    const lo = Math.floor(idx);
+    const hi = Math.ceil(idx);
+    if(lo === hi) return arr[lo];
+    const w = idx - lo;
+    return arr[lo]*(1-w) + arr[hi]*w;
+}
+
+function __sum(values){
+    let s = 0;
+    let has = false;
+    for(const v of values || []){
+        if(__isFiniteNumber(v)){ s += v; has = true; }
+    }
+    return has ? s : null;
+}
+
+function __countIf(values, fn){
+    let c = 0;
+    for(const v of values || []){
+        if(__isFiniteNumber(v) && fn(v)) c++;
+    }
+    return c;
+}
+
+function __updateAnalysisPanel(variableKey, rawLabels, rawSeries, yLabelText){
+    const grid = document.getElementById('analysisGrid');
+    if(!grid) return;
+
+    // limpia
+    grid.innerHTML = "";
+
+    const labels = Array.isArray(rawLabels) ? rawLabels : [];
+    const series = Array.isArray(rawSeries) ? rawSeries : [];
+
+    // === Helpers universales (livianos) ===
+    function __monthKey(lbl){
+        if(!lbl || typeof lbl !== "string") return null;
+        // YYYY-MM-DD o YYYY-MM o YYYY-MM-DDTHH:MM
+        const m = lbl.match(/^(\d{4})-(\d{2})/);
+        return m ? (m[1] + "-" + m[2]) : null;
+    }
+    function __hourOf(lbl){
+        if(!lbl || typeof lbl !== "string") return null;
+        const m = lbl.match(/T(\d{2}):(\d{2})/);
+        return m ? parseInt(m[1],10) : null;
+    }
+    function __maxRunLen(pred){
+        let best = 0, cur = 0;
+        for(const v of series){
+            if(__isFiniteNumber(v) && pred(v)){ cur++; if(cur>best) best=cur; }
+            else { cur = 0; }
+        }
+        return best;
+    }
+    function __topShareSum(){
+        // % del total explicado por el 10% de días más altos (para variables acumulables)
+        const vals = [];
+        for(const v of series){ if(__isFiniteNumber(v) && v>0) vals.push(v); }
+        if(vals.length < 5) return null;
+        vals.sort((a,b)=>b-a);
+        const total = vals.reduce((a,b)=>a+b,0);
+        if(!total) return null;
+        const k = Math.max(1, Math.ceil(vals.length * 0.10));
+        const top = vals.slice(0,k).reduce((a,b)=>a+b,0);
+        return (top/total)*100;
+    }
+    function __topMonth(metric /* 'sum'|'mean' */){
+        const buckets = new Map(); // key -> [sum,count]
+        for(let i=0;i<labels.length;i++){
+            const mk = __monthKey(labels[i]);
+            const v = series[i];
+            if(!mk || !__isFiniteNumber(v)) continue;
+            if(!buckets.has(mk)) buckets.set(mk, [0,0]);
+            const b = buckets.get(mk);
+            b[0] += v;
+            b[1] += 1;
+        }
+        let bestKey = null;
+        let bestVal = -Infinity;
+        for(const [k,[s,c]] of buckets.entries()){
+            const val = metric === 'sum' ? s : (c ? (s/c) : -Infinity);
+            if(val > bestVal){
+                bestVal = val;
+                bestKey = k;
+            }
+        }
+        return bestKey ? { key: bestKey, val: bestVal } : null;
+    }
+    function __hourPeak(){
+        // devuelve hora (0-23) con promedio más alto
+        const buckets = new Map(); // hour -> [sum,count]
+        for(let i=0;i<labels.length;i++){
+            const h = __hourOf(labels[i]);
+            const v = series[i];
+            if(h===null || !__isFiniteNumber(v)) continue;
+            if(!buckets.has(h)) buckets.set(h, [0,0]);
+            const b = buckets.get(h);
+            b[0] += v;
+            b[1] += 1;
+        }
+        let bestH = null, best = -Infinity;
+        for(const [h,[s,c]] of buckets.entries()){
+            if(!c) continue;
+            const mean = s/c;
+            if(mean > best){
+                best = mean;
+                bestH = h;
+            }
+        }
+        return (bestH===null) ? null : { hour: bestH, mean: best };
+    }
+
+    // === Estadística base ===
+    const st = __calcStats(series);
+    const tr = __calcTrend(series);
+    const p90 = __pct(series, 0.90);
+    const p95 = __pct(series, 0.95);
+    const p99 = __pct(series, 0.99);
+    const p10 = __pct(series, 0.10);
+
+    const nAll = series.length || 0;
+    const nValid = st.n || 0;
+    const missingPct = nAll ? Math.round(((nAll - nValid)/nAll)*100) : 0;
+
+    // periodo
+    let period = "N/D";
+    if(labels && labels.length){
+        period = `${labels[0]} → ${labels[labels.length-1]}`;
+    }
+
+    // === Nota breve (según variable) ===
+    const note = document.getElementById('analysisNote');
+    const key = (variableKey || "").toLowerCase();
+    const noteTextByVar = {
+        precip: "PRECIPITACIÓN: ACUMULADO, FRECUENCIA, CONCENTRACIÓN Y EXTREMOS (P95/P99) EN EL RANGO SELECCIONADO.",
+        wind: "VIENTO: UMBRALES OPERATIVOS, P90 Y EXTREMOS (P95/P99) PARA DEFINIR DÍAS 'MALOS' ESPERABLES.",
+        temp: "TEMPERATURA: DÍAS EXTREMOS SEGÚN PERCENTILES (P95/P99) Y PERSISTENCIA (RACHAS).",
+        snow: "NIEVE: ACUMULADO, FRECUENCIA, CONCENTRACIÓN Y EXTREMOS (P95/P99).",
+        humidity: "HUMEDAD: FRECUENCIA DE HUMEDAD ALTA, P90 Y EXTREMOS (P95/P99) PARA RIESGO DE BRUMA.",
+        pressure: "PRESIÓN: P10 (BAJA), EXTREMOS (P95/P99) Y PERSISTENCIA DE EVENTOS.",
+        clouds: "NUBOSIDAD: FRECUENCIA DE DÍAS MUY NUBLADOS, P90 Y EXTREMOS (P95/P99)."
+    };
+    if(note){
+        note.textContent = noteTextByVar[key] || "RESUMEN DEL RANGO SELECCIONADO: ESTADÍSTICA, EXTREMOS (PERCENTILES), CONCENTRACIÓN Y PERSISTENCIA.";
+    }
+
+    // === Encabezado universal ===
+    __setAnalysisRow(grid, "PERIODO", period);
+    __setAnalysisRow(grid, "MUESTRAS", `${nValid}/${nAll} (${missingPct}% FALTANTE)`);
+
+    // === Métricas universales (neutras) ===
+    const mean = st.mean;
+    const std  = st.std;
+    const cv = (mean && __isFiniteNumber(mean) && mean !== 0 && __isFiniteNumber(std)) ? (Math.abs(std/mean)) : null;
+
+    __setAnalysisRow(grid, "P90", (p90===null) ? "N/D" : __fmtNum(p90));
+    __setAnalysisRow(grid, "P95", (p95===null) ? "N/D" : __fmtNum(p95));
+    __setAnalysisRow(grid, "P99", (p99===null) ? "N/D" : __fmtNum(p99));
+    __setAnalysisRow(grid, "MÍNIMO", __fmtNum(st.min));
+    __setAnalysisRow(grid, "MÁXIMO", __fmtNum(st.max));
+    __setAnalysisRow(grid, "TENDENCIA", tr.label);
+    __setAnalysisRow(grid, "VARIABILIDAD (CV)", (cv===null || !Number.isFinite(cv)) ? "N/D" : __fmtNum(cv));
+
+    // extremos dinámicos
+    const nP95 = (p95===null) ? null : __countIf(series, v => v > p95);
+    const nP99 = (p99===null) ? null : __countIf(series, v => v > p99);
+    if(nP95 !== null) __setAnalysisRow(grid, "DÍAS EXTREMOS (>P95)", String(nP95));
+    if(nP99 !== null) __setAnalysisRow(grid, "DÍAS SEVEROS (>P99)", String(nP99));
+
+    // persistencia (rachas)
+    if(__isFiniteNumber(mean)){
+        __setAnalysisRow(grid, "RACHA > PROMEDIO (MAX)", String(__maxRunLen(v => v > mean)));
+    }
+    if(p90 !== null){
+        __setAnalysisRow(grid, "RACHA > P90 (MAX)", String(__maxRunLen(v => v > p90)));
+    }
+
+    // estacionalidad (mes dominante)
+    const monthMetric = (key === "precip" || key === "snow") ? "sum" : "mean";
+    const topM = __topMonth(monthMetric);
+    if(topM){
+        const unit = (key === "precip") ? " MM" : (key === "snow" ? " CM" : "");
+    // __setAnalysisRow(grid, "MES DOMINANTE", `${topM.key} (${__fmtNum(topM.val)}${unit})`);
+
+    }
+
+    // análisis horario si aplica
+    const hp = __hourPeak();
+    if(hp){
+        const hh = String(hp.hour).padStart(2,'0');
+        __setAnalysisRow(grid, "HORA PICO", `${hh}:00`);
+    }
+
+    // concentración (solo si tiene sentido, evita ruido)
+    const share10 = __topShareSum();
+    if(share10 !== null){
+        __setAnalysisRow(grid, "CONCENTRACIÓN (TOP 10%)", `${Math.round(share10)}% DEL TOTAL`);
+    }
+
+    // === Etiqueta de RÉGIMEN (complementa TENDENCIA, sin alterar cálculos) ===
+    // Objetivo: evitar la confusión "TENDENCIA: ESTABLE" cuando lo dominante es
+    // la estacionalidad/variabilidad/concentración. Reglas livianas y universales.
+    (function(){
+        const tags = [];
+
+        // Variabilidad (CV)
+        if(Number.isFinite(cv)){
+            if(cv >= 2) tags.push("Variabilidad alta");
+            else if(cv >= 1.2) tags.push("Variabilidad moderada");
+            else tags.push("Variabilidad baja");
+        }
+
+        // Concentración (Top 10%) — solo si se calculó
+        if(share10 !== null && Number.isFinite(share10)){
+            if(share10 >= 30) tags.push("Concentración alta");
+            else if(share10 >= 20) tags.push("Concentración moderada");
+            else tags.push("Concentración baja");
+        }
+
+        // Estacionalidad
+        // - Para variables acumulables (precip/nieve): % del total en el mes dominante
+        // - Para el resto: comparación del mes dominante (media mensual) vs media global
+        let seasonTag = null;
+        if(topM){
+            if(key === "precip" || key === "snow"){
+                const totalPos = __sum(series);
+                if(totalPos !== null && totalPos > 0){
+                    const monthShare = (topM.val / totalPos) * 100;
+                    if(monthShare >= 25) seasonTag = "Estacional fuerte";
+                    else if(monthShare >= 15) seasonTag = "Estacional moderada";
+                    else seasonTag = "Estacional débil";
+                }
+            } else if(__isFiniteNumber(mean) && __isFiniteNumber(std) && std > 0){
+                const zMonth = (topM.val - mean) / std;
+                if(zMonth >= 1.0) seasonTag = "Estacional fuerte";
+                else if(zMonth >= 0.5) seasonTag = "Estacional moderada";
+                else seasonTag = "Estacional débil";
+            }
+        }
+        if(seasonTag) tags.unshift(seasonTag);
+
+        if(tags.length){
+            __setAnalysisRow(grid, "RÉGIMEN", tags.join(" · "));
+        }
+    })();
+
+    // === Inteligencia específica (mínima, no rompe lo universal) ===
+    // Nota: mantenemos umbrales operativos cuando tienen valor práctico.
+    if(key === "precip"){
+        const total = __sum(series);
+        const rainy = __countIf(series, v => v > 0);
+        if(total !== null) __setAnalysisRow(grid, "ACUMULADO TOTAL", `${__fmtNum(total)} MM`);
+        __setAnalysisRow(grid, "DÍAS CON LLUVIA", String(rainy));
+
+        // === BLOQUE EXTRA: TEMPORADA (UNIVERSAL) ===
+        try{
+            const MONTHS_ES = ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
+            const unitLocal = (key === "snow") ? "CM" : "MM";
+
+            // 1) Agrupa por mes YYYY-MM y suma acumulado mensual
+            const monthTotalsYM = {}; // {"YYYY-MM": total}
+            for(let i=0;i<labels.length;i++){
+                const ym = __monthKey(labels[i]);
+                const v = series[i];
+                if(!ym) continue;
+                if(!__isFiniteNumber(v)) continue;
+                monthTotalsYM[ym] = (monthTotalsYM[ym] || 0) + Number(v);
+            }
+            const ymKeys = Object.keys(monthTotalsYM).sort();
+
+            if(ymKeys.length){
+                // 1️⃣ MES MÁXIMO ABSOLUTO (YYYY-MM)
+                let maxYM = ymKeys[0];
+                let maxVal = monthTotalsYM[maxYM];
+                for(const ym of ymKeys){
+                    const vv = monthTotalsYM[ym];
+                    if(vv > maxVal){ maxVal = vv; maxYM = ym; }
+                }
+                __setAnalysisRow(grid, "MES MÁXIMO ABSOLUTO", `${maxYM} (${__fmtNum(maxVal)} ${unitLocal})`);
+
+                // 2️⃣ MES RECURRENTE DOMINANTE (mes calendario que más veces fue el máximo anual)
+                const bestByYear = {}; // {YYYY:{ym,val}}
+                for(const ym of ymKeys){
+                    const y = ym.slice(0,4);
+                    const vv = monthTotalsYM[ym];
+                    if(!bestByYear[y] || vv > bestByYear[y].val) bestByYear[y] = {ym, val: vv};
+                }
+                const years = Object.keys(bestByYear).sort();
+                const nYears = years.length || 0;
+
+                const freq = new Array(12).fill(0);
+                for(const y of years){
+                    const ym = bestByYear[y].ym;
+                    const mIdx = parseInt(ym.slice(5,7),10) - 1;
+                    if(mIdx>=0 && mIdx<12) freq[mIdx] += 1;
+                }
+                let domMonthIdx = 0;
+                for(let i=1;i<12;i++) if(freq[i] > freq[domMonthIdx]) domMonthIdx = i;
+
+                __setAnalysisRow(
+                    grid,
+                    "MES RECURRENTE DOMINANTE",
+                    (nYears>0) ? `${MONTHS_ES[domMonthIdx]} — ${freq[domMonthIdx]} DE ${nYears} AÑOS` : "N/D"
+                );
+
+                // 3️⃣ TEMPORADA DOMINANTE (bloque consecutivo de meses calendario que supera el promedio mensual)
+                const calTotals = new Array(12).fill(0);
+                for(const ym of ymKeys){
+                    const mIdx = parseInt(ym.slice(5,7),10) - 1;
+                    if(mIdx>=0 && mIdx<12) calTotals[mIdx] += monthTotalsYM[ym];
+                }
+                const totalAll = calTotals.reduce((a,b)=>a+b,0);
+                if(totalAll > 0){
+                    const avg = totalAll / 12;
+                    const flags = calTotals.map(v => v >= avg);
+                    const anyFlag = flags.some(Boolean);
+
+                    if(!anyFlag){
+                        let mMax = 0;
+                        for(let i=1;i<12;i++) if(calTotals[i] > calTotals[mMax]) mMax = i;
+                        const pct = Math.round((calTotals[mMax]/totalAll)*100);
+                        __setAnalysisRow(grid, "TEMPORADA DOMINANTE", `${MONTHS_ES[mMax]} (${pct}% DEL TOTAL)`);
+                    }else{
+                        const flags2 = flags.concat(flags);
+                        const totals2 = calTotals.concat(calTotals);
+
+                        let best = {sum:-1, start:0, end:0, len:1};
+                        let i=0;
+                        while(i<flags2.length){
+                            if(!flags2[i]){ i++; continue; }
+                            let j=i;
+                            let segSum=0;
+                            while(j<flags2.length && flags2[j]){
+                                segSum += totals2[j];
+                                j++;
+                            }
+                            const segLen = j - i;
+                            if(segLen <= 12){
+                                if(segSum > best.sum || (segSum===best.sum && segLen < best.len)){
+                                    best = {sum:segSum, start:i, end:j-1, len:segLen};
+                                }
+                            }else{
+                                let windowSum = 0;
+                                for(let k=0;k<12;k++) windowSum += totals2[i+k];
+                                let wBest = {sum:windowSum, start:i, end:i+11, len:12};
+                                for(let s=i+1; s<=j-12; s++){
+                                    windowSum = windowSum - totals2[s-1] + totals2[s+11];
+                                    if(windowSum > wBest.sum) wBest = {sum:windowSum, start:s, end:s+11, len:12};
+                                }
+                                if(wBest.sum > best.sum) best = wBest;
+                            }
+                            i = j;
+                        }
+
+                        const startIdx = best.start % 12;
+                        const endIdx = best.end % 12;
+                        const pct = Math.round((best.sum / totalAll) * 100);
+
+                        const seasonText = (best.len === 1)
+                            ? `${MONTHS_ES[startIdx]} (${pct}% DEL TOTAL)`
+                            : `${MONTHS_ES[startIdx]}–${MONTHS_ES[endIdx]} (${pct}% DEL TOTAL)`;
+
+                        __setAnalysisRow(grid, "TEMPORADA DOMINANTE", seasonText);
+                    }
+                }else{
+                    __setAnalysisRow(grid, "TEMPORADA DOMINANTE", "N/D");
+                }
+            }else{
+                __setAnalysisRow(grid, "MES MÁXIMO ABSOLUTO", "N/D");
+                __setAnalysisRow(grid, "MES RECURRENTE DOMINANTE", "N/D");
+                __setAnalysisRow(grid, "TEMPORADA DOMINANTE", "N/D");
+            }
+        }catch(_e){}
+
+        return;
+    }
+
+    if(key === "wind"){
+        __setAnalysisRow(grid, "DÍAS ≥ 40 KM/H", String(__countIf(series, v => v >= 40)));
+        return;
+    }
+
+    if(key === "temp"){
+        __setAnalysisRow(grid, "DÍAS > 30°C", String(__countIf(series, v => v > 30)));
+        return;
+    }
+
+    if(key === "snow"){
+        const total = __sum(series);
+        const days = __countIf(series, v => v > 0);
+        if(total !== null) __setAnalysisRow(grid, "ACUMULADO TOTAL", `${__fmtNum(total)} CM`);
+        __setAnalysisRow(grid, "DÍAS CON NIEVE", String(days));
+
+        // === BLOQUE EXTRA: TEMPORADA (UNIVERSAL) ===
+        try{
+            const MONTHS_ES = ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
+            const unitLocal = (key === "snow") ? "CM" : "MM";
+
+            // 1) Agrupa por mes YYYY-MM y suma acumulado mensual
+            const monthTotalsYM = {}; // {"YYYY-MM": total}
+            for(let i=0;i<labels.length;i++){
+                const ym = __monthKey(labels[i]);
+                const v = series[i];
+                if(!ym) continue;
+                if(!__isFiniteNumber(v)) continue;
+                monthTotalsYM[ym] = (monthTotalsYM[ym] || 0) + Number(v);
+            }
+            const ymKeys = Object.keys(monthTotalsYM).sort();
+
+            if(ymKeys.length){
+                // 1️⃣ MES MÁXIMO ABSOLUTO (YYYY-MM)
+                let maxYM = ymKeys[0];
+                let maxVal = monthTotalsYM[maxYM];
+                for(const ym of ymKeys){
+                    const vv = monthTotalsYM[ym];
+                    if(vv > maxVal){ maxVal = vv; maxYM = ym; }
+                }
+                __setAnalysisRow(grid, "MES MÁXIMO ABSOLUTO", `${maxYM} (${__fmtNum(maxVal)} ${unitLocal})`);
+
+                // 2️⃣ MES RECURRENTE DOMINANTE (mes calendario que más veces fue el máximo anual)
+                const bestByYear = {}; // {YYYY:{ym,val}}
+                for(const ym of ymKeys){
+                    const y = ym.slice(0,4);
+                    const vv = monthTotalsYM[ym];
+                    if(!bestByYear[y] || vv > bestByYear[y].val) bestByYear[y] = {ym, val: vv};
+                }
+                const years = Object.keys(bestByYear).sort();
+                const nYears = years.length || 0;
+
+                const freq = new Array(12).fill(0);
+                for(const y of years){
+                    const ym = bestByYear[y].ym;
+                    const mIdx = parseInt(ym.slice(5,7),10) - 1;
+                    if(mIdx>=0 && mIdx<12) freq[mIdx] += 1;
+                }
+                let domMonthIdx = 0;
+                for(let i=1;i<12;i++) if(freq[i] > freq[domMonthIdx]) domMonthIdx = i;
+
+                __setAnalysisRow(
+                    grid,
+                    "MES RECURRENTE DOMINANTE",
+                    (nYears>0) ? `${MONTHS_ES[domMonthIdx]} — ${freq[domMonthIdx]} DE ${nYears} AÑOS` : "N/D"
+                );
+
+                // 3️⃣ TEMPORADA DOMINANTE (bloque consecutivo de meses calendario que supera el promedio mensual)
+                const calTotals = new Array(12).fill(0);
+                for(const ym of ymKeys){
+                    const mIdx = parseInt(ym.slice(5,7),10) - 1;
+                    if(mIdx>=0 && mIdx<12) calTotals[mIdx] += monthTotalsYM[ym];
+                }
+                const totalAll = calTotals.reduce((a,b)=>a+b,0);
+                if(totalAll > 0){
+                    const avg = totalAll / 12;
+                    const flags = calTotals.map(v => v >= avg);
+                    const anyFlag = flags.some(Boolean);
+
+                    if(!anyFlag){
+                        let mMax = 0;
+                        for(let i=1;i<12;i++) if(calTotals[i] > calTotals[mMax]) mMax = i;
+                        const pct = Math.round((calTotals[mMax]/totalAll)*100);
+                        __setAnalysisRow(grid, "TEMPORADA DOMINANTE", `${MONTHS_ES[mMax]} (${pct}% DEL TOTAL)`);
+                    }else{
+                        const flags2 = flags.concat(flags);
+                        const totals2 = calTotals.concat(calTotals);
+
+                        let best = {sum:-1, start:0, end:0, len:1};
+                        let i=0;
+                        while(i<flags2.length){
+                            if(!flags2[i]){ i++; continue; }
+                            let j=i;
+                            let segSum=0;
+                            while(j<flags2.length && flags2[j]){
+                                segSum += totals2[j];
+                                j++;
+                            }
+                            const segLen = j - i;
+                            if(segLen <= 12){
+                                if(segSum > best.sum || (segSum===best.sum && segLen < best.len)){
+                                    best = {sum:segSum, start:i, end:j-1, len:segLen};
+                                }
+                            }else{
+                                let windowSum = 0;
+                                for(let k=0;k<12;k++) windowSum += totals2[i+k];
+                                let wBest = {sum:windowSum, start:i, end:i+11, len:12};
+                                for(let s=i+1; s<=j-12; s++){
+                                    windowSum = windowSum - totals2[s-1] + totals2[s+11];
+                                    if(windowSum > wBest.sum) wBest = {sum:windowSum, start:s, end:s+11, len:12};
+                                }
+                                if(wBest.sum > best.sum) best = wBest;
+                            }
+                            i = j;
+                        }
+
+                        const startIdx = best.start % 12;
+                        const endIdx = best.end % 12;
+                        const pct = Math.round((best.sum / totalAll) * 100);
+
+                        const seasonText = (best.len === 1)
+                            ? `${MONTHS_ES[startIdx]} (${pct}% DEL TOTAL)`
+                            : `${MONTHS_ES[startIdx]}–${MONTHS_ES[endIdx]} (${pct}% DEL TOTAL)`;
+
+                        __setAnalysisRow(grid, "TEMPORADA DOMINANTE", seasonText);
+                    }
+                }else{
+                    __setAnalysisRow(grid, "TEMPORADA DOMINANTE", "N/D");
+                }
+            }else{
+                __setAnalysisRow(grid, "MES MÁXIMO ABSOLUTO", "N/D");
+                __setAnalysisRow(grid, "MES RECURRENTE DOMINANTE", "N/D");
+                __setAnalysisRow(grid, "TEMPORADA DOMINANTE", "N/D");
+            }
+        }catch(_e){}
+
+        return;
+    }
+
+    if(key === "humidity"){
+        __setAnalysisRow(grid, "DÍAS ≥ 90%", String(__countIf(series, v => v >= 90)));
+        return;
+    }
+
+    if(key === "pressure"){
+        // Umbral útil pero NO depende del clima para operar (solo orientativo)
+        __setAnalysisRow(grid, "DÍAS < 1000 HPA", String(__countIf(series, v => v < 1000)));
+        __setAnalysisRow(grid, "P10 (BAJA)", (p10===null) ? "N/D" : __fmtNum(p10));
+        return;
+    }
+
+    if(key === "clouds"){
+        __setAnalysisRow(grid, "DÍAS ≥ 80%", String(__countIf(series, v => v >= 80)));
+        return;
+    }
+}
         function movingAverage(arr, k) {
             if (!arr || !arr.length) return arr;
             const out = new Array(arr.length).fill(null);
@@ -2445,6 +3152,10 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
                 const seg = dataArr.slice(idx0, idx0 + win);
                 let series = seg.map(v => (v === undefined ? null : v));
 
+                const __rawLabelsA = sliceTimes.slice(0, win);
+                const __rawSeriesA = series.slice();
+                try{ __updateAnalysisPanel(variable, __rawLabelsA, __rawSeriesA, yLabel); }catch(e){}
+
                 
                 // FORZAR UNIFORMIDAD: TODO EN BARRAS
                 chartType = 'bar';
@@ -2569,6 +3280,12 @@ if (smoothMode === "ma3") series = movingAverage(series, 3);
                     series = ag.values;
                 }
             }
+
+
+            // === ANÁLISIS INTELIGENTE (SEGÚN VARIABLE) ===
+            const __rawLabelsB = labels.slice();
+            const __rawSeriesB = series.slice();
+            try{ __updateAnalysisPanel(variable, __rawLabelsB, __rawSeriesB, yLabel); }catch(e){}
 
             // suavizado
             if (smoothMode === "ma3") series = movingAverage(series, 3);
@@ -2732,6 +3449,9 @@ chartInstance = new Chart(ctx, {
                 else div.innerText = "SERNAGEOMIN: SIN ACTIVIDAD CRÍTICA REPORTADA";
              } catch(e) {}
         }
-    </script>
+    
+// Inicialización: fuerza cálculo de análisis/nota según variable seleccionada
+document.addEventListener('DOMContentLoaded', ()=>{ try{ updateChart(); }catch(e){} });
+</script>
 </body>
 </html>
