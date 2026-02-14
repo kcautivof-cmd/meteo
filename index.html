@@ -468,6 +468,9 @@ body.dark-mode .leaflet-control{ background: rgba(15,23,42,0.95) !important; }
   display:none;
   padding:8px;
   background: var(--panel);
+
+  max-height: 260px;
+  overflow-y: auto;
 }
 .analysis-grid{
   display:grid;
@@ -741,6 +744,24 @@ body.dark-mode .leaflet-control{ background: rgba(15,23,42,0.95) !important; }
                     <div class="analysis-body" id="analysisBody">
                         <div class="analysis-grid" id="analysisGrid"></div>
                         <div class="analysis-note" id="analysisNote"></div>
+
+                        <!-- PROYECCIÓN TÉRMICA (7 DÍAS) -->
+                        
+<div id="temp7dWrap" style="margin-top:10px; border:1px solid var(--border); background:#fff;">
+  <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border-bottom:1px solid var(--border); background:var(--panel2);">
+    <div style="font-weight:700;">ANEXO 2 – <span id="forecastVarTitle">Evolución térmica</span></div>
+    <div style="display:flex; gap:10px; align-items:center;"><select id="forecastVar" style="font-size:12px; padding:2px 6px;"><option value="temp" selected>Temperatura</option><option value="precip">Precipitación</option><option value="humidity">Humedad</option><option value="wind">Viento</option><option value="gusts">Ráfagas</option><option value="pressure">Presión</option><option value="cloud">Nubosidad</option></select><select id="forecastRange" style="font-size:12px; padding:2px 6px;"><option value="7" selected>7 días</option><option value="10">10 días</option></select><div style="font-size:12px; color:var(--muted);">Fuente: Pronóstico (forecast)</div></div>
+  </div>
+  <div style="height:150px; padding:10px;">
+    <div style="height:180px;">
+      <canvas id="chartTemp7d"></canvas>
+    </div>
+    <div style="font-size:11px; margin-top:6px; color:var(--muted);">
+      Nota: D+1–D+3 alta confianza · D+4–D+7 tendencia.
+    </div>
+  </div>
+</div>
+
                     </div>
                 </div>
 
@@ -1938,6 +1959,7 @@ globalData = data;
                 renderHeader(name, country, usedModel, latitude, longitude);
                 renderCurrent(data, latitude, longitude);
                 renderTimeline(data, latitude, longitude);
+                renderTemp7dChart(data);
                 await updateChart();
                 populateHourDaySelect();
                 renderPrintCharts(data);
@@ -3452,6 +3474,226 @@ chartInstance = new Chart(ctx, {
     
 // Inicialización: fuerza cálculo de análisis/nota según variable seleccionada
 document.addEventListener('DOMContentLoaded', ()=>{ try{ updateChart(); }catch(e){} });
+
+// ===============================
+// PROYECCIÓN TÉRMICA 7 DÍAS (Tmin/Tmax) – usa el mismo JSON del PRONÓSTICO (forecast)
+// ===============================
+function renderTemp7dChart(forecastJson) {
+  const dDaily = forecastJson?.daily;
+  const h = forecastJson?.hourly;
+
+  // cache para re-render sin recargar
+  window.__temp7dForecast = forecastJson;
+
+  const canvas = document.getElementById("chartTemp7d");
+  if (!canvas) return;
+
+  const varSel = document.getElementById("forecastVar")?.value || "temp";
+  const range = parseInt(document.getElementById("forecastRange")?.value || 7, 10);
+
+  // construir fecha de hoy (local) YYYY-MM-DD
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  const todayStr = `${yyyy}-${mm}-${dd}`;
+
+  // helper: daily desde hourly (sum/max/min/mean) desde HOY
+  function buildDailyFromHourly(key, agg) {
+    if (!h?.time || !h[key]) return null;
+    const buckets = new Map();
+    for (let i = 0; i < h.time.length; i++) {
+      const day = h.time[i].slice(0, 10);
+      if (day < todayStr) continue;
+      const v = h[key][i];
+      if (v === null || v === undefined) continue;
+      if (!buckets.has(day)) buckets.set(day, []);
+      buckets.get(day).push(v);
+    }
+    const days = Array.from(buckets.keys()).sort();
+    const values = days.map(day => {
+      const arr = buckets.get(day);
+      if (!arr?.length) return null;
+      if (agg === "sum") return arr.reduce((a, b) => a + b, 0);
+      if (agg === "max") return Math.max(...arr);
+      if (agg === "min") return Math.min(...arr);
+      return arr.reduce((a, b) => a + b, 0) / arr.length;
+    });
+    return { days, values };
+  }
+
+  // Preparar labels y datasets según variable
+  let labels = [];
+  let datasets = [];
+  let chartType = "line";
+  let yLabel = "";
+  let title = "";
+
+  // destruir previo
+  if (canvas._chart) canvas._chart.destroy();
+
+  // Utilidad: recortar desde HOY en daily.time (si existe)
+  function sliceFromToday(daysArr, a1, a2) {
+    let startIndex = daysArr.findIndex(x => x === todayStr);
+    if (startIndex < 0) startIndex = 0;
+    const days = daysArr.slice(startIndex, startIndex + range);
+    const l = days.map(x => x.slice(5));
+    const v1 = a1 ? a1.slice(startIndex, startIndex + range) : null;
+    const v2 = a2 ? a2.slice(startIndex, startIndex + range) : null;
+    return { days, labels: l, v1, v2 };
+  }
+
+  // 1) Temperatura
+  if (varSel === "temp") {
+    title = "Evolución térmica (Tmin/Tmax)";
+    yLabel = "°C";
+
+    // Preferir daily min/max si vienen
+    if (dDaily?.time && dDaily?.temperature_2m_max && dDaily?.temperature_2m_min) {
+      const s = sliceFromToday(dDaily.time, dDaily.temperature_2m_max, dDaily.temperature_2m_min);
+      labels = s.labels;
+      datasets = [
+        { label: "Tmax (°C)", data: s.v1, tension: 0.25, pointRadius: 2 },
+        { label: "Tmin (°C)", data: s.v2, tension: 0.25, pointRadius: 2 }
+      ];
+    } else {
+      // fallback hourly
+      const mx = buildDailyFromHourly("temperature_2m", "max");
+      const mn = buildDailyFromHourly("temperature_2m", "min");
+      if (mx && mn) {
+        const days = mx.days.slice(0, range).filter(d => mn.days.includes(d));
+        labels = days.slice(0, range).map(d => d.slice(5));
+        datasets = [
+          { label: "Max (°C)", data: days.slice(0, range).map(d => mx.values[mx.days.indexOf(d)]), tension: 0.25, pointRadius: 2 },
+          { label: "Min (°C)", data: days.slice(0, range).map(d => mn.values[mn.days.indexOf(d)]), tension: 0.25, pointRadius: 2 }
+        ];
+      }
+    }
+  }
+
+  // 2) Sensación
+  if (varSel === "apparent") {
+    title = "Sensación térmica (Min/Max)";
+    yLabel = "°C";
+    const mx = buildDailyFromHourly("apparent_temperature", "max");
+    const mn = buildDailyFromHourly("apparent_temperature", "min");
+    if (mx && mn) {
+      const days = mx.days.slice(0, range).filter(d => mn.days.includes(d));
+      labels = days.slice(0, range).map(d => d.slice(5));
+      datasets = [
+        { label: "Max (°C)", data: days.slice(0, range).map(d => mx.values[mx.days.indexOf(d)]), tension: 0.25, pointRadius: 2 },
+        { label: "Min (°C)", data: days.slice(0, range).map(d => mn.values[mn.days.indexOf(d)]), tension: 0.25, pointRadius: 2 }
+      ];
+    }
+  }
+
+  // 3) Precipitación (suma diaria)
+  if (varSel === "precip") {
+    title = "Precipitación (Suma diaria)";
+    yLabel = "mm";
+    chartType = "bar";
+    const s = buildDailyFromHourly("precipitation", "sum");
+    if (s) {
+      labels = s.days.slice(0, range).map(d => d.slice(5));
+      datasets = [{ label: "mm/día", data: s.values.slice(0, range) }];
+    }
+  }
+
+  // 4) Humedad (media diaria)
+  if (varSel === "humidity") {
+    title = "Humedad relativa (Media diaria)";
+    yLabel = "%";
+    const s = buildDailyFromHourly("relative_humidity_2m", "mean");
+    if (s) {
+      labels = s.days.slice(0, range).map(d => d.slice(5));
+      datasets = [{ label: "%", data: s.values.slice(0, range), tension: 0.25, pointRadius: 2 }];
+    }
+  }
+
+  // 5) Viento (máx diario)
+  if (varSel === "wind") {
+    title = "Viento 10m (Máximo diario)";
+    yLabel = "km/h";
+    const s = buildDailyFromHourly("wind_speed_10m", "max");
+    if (s) {
+      labels = s.days.slice(0, range).map(d => d.slice(5));
+      datasets = [{ label: "km/h", data: s.values.slice(0, range), tension: 0.25, pointRadius: 2 }];
+    }
+  }
+
+  // 6) Ráfagas (máx diario)
+  if (varSel === "gusts") {
+    title = "Ráfagas (Máximo diario)";
+    yLabel = "km/h";
+    const s = buildDailyFromHourly("wind_gusts_10m", "max");
+    if (s) {
+      labels = s.days.slice(0, range).map(d => d.slice(5));
+      datasets = [{ label: "km/h", data: s.values.slice(0, range), tension: 0.25, pointRadius: 2 }];
+    }
+  }
+
+  // 7) Presión (media diaria)
+  if (varSel === "pressure") {
+    title = "Presión MSL (Media diaria)";
+    yLabel = "hPa";
+    const s = buildDailyFromHourly("pressure_msl", "mean");
+    if (s) {
+      labels = s.days.slice(0, range).map(d => d.slice(5));
+      datasets = [{ label: "hPa", data: s.values.slice(0, range), tension: 0.25, pointRadius: 2 }];
+    }
+  }
+
+  // 8) Nubosidad (media diaria)
+  if (varSel === "cloud") {
+    title = "Nubosidad (Media diaria)";
+    yLabel = "%";
+    const s = buildDailyFromHourly("cloud_cover", "mean");
+    if (s) {
+      labels = s.days.slice(0, range).map(d => d.slice(5));
+      datasets = [{ label: "%", data: s.values.slice(0, range), tension: 0.25, pointRadius: 2 }];
+    }
+  }
+
+  // Actualizar título visible
+  const tEl = document.getElementById("forecastVarTitle");
+  if (tEl) tEl.textContent = title || "Forecast";
+
+  // Si no hay datos, mostrar algo mínimo
+  if (!labels.length || !datasets.length) {
+    // deja el título y no grafica para evitar errores
+    return;
+  }
+
+  canvas._chart = new Chart(canvas.getContext("2d"), {
+    type: chartType,
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: true } },
+      scales: { y: { title: { display: true, text: yLabel } } }
+    }
+  });
+}
+
 </script>
+
+
+
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const rangeSel = document.getElementById("forecastRange");
+  const varSel = document.getElementById("forecastVar");
+
+  function rerender() {
+    if (window.__temp7dForecast) renderTemp7dChart(window.__temp7dForecast);
+  }
+
+  if (rangeSel) rangeSel.addEventListener("change", rerender);
+  if (varSel) varSel.addEventListener("change", rerender);
+});
+</script>
+
 </body>
 </html>
