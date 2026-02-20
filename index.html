@@ -7,7 +7,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/suncalc@1.9.0/suncalc.js"></script>
 
-    <!-- LEAFLET (MAPA INTERACTIVO) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -112,9 +111,10 @@ body {
         .extras-container { display: grid; grid-template-columns: 50% 50%; gap: 10px; height: 400px; overflow: hidden; }
         .map-box { border: 1px solid var(--border); width: 100%; height: 100%; padding: 0; background: var(--panel); }
         iframe { width: 100%; height: 100%; border: none; }
-        .chart-box { border: 1px solid var(--border); background: var(--panel); position: relative; padding: 10px; height: 100%; box-sizing: border-box; }
+        .chart-box { border: 1px solid var(--border); background: var(--panel); position: relative; padding: 10px; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; }
 
-        #mainChart { width: 100% !important; height: 230px !important; }
+
+        #mainChart { width: 100% !important; flex: 1 1 auto !important; height: auto !important; min-height: 320px !important; }
 
 
         /* ALERTAS */
@@ -299,7 +299,7 @@ body {
 
 
         /* CHART MENU BOTTOM (PRO) */
-        .chart-menu-bottom{
+        .chart-menu-bottom{ margin-top: auto; 
             margin-top: 8px;
             display: flex;
             flex-wrap: wrap;
@@ -310,15 +310,18 @@ body {
             border: 1px solid var(--border);
             background: var(--panel);
         }
-        \1
+        
 
         .chart-menu-bottom .group{
-            width: 180px;
-            min-width: 180px;
+            /* Mantener los 4 controles en una sola línea (sin scroll) */
+            flex: 1 1 0;
+            width: auto;
+            min-width: 110px;
+            max-width: 170px;
         }
 
         .chart-menu-bottom label{
-            font-size: 10px;
+            font-size: 9px;
             color: var(--muted);
             letter-spacing: .5px;
         }
@@ -327,17 +330,18 @@ body {
             background: var(--bg);
             color: var(--text);
             border: 1px solid var(--border);
-            padding: 8px;
+            padding: 6px;
             font-family: 'Consolas', monospace;
-            font-size: 11px;
+            font-size: 10px;
             text-transform: uppercase;
         }
         .chart-menu-bottom .row{
             display:flex;
             gap:10px;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;          /* <- NO bajar a segunda línea */
             width:100%;
             justify-content:center;
+            align-items:flex-end;
         }
         
 
@@ -368,8 +372,39 @@ a { color: var(--text) !important; }
 /* Leaflet control estilo sobrio */
 .leaflet-control, .leaflet-control * { color: var(--text) !important; font-family: 'Consolas', monospace !important; text-transform: uppercase; }
 .leaflet-control { background: rgba(255,255,255,0.95) !important; border: 1px solid var(--border) !important; box-shadow: none !important; }
-
-
+/* === CONSULTAR DATOS (DQ) === */
+.dq-box {
+  width: 310px;         
+  max-width: 310px;
+  max-height: 450px;
+  border-radius: 8px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.dq-box select, .dq-box input[type="date"] {
+  font-size: 10px;
+  padding: 4px 6px;
+}
+.dq-box label {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  white-space: normal;
+  line-height: 1.2;
+  margin-bottom: 4px; /* Un poquito más de separación entre líneas para que se vea más limpio */
+}
+.dq-box label input[type="checkbox"] {
+  flex-shrink: 0;       
+  margin: 0;
+  margin-top: 1px;
+  /* LA MAGIA PARA MOVERLOS A LA DERECHA: */
+  order: 2;           /* Le dice al cuadrito que se ponga DESPUÉS del texto */
+  margin-left: auto;  /* Empuja todos los cuadritos al extremo derecho para que queden en una columna perfecta */
+}
+.dq-box button {
+  padding: 8px !important;
+  font-size: 10px;
+}
 /* === UI PRO: CONTROL BAR (COMPACTO Y RESPONSIVO) === */
 .control-bar{
   flex-wrap: nowrap !important;
@@ -494,6 +529,142 @@ body.dark-mode .leaflet-control{ background: rgba(15,23,42,0.95) !important; }
   padding-top:6px;
 }
 
+
+/* =====================================================
+   RESPONSIVE DESIGN — ADAPTACIÓN AUTOMÁTICA A PANTALLA
+   ===================================================== */
+
+/* Fix crítico: control-bar NO debe forzar nowrap */
+.control-bar {
+  flex-wrap: wrap !important;
+  overflow-x: visible !important;
+}
+
+/* Inputs y selects adaptativos por defecto */
+input, select {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Header siempre flexible */
+.header-content {
+  grid-template-columns: auto 1fr auto !important;
+  gap: 8px;
+}
+
+/* extras-container: altura adaptativa */
+.extras-container {
+  height: auto !important;
+  min-height: 350px;
+}
+.map-box {
+  min-height: 350px;
+}
+.chart-box {
+  min-height: 350px;
+}
+
+/* ---- PANTALLAS GRANDES (1400px+): comportamiento normal ---- */
+@media (min-width: 1400px) {
+  .extras-container {
+    grid-template-columns: 50% 50%;
+    height: 450px !important;
+  }
+  .map-box, .chart-box { height: 100%; }
+}
+
+/* ---- PANTALLAS MEDIANAS (1100px - 1399px) ---- */
+@media (max-width: 1399px) and (min-width: 1101px) {
+  .extras-container {
+    grid-template-columns: 1fr 1fr;
+    height: 420px !important;
+  }
+  #cityInput { width: 130px !important; }
+  #latDms, #lonDms { width: 160px !important; }
+  #sourceSelect, #modelSelect { width: 160px !important; }
+}
+
+/* ---- PANTALLAS PEQUEÑAS (hasta 1100px) ---- */
+@media (max-width: 1100px) {
+  /* Barras de control: wrap completo */
+  .control-bar {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+  .control-bar > div {
+    flex: 1 1 auto !important;
+    min-width: 160px !important;
+    max-width: 100%;
+  }
+  #cityInput,
+  #latDms,
+  #lonDms,
+  #sourceSelect,
+  #modelSelect,
+  #themeMode {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+  .control-bar button {
+    width: auto !important;
+    min-width: 0 !important;
+    flex: 1 1 140px !important;
+  }
+  /* Grid principal: columna única */
+  .main-grid {
+    grid-template-columns: 1fr !important;
+  }
+  /* Mapa + gráfico: columna única */
+  .extras-container {
+    grid-template-columns: 1fr !important;
+    height: auto !important;
+  }
+  .map-box {
+    height: 380px !important;
+    min-height: 320px;
+  }
+  .chart-box {
+    height: 420px !important;
+    min-height: 350px;
+  }
+  /* Header compacto */
+  .header-content {
+    grid-template-columns: auto 1fr auto !important;
+    gap: 4px;
+  }
+  .header h1 { font-size: 1.2em !important; }
+  .tactical-clock { font-size: 0.9em !important; padding: 3px 6px !important; }
+  /* Mapa de selección */
+  #pickMap { height: 380px !important; }
+  /* Timeline */
+  .day-card { width: 200px !important; }
+  /* Sources grid */
+  .sources-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  /* Chart menu bottom */
+  .chart-menu-bottom .group { width: auto !important; min-width: 105px !important; max-width: 150px !important; }
+}
+
+/* ---- PANTALLAS MUY PEQUEÑAS (hasta 800px) ---- */
+@media (max-width: 800px) {
+  body { padding: 5px !important; }
+  .header h1 { font-size: 1em !important; letter-spacing: 1px !important; }
+  .logo-container { width: 40px !important; height: 40px !important; }
+  .tactical-clock { font-size: 0.8em !important; }
+  .big-value { font-size: 2em !important; }
+  .surface-data { grid-template-columns: 1fr !important; }
+  .sources-grid { grid-template-columns: 1fr 1fr !important; }
+  .map-box { height: 300px !important; }
+  .chart-box { height: 360px !important; }
+  #pickMap { height: 300px !important; }
+  /* Mantener controles en línea también en móvil (sin scroll) */
+  .chart-menu-bottom { align-items: flex-end !important; }
+  .chart-menu-bottom .row { flex-direction: row !important; flex-wrap: nowrap !important; }
+  .chart-menu-bottom .group { flex: 1 1 0 !important; width: auto !important; min-width: 95px !important; max-width: 150px !important; }
+  .chart-menu-bottom label { font-size: 8px !important; }
+  .chart-menu-bottom select, .chart-menu-bottom input { padding: 5px !important; font-size: 9px !important; }
+  .print-chart-row { grid-template-columns: 1fr !important; }
+}
 </style>
 </head>
 <body>
@@ -735,7 +906,6 @@ body.dark-mode .leaflet-control{ background: rgba(15,23,42,0.95) !important; }
                 </div></div>
 
                 
-                <!-- ANALISIS (PLEGABLE) -->
                 <div class="analysis-toggle-wrap" id="analysisWrap">
                     <div class="analysis-toggle-head">
                         <div class="analysis-title">ANÁLISIS</div>
@@ -745,9 +915,7 @@ body.dark-mode .leaflet-control{ background: rgba(15,23,42,0.95) !important; }
                         <div class="analysis-grid" id="analysisGrid"></div>
                         <div class="analysis-note" id="analysisNote"></div>
 
-                        <!-- PROYECCIÓN TÉRMICA (7 DÍAS) -->
-                        
-<div id="temp7dWrap" style="margin-top:10px; border:1px solid var(--border); background:#fff;">
+                        <div id="temp7dWrap" style="margin-top:10px; border:1px solid var(--border); background:#fff;">
   <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border-bottom:1px solid var(--border); background:var(--panel2);">
     <div style="font-weight:700;">ANEXO 2 – <span id="forecastVarTitle">Evolución térmica</span></div>
     <div style="display:flex; gap:10px; align-items:center;"><select id="forecastVar" style="font-size:12px; padding:2px 6px;"><option value="temp" selected>Temperatura</option><option value="precip">Precipitación</option><option value="humidity">Humedad</option><option value="wind">Viento</option><option value="gusts">Ráfagas</option><option value="pressure">Presión</option><option value="cloud">Nubosidad</option></select><select id="forecastRange" style="font-size:12px; padding:2px 6px;"><option value="7" selected>7 días</option><option value="10">10 días</option></select><div style="font-size:12px; color:var(--muted);">Fuente: Pronóstico (forecast)</div></div>
@@ -1333,6 +1501,36 @@ async function fetchAlerts(){
                 __dqMakeControl(__pickMap);
                 __dqUpdateCoordLabel();
 
+                // Modo: histórico vs pronóstico
+                const modeSel = document.getElementById('dqMode');
+                const fcBox = document.getElementById('dqForecastBox');
+                const fcDays = document.getElementById('dqFcDays');
+                const fromEl = document.getElementById('dqFrom');
+                const toEl = document.getElementById('dqTo');
+
+                function syncMode(){
+                    const mode = modeSel?.value || 'historico';
+                    const isFc = (mode === 'forecast');
+                    if(fcBox) fcBox.style.display = isFc ? 'block' : 'none';
+                    if(fromEl) fromEl.disabled = isFc;
+                    if(toEl) toEl.disabled = isFc;
+
+                    if(isFc){
+                        const reqDays = Number(fcDays?.value || 16);
+                        const useDays = Math.min(16, Math.max(1, reqDays));
+                        __dqSetDatesForForecast(useDays);
+                        if(reqDays > 16) __dqSetMsg('Open‑Meteo permite hasta 16 días. Usando 16.');
+                        else __dqSetMsg('');
+                    }else{
+                        __dqSetMsg('');
+                    }
+                }
+
+                if(modeSel) modeSel.addEventListener('change', syncMode);
+                if(fcDays) fcDays.addEventListener('change', syncMode);
+                syncMode();
+
+
 
                 __pickMap.on('click', (e) => {
                     const newLat = e.latlng.lat;
@@ -1395,6 +1593,28 @@ async function fetchAlerts(){
                                 COORD: <span id="dqCoordLbl" style="font-weight:bold;">--</span>
                             </div>
 
+                            <div>
+                                <div style="font-size:10px; margin-bottom:4px;">MODO</div>
+                                <select id="dqMode" style="width:100%;">
+                                    <option value="historico" selected>HISTÓRICO (ARCHIVE)</option>
+                                    <option value="forecast">PRONÓSTICO (FORECAST)</option>
+                                </select>
+                                <div style="font-size:10px; color:#666; margin-top:4px; line-height:1.2;">
+                                    Nota: Open‑Meteo entrega pronóstico hasta 16 días. Si pides 1 mes, se usará el máximo disponible.
+                                </div>
+                            </div>
+
+                            <div id="dqForecastBox" style="display:none;">
+                                <div style="font-size:10px; margin-bottom:4px;">HORIZONTE PRONÓSTICO</div>
+                                <select id="dqFcDays" style="width:100%;">
+                                    <option value="7">7 días</option>
+                                    <option value="10">10 días</option>
+                                    <option value="14">14 días</option>
+                                    <option value="16" selected>16 días (máx.)</option>
+                                    <option value="30">30 días (1 mes)</option>
+                                </select>
+                            </div>
+
                             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
                                 <div>
                                     <div style="font-size:10px; margin-bottom:4px;">DESDE</div>
@@ -1419,10 +1639,12 @@ async function fetchAlerts(){
                             <div>
                                 <div style="font-size:10px; margin-bottom:4px;">VARIABLES</div>
                                 <div style="display:grid; grid-template-columns:1fr; gap:4px; font-size:10px;">
-                                    <label><input type="checkbox" id="dqV_temp" checked> TEMPERATURA (MAX)</label>
+                                    <label><input type="checkbox" id="dqV_temp" checked> TEMPERATURA (MIN-MAX)</label>
                                     <label><input type="checkbox" id="dqV_precip" checked> PRECIPITACIÓN (SUMA)</label>
+                                    <label><input type="checkbox" id="dqV_snow"> NIEVE (SUMA)</label>
                                     <label><input type="checkbox" id="dqV_hum"> HUMEDAD (MEDIA)</label>
-                                    <label><input type="checkbox" id="dqV_wind"> VIENTO (MAX)</label>
+                                    <label><input type="checkbox" id="dqV_wind"> VIENTO (MIN-MAX)</label>
+                                    <label><input type="checkbox" id="dqV_sens"> SENSACIÓN TÉRMICA (MIN-MAX)</label>
                                     <label><input type="checkbox" id="dqV_press"> PRESIÓN (MEDIA)</label>
                                     <label><input type="checkbox" id="dqV_cloud"> NUBOSIDAD (MEDIA)</label>
                                 </div>
@@ -1466,8 +1688,10 @@ async function fetchAlerts(){
             const vars = [];
             if(document.getElementById('dqV_temp')?.checked) vars.push('temp');
             if(document.getElementById('dqV_precip')?.checked) vars.push('precip');
+            if(document.getElementById('dqV_snow')?.checked) vars.push('snow');
             if(document.getElementById('dqV_hum')?.checked) vars.push('humidity');
             if(document.getElementById('dqV_wind')?.checked) vars.push('wind');
+            if(document.getElementById('dqV_sens')?.checked) vars.push('sens');
             if(document.getElementById('dqV_press')?.checked) vars.push('pressure');
             if(document.getElementById('dqV_cloud')?.checked) vars.push('clouds');
             return vars;
@@ -1513,8 +1737,12 @@ async function fetchAlerts(){
             const base = "https://archive-api.open-meteo.com/v1/archive";
             const dailyVars = [
                 "temperature_2m_max",
+                "temperature_2m_min",
+                "apparent_temperature_max",
+                "apparent_temperature_min",
                 "precipitation_sum",
-                "wind_speed_10m_max"
+                "wind_speed_10m_max",
+                "snowfall_sum"
             ];
             const hourlyVars = [
                 "relative_humidity_2m",
@@ -1522,7 +1750,10 @@ async function fetchAlerts(){
                 "cloud_cover",
                 "temperature_2m",
                 "precipitation",
-                "wind_speed_10m"
+                "wind_speed_10m",
+                "apparent_temperature",
+                "snowfall"
+            
             ];
             const url = `${base}?latitude=${lat}&longitude=${lon}&start_date=${from}&end_date=${to}`
               + `&daily=${dailyVars.join(",")}`
@@ -1532,6 +1763,61 @@ async function fetchAlerts(){
             if(!res.ok) throw new Error("ARCHIVO: fallo API");
             return await res.json();
         }
+
+        async function __dqFetchForecast(lat, lon, days){
+            // Open-Meteo Weather Forecast API (pronóstico hasta 16 días)
+            const base = "https://api.open-meteo.com/v1/forecast";
+            const d = Math.max(1, Math.min(16, Number(days)||16));
+
+            const dailyVars = [
+                "temperature_2m_max",
+                "temperature_2m_min",
+                "apparent_temperature_max",
+                "apparent_temperature_min",
+                "precipitation_sum",
+                "wind_speed_10m_max",
+                "snowfall_sum"
+            
+            ];
+            const hourlyVars = [
+                "relative_humidity_2m",
+                "pressure_msl",
+                "cloud_cover",
+                "temperature_2m",
+                "precipitation",
+                "wind_speed_10m",
+                "apparent_temperature",
+                "snowfall"
+            
+            ];
+
+            const url = `${base}?latitude=${lat}&longitude=${lon}`
+              + `&daily=${dailyVars.join(",")}`
+              + `&hourly=${hourlyVars.join(",")}`
+              + `&forecast_days=${d}`
+              + `&timezone=auto`;
+
+            const res = await fetch(url);
+            if(!res.ok) throw new Error("FORECAST: fallo API");
+            return await res.json();
+        }
+
+        function __dqIso(d){
+            const z = n => String(n).padStart(2,'0');
+            return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`;
+        }
+
+        function __dqSetDatesForForecast(days){
+            const f = document.getElementById('dqFrom');
+            const t = document.getElementById('dqTo');
+            const d = Math.max(1, Math.min(16, Number(days)||16));
+            const start = new Date();
+            const end = new Date(start);
+            end.setDate(end.getDate() + (d-1));
+            if(f) f.value = __dqIso(start);
+            if(t) t.value = __dqIso(end);
+        }
+
 
         function __dqDailyMeanFromHourly(js, field){
             const dates = js.daily?.time || [];
@@ -1551,6 +1837,25 @@ async function fetchAlerts(){
             }
             return out;
         }
+
+function __dqDailyMinFromHourly(js, field){
+    const dates = js.daily?.time || [];
+    const H = js.hourly || {};
+    const arr = H[field];
+    const out = new Array(dates.length).fill(null);
+    if(!arr || !Array.isArray(arr)) return out;
+    for(let d=0; d<dates.length; d++){
+        let minv = null;
+        const base = d*24;
+        for(let h=0; h<24; h++){
+            const v = arr[base+h];
+            if(v===null || v===undefined || Number.isNaN(v)) continue;
+            if(minv===null || v < minv) minv = v;
+        }
+        out[d] = (minv===null) ? null : Math.round(minv*10)/10;
+    }
+    return out;
+}
 
         function __dqRenderTable(aggKeys, cols){
             // cols: [{key, label, unit, values}]
@@ -1604,7 +1909,17 @@ async function fetchAlerts(){
             const lon = lastLon ?? parseDMS(document.getElementById('lonDms')?.value || '', 'lon') ?? -70.152;
 
             try{
-                const js = await __dqFetchArchive(lat, lon, from, to);
+                let js;
+                const mode = document.getElementById('dqMode')?.value || 'historico';
+                if(mode === 'forecast'){
+                    const reqDays = Number(document.getElementById('dqFcDays')?.value || 16);
+                    const useDays = Math.min(16, Math.max(1, reqDays));
+                    if(reqDays > 16) __dqSetMsg("Open‑Meteo permite hasta 16 días. Usando 16.");
+                    js = await __dqFetchForecast(lat, lon, useDays);
+                    __dqSetDatesForForecast(useDays);
+                }else{
+                    js = await __dqFetchArchive(lat, lon, from, to);
+                }
 
                 // Base daily series
                 const dates = js.daily.time;
@@ -1635,8 +1950,10 @@ async function fetchAlerts(){
                         let label="", unit="";
                         if(v==='temp'){ arr = H.temperature_2m.slice(idx0, idx0+24); label="TEMPERATURA"; unit="°C"; }
                         if(v==='precip'){ arr = H.precipitation.slice(idx0, idx0+24); label="PRECIPITACIÓN"; unit="MM/H"; }
+                        if(v==='snow'){ arr = (H.snowfall||[]).slice(idx0, idx0+24); label="NIEVE"; unit="CM/H"; }
                         if(v==='humidity'){ arr = H.relative_humidity_2m.slice(idx0, idx0+24); label="HUMEDAD"; unit="%"; }
                         if(v==='wind'){ arr = H.wind_speed_10m.slice(idx0, idx0+24); label="VIENTO"; unit="KM/H"; }
+                        if(v==='sens'){ arr = H.apparent_temperature.slice(idx0, idx0+24); label="SENSACIÓN"; unit="°C"; }
                         if(v==='pressure'){ arr = H.pressure_msl.slice(idx0, idx0+24); label="PRESIÓN"; unit="HPA"; }
                         if(v==='clouds'){ arr = H.cloud_cover.slice(idx0, idx0+24); label="NUBOSIDAD"; unit="%"; }
                         cols.push({key:v, label, unit, values: arr.map(x=> (x===null||x===undefined)?null: Math.round(x*10)/10 )});
@@ -1648,8 +1965,13 @@ async function fetchAlerts(){
 
                 // Daily helper series
                 const dailyTempMax = js.daily.temperature_2m_max;
+                const dailyTempMin = js.daily.temperature_2m_min;
+                const dailySensMax = js.daily.apparent_temperature_max;
+                const dailySensMin = js.daily.apparent_temperature_min;
                 const dailyPrecipSum = js.daily.precipitation_sum;
+                const dailySnowSum = js.daily.snowfall_sum || new Array(dates.length).fill(null);
                 const dailyWindMax = js.daily.wind_speed_10m_max;
+                const dailyWindMin = __dqDailyMinFromHourly(js, "wind_speed_10m");
 
                 const dailyHumMean = __dqDailyMeanFromHourly(js, "relative_humidity_2m");
                 const dailyPressMean = __dqDailyMeanFromHourly(js, "pressure_msl");
@@ -1657,14 +1979,46 @@ async function fetchAlerts(){
 
                 for(const v of vars){
                     if(v==='temp'){
-                        const ag = __dqAggSeries(dates, dailyTempMax, agg, 'mean');
-                        aggKeys = ag.keys;
-                        addCol(v, "TEMPERATURA", "°C", ag.out);
+                        const agMax = __dqAggSeries(dates, dailyTempMax, agg, 'mean');
+                        const agMin = __dqAggSeries(dates, dailyTempMin, agg, 'mean');
+                        if(!aggKeys.length) aggKeys = agMax.keys.length ? agMax.keys : agMin.keys;
+                        const out = [];
+                        const n = Math.max(agMax.out?.length||0, agMin.out?.length||0);
+                        for(let i=0;i<n;i++){
+                            const mn = (agMin.out && agMin.out[i]!==null && agMin.out[i]!==undefined) ? agMin.out[i] : null;
+                            const mx = (agMax.out && agMax.out[i]!==null && agMax.out[i]!==undefined) ? agMax.out[i] : null;
+                            if(mn===null && mx===null) out.push(null);
+                            else if(mn!==null && mx!==null) out.push(`${mn}–${mx}`);
+                            else if(mn!==null) out.push(`${mn}`);
+                            else out.push(`${mx}`);
+                        }
+                        addCol(v, "TEMPERATURA (MIN–MAX)", "°C", out);
+                    }
+                    if(v==='sens'){
+                        const agMax = __dqAggSeries(dates, dailySensMax, agg, 'mean');
+                        const agMin = __dqAggSeries(dates, dailySensMin, agg, 'mean');
+                        if(!aggKeys.length) aggKeys = agMax.keys.length ? agMax.keys : agMin.keys;
+                        const out = [];
+                        const n = Math.max(agMax.out?.length||0, agMin.out?.length||0);
+                        for(let i=0;i<n;i++){
+                            const mn = (agMin.out && agMin.out[i]!==null && agMin.out[i]!==undefined) ? agMin.out[i] : null;
+                            const mx = (agMax.out && agMax.out[i]!==null && agMax.out[i]!==undefined) ? agMax.out[i] : null;
+                            if(mn===null && mx===null) out.push(null);
+                            else if(mn!==null && mx!==null) out.push(`${mn}–${mx}`);
+                            else if(mn!==null) out.push(`${mn}`);
+                            else out.push(`${mx}`);
+                        }
+                        addCol(v, "SENSACIÓN (MIN–MAX)", "°C", out);
                     }
                     if(v==='precip'){
                         const ag = __dqAggSeries(dates, dailyPrecipSum, agg, 'sum');
                         if(!aggKeys.length) aggKeys = ag.keys;
                         addCol(v, "PRECIPITACIÓN", "MM", ag.out);
+                    }
+                    if(v==='snow'){
+                        const ag = __dqAggSeries(dates, dailySnowSum, agg, 'sum');
+                        if(!aggKeys.length) aggKeys = ag.keys;
+                        addCol(v, "NIEVE", "CM", ag.out);
                     }
                     if(v==='humidity'){
                         const ag = __dqAggSeries(dates, dailyHumMean, agg, 'mean');
@@ -1672,9 +2026,20 @@ async function fetchAlerts(){
                         addCol(v, "HUMEDAD", "%", ag.out);
                     }
                     if(v==='wind'){
-                        const ag = __dqAggSeries(dates, dailyWindMax, agg, 'mean');
-                        if(!aggKeys.length) aggKeys = ag.keys;
-                        addCol(v, "VIENTO", "KM/H", ag.out);
+                        const agMax = __dqAggSeries(dates, dailyWindMax, agg, 'mean');
+                        const agMin = __dqAggSeries(dates, dailyWindMin, agg, 'mean');
+                        if(!aggKeys.length) aggKeys = agMax.keys.length ? agMax.keys : agMin.keys;
+                        const out = [];
+                        const n = Math.max(agMax.out?.length||0, agMin.out?.length||0);
+                        for(let i=0;i<n;i++){
+                            const mn = (agMin.out && agMin.out[i]!==null && agMin.out[i]!==undefined) ? agMin.out[i] : null;
+                            const mx = (agMax.out && agMax.out[i]!==null && agMax.out[i]!==undefined) ? agMax.out[i] : null;
+                            if(mn===null && mx===null) out.push(null);
+                            else if(mn!==null && mx!==null) out.push(`${mn}–${mx}`);
+                            else if(mn!==null) out.push(`${mn}`);
+                            else out.push(`${mx}`);
+                        }
+                        addCol(v, "VIENTO (MIN–MAX)", "KM/H", out);
                     }
                     if(v==='pressure'){
                         const ag = __dqAggSeries(dates, dailyPressMean, agg, 'mean');
