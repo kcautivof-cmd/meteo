@@ -665,6 +665,37 @@ input, select {
   .chart-menu-bottom select, .chart-menu-bottom input { padding: 5px !important; font-size: 9px !important; }
   .print-chart-row { grid-template-columns: 1fr !important; }
 }
+
+  @media (max-width: 480px) {
+    body { padding: 3px !important; font-size: 11px !important; }
+    .header h1 { font-size: 0.85em !important; letter-spacing: 0px !important; }
+    .logo-container { width: 32px !important; height: 32px !important; }
+    .tactical-clock { font-size: 0.7em !important; padding: 2px 4px !important; }
+    .big-value { font-size: 1.6em !important; }
+    .surface-data { grid-template-columns: 1fr !important; }
+    .sources-grid { grid-template-columns: 1fr 1fr !important; }
+    .map-box { height: 250px !important; }
+    .chart-box { height: 300px !important; }
+    #pickMap { height: 250px !important; }
+    .panel { padding: 6px !important; }
+    .chart-controls { flex-direction: column !important; gap: 4px !important; }
+    .ctl-group { width: 100% !important; }
+    .ctl-group select, .ctl-group input { width: 100% !important; font-size: 10px !important; }
+    .chart-menu-bottom .row { flex-wrap: wrap !important; gap: 4px !important; }
+    .chart-menu-bottom .group { flex: 1 1 45% !important; min-width: 80px !important; max-width: 50% !important; }
+    .chart-menu-bottom label { font-size: 7px !important; }
+    .chart-menu-bottom select, .chart-menu-bottom input { font-size: 8px !important; padding: 4px !important; }
+    #latDms, #lonDms { width: 100% !important; min-width: 0 !important; font-size: 10px !important; }
+    .control-bar { flex-direction: column !important; }
+    .control-bar > div, .control-bar button { width: 100% !important; }
+    .source-btn { font-size: 9px !important; padding: 4px !important; }
+    .twilight-display { font-size: 0.8em !important; }
+    .day-card { width: 160px !important; }
+    #windyEmbed { height: 250px !important; }
+    .analysis-grid { grid-template-columns: 1fr !important; }
+    .splash-title { font-size: 1.4em !important; }
+    .enter-btn { font-size: 0.9em !important; padding: 10px 20px !important; }
+  }
 </style>
 </head>
 <body>
@@ -887,11 +918,11 @@ input, select {
                     <div id="archiveControls" class="chart-subcontrols">
                         <div class="ctl-group">
                             <span class="ctl-label">DESDE</span>
-                            <input type="date" id="archFrom" onchange="document.getElementById('rangeMode').value='archive_custom'; updateChart(true)">
+                            <input type="date" id="archFrom" onchange="archiveData=null;archiveKey=null;document.getElementById('rangeMode').value='archive_custom';const _uF=document.getElementById('uiArchFrom');if(_uF)_uF.value=this.value;updateChart(true)">
                         </div>
                         <div class="ctl-group">
                             <span class="ctl-label">HASTA</span>
-                            <input type="date" id="archTo" onchange="document.getElementById('rangeMode').value='archive_custom'; updateChart(true)">
+                            <input type="date" id="archTo" onchange="archiveData=null;archiveKey=null;document.getElementById('rangeMode').value='archive_custom';const _uT=document.getElementById('uiArchTo');if(_uT)_uT.value=this.value;updateChart(true)">
                         </div>
                         <div class="ctl-group">
                             <span class="ctl-label">AGREGAR</span>
@@ -939,12 +970,12 @@ input, select {
     <div class="row" id="uiArchiveRow" style="display:flex;">
         <div class="group">
             <label>📅 DESDE</label>
-            <input type="date" id="uiArchFrom" onchange="document.getElementById('archFrom').value=this.value; refreshArchiveAndChart();">
+            <input type="date" id="uiArchFrom" onchange="archiveData=null;archiveKey=null;document.getElementById('archFrom').value=this.value;document.getElementById('rangeMode').value='archive_custom';refreshArchiveAndChart();">
         </div>
 
         <div class="group">
             <label>📅 HASTA</label>
-            <input type="date" id="uiArchTo" onchange="document.getElementById('archTo').value=this.value; refreshArchiveAndChart();">
+            <input type="date" id="uiArchTo" onchange="archiveData=null;archiveKey=null;document.getElementById('archTo').value=this.value;document.getElementById('rangeMode').value='archive_custom';refreshArchiveAndChart();">
         </div>
 
         <div class="group">
@@ -1755,6 +1786,11 @@ async function fetchAlerts(){
                 "snowfall"
             
             ];
+            const _safe = new Date(); _safe.setDate(_safe.getDate() - 5);
+            const _safeStr = _safe.toISOString().slice(0,10);
+            if (!to || to > _safeStr) to = _safeStr;
+            if (!from || from > _safeStr) { const _f=new Date(_safe); _f.setFullYear(_f.getFullYear()-5); from=_f.toISOString().slice(0,10); }
+            if (from >= to) { const _f2=new Date(_safe); _f2.setFullYear(_f2.getFullYear()-1); from=_f2.toISOString().slice(0,10); }
             const url = `${base}?latitude=${lat}&longitude=${lon}&start_date=${from}&end_date=${to}`
               + `&daily=${dailyVars.join(",")}`
               + `&hourly=${hourlyVars.join(",")}`
@@ -2663,7 +2699,8 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
             if (uiAT && at && uiAT.value) at.value = uiAT.value;
 
             // Actualiza gráfico
-            updateChart();
+            const _rmVal2 = document.getElementById('rangeMode')?.value;
+            updateChart(_rmVal2 === 'archive_custom');
         }
 
         function __syncMenuVisibility() {
@@ -2696,7 +2733,8 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
             }
 
             populateHourDaySelect();
-            updateChart();
+            const _rmVal = document.getElementById('rangeMode')?.value;
+            updateChart(_rmVal === 'archive_custom');
 
             try{ __syncMenuVisibility(); }catch(e){}
         }
@@ -2704,10 +2742,10 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
         function ensureArchiveDatesDefaults() {
             const fromEl = document.getElementById('archFrom');
             const toEl = document.getElementById('archTo');
-            if (!fromEl.value || !toEl.value) {
+            if (!fromEl.value && !toEl.value) {
                 const now = new Date();
-                const end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-                const start = new Date(now.getFullYear() - 5, now.getMonth(), now.getDate());
+                const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 5);
+                const start = new Date(now.getFullYear() - 5, now.getMonth(), now.getDate() - 5);
                 fromEl.value = start.toISOString().slice(0,10);
                 toEl.value = end.toISOString().slice(0,10);
             }
@@ -3431,6 +3469,11 @@ function __updateAnalysisPanel(variableKey, rawLabels, rawSeries, yLabelText){
                 ? ["relative_humidity_2m","pressure_msl","cloud_cover"]
                 : [];
 
+            const _safe = new Date(); _safe.setDate(_safe.getDate() - 5);
+            const _safeStr = _safe.toISOString().slice(0,10);
+            if (!to || to > _safeStr) to = _safeStr;
+            if (!from || from > _safeStr) { const _f=new Date(_safe); _f.setFullYear(_f.getFullYear()-5); from=_f.toISOString().slice(0,10); }
+            if (from >= to) { const _f2=new Date(_safe); _f2.setFullYear(_f2.getFullYear()-1); from=_f2.toISOString().slice(0,10); }
             const url = `${base}?latitude=${lat}&longitude=${lon}&start_date=${from}&end_date=${to}`
                 + `&daily=${dailyVars.join(",")}`
                 + (hourlyVars.length ? `&hourly=${hourlyVars.join(",")}` : "")
@@ -3476,9 +3519,16 @@ function __updateAnalysisPanel(variableKey, rawLabels, rawSeries, yLabelText){
         }
 
         async function refreshArchiveAndChart() {
-            // fuerza refetch
             archiveData = null;
             archiveKey = null;
+            const _rm = document.getElementById('rangeMode');
+            if (_rm) _rm.value = 'archive_custom';
+            const _uiF = document.getElementById('uiArchFrom');
+            const _uiT = document.getElementById('uiArchTo');
+            const _af  = document.getElementById('archFrom');
+            const _at  = document.getElementById('archTo');
+            if (_uiF && _af && _uiF.value) _af.value = _uiF.value;
+            if (_uiT && _at && _uiT.value) _at.value = _uiT.value;
             await updateChart(true);
         }
 
@@ -3647,8 +3697,23 @@ if (smoothMode === "ma3") series = movingAverage(series, 3);
                         if (sm) { sm.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS"; sm.style.color = "var(--text)"; }
                     } catch (e) {
                         console.error(e);
-                        alert("No se pudo cargar ARCHIVO climático. Verifique fechas y conexión.");
-                        // fallback: usar datos cargados
+                        const _safe2 = new Date(); _safe2.setDate(_safe2.getDate() - 5);
+                        const _s2 = _safe2.toISOString().slice(0,10);
+                        const _fe = document.getElementById('archFrom');
+                        const _te = document.getElementById('archTo');
+                        const _ufe = document.getElementById('uiArchFrom');
+                        const _ute = document.getElementById('uiArchTo');
+                        if (_te) _te.value = _s2;
+                        if (_ute) _ute.value = _s2;
+                        const _sf = new Date(_safe2); _sf.setFullYear(_sf.getFullYear()-5);
+                        const _sfs = _sf.toISOString().slice(0,10);
+                        if (_fe && (!_fe.value || _fe.value >= _s2)) { _fe.value = _sfs; if(_ufe) _ufe.value = _sfs; }
+                        archiveData = null; archiveKey = null;
+                        try {
+                            const _r = await fetchArchiveDaily(lat, lon, _fe?.value||_sfs, _s2, variable);
+                            archiveData = _r;
+                            archiveKey = JSON.stringify({lat,lon,from:_fe?.value||_sfs,to:_s2,variable});
+                        } catch(e2) { console.error("Archivo: reintento fallido", e2); }
                     }
                 }
 
