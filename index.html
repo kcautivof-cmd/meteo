@@ -734,8 +734,8 @@ input, select {
 
                                 <span>FUENTE:</span>
                 <select id="sourceSelect" onchange="executeSearch()">
-                    <option value="auto">AUTO</option>
-                    <option value="openmeteo" selected>OPEN-METEO</option>
+                    <option value="auto" selected>AUTO</option>
+                    <option value="openmeteo">OPEN-METEO</option>
                     <option value="meteoblue">METEOBLUE</option>
                     <option value="pirate">PIRATE WEATHER</option>
                 </select>
@@ -887,11 +887,11 @@ input, select {
                     <div id="archiveControls" class="chart-subcontrols">
                         <div class="ctl-group">
                             <span class="ctl-label">DESDE</span>
-                            <input type="date" id="archFrom" onchange="document.getElementById('rangeMode').value='archive_custom'; updateChart(true)">
+                            <input type="date" id="archFrom" onchange="archiveData=null;archiveKey=null;document.getElementById('rangeMode').value='archive_custom';const _uF=document.getElementById('uiArchFrom');if(_uF)_uF.value=this.value;updateChart(true)">
                         </div>
                         <div class="ctl-group">
                             <span class="ctl-label">HASTA</span>
-                            <input type="date" id="archTo" onchange="document.getElementById('rangeMode').value='archive_custom'; updateChart(true)">
+                            <input type="date" id="archTo" onchange="archiveData=null;archiveKey=null;document.getElementById('rangeMode').value='archive_custom';const _uT=document.getElementById('uiArchTo');if(_uT)_uT.value=this.value;updateChart(true)">
                         </div>
                         <div class="ctl-group">
                             <span class="ctl-label">AGREGAR</span>
@@ -918,14 +918,44 @@ input, select {
                         <div id="temp7dWrap" style="margin-top:10px; border:1px solid var(--border); background:#fff;">
   <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border-bottom:1px solid var(--border); background:var(--panel2);">
     <div style="font-weight:700;">ANEXO 2 – <span id="forecastVarTitle">Evolución térmica</span></div>
-    <div style="display:flex; gap:10px; align-items:center;"><select id="forecastVar" style="font-size:12px; padding:2px 6px;"><option value="temp" selected>Temperatura</option><option value="precip">Precipitación</option><option value="humidity">Humedad</option><option value="wind">Viento</option><option value="gusts">Ráfagas</option><option value="pressure">Presión</option><option value="cloud">Nubosidad</option></select><select id="forecastRange" style="font-size:12px; padding:2px 6px;"><option value="7" selected>7 días</option><option value="10">10 días</option></select><div style="font-size:12px; color:var(--muted);">Fuente: Pronóstico (forecast)</div></div>
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+  <select id="forecastSource" style="font-size:12px; padding:2px 6px;">
+    <option value="openmeteo" selected>Open‑Meteo (Forecast)</option>
+    <option value="accuweather">AccuWeather (Core)</option>
+  </select>
+
+  <select id="forecastVar" style="font-size:12px; padding:2px 6px;">
+    <option value="temp" selected>Temperatura</option>
+    <option value="precip">Precipitación</option>
+    <option value="humidity">Humedad</option>
+    <option value="wind">Viento</option>
+    <option value="gusts">Ráfagas</option>
+    <option value="pressure">Presión</option>
+    <option value="cloud">Nubosidad</option>
+  </select>
+
+  <select id="forecastRange" style="font-size:12px; padding:2px 6px;">
+    <option value="7" selected>7 días</option>
+    <option value="10">10 días</option>
+  </select>
+
+  <select id="accuMode" style="font-size:12px; padding:2px 6px; display:none;">
+    <option value="now" selected>Ahora</option>
+    <option value="12h">12h</option>
+    <option value="5d">5 días</option>
+  </select>
+
+  <div id="forecastSourceLabel" style="font-size:12px; color:var(--muted); white-space:nowrap;">
+    Fuente: Open‑Meteo (forecast)
+  </div>
+</div>
   </div>
   <div style="height:150px; padding:10px;">
     <div style="height:180px;">
       <canvas id="chartTemp7d"></canvas>
+      <div id="annex2Vars" style="margin-top:8px; display:flex; flex-wrap:wrap; gap:6px;"></div>
     </div>
     <div style="font-size:11px; margin-top:6px; color:var(--muted);">
-      Nota: D+1–D+3 alta confianza · D+4–D+7 tendencia.
     </div>
   </div>
 </div>
@@ -939,12 +969,12 @@ input, select {
     <div class="row" id="uiArchiveRow" style="display:flex;">
         <div class="group">
             <label>📅 DESDE</label>
-            <input type="date" id="uiArchFrom" onchange="document.getElementById('archFrom').value=this.value; document.getElementById('rangeMode').value='archive_custom'; refreshArchiveAndChart();">
+            <input type="date" id="uiArchFrom" onchange="archiveData=null;archiveKey=null;document.getElementById('archFrom').value=this.value;document.getElementById('rangeMode').value='archive_custom';refreshArchiveAndChart();">
         </div>
 
         <div class="group">
             <label>📅 HASTA</label>
-            <input type="date" id="uiArchTo" onchange="document.getElementById('archTo').value=this.value; document.getElementById('rangeMode').value='archive_custom'; refreshArchiveAndChart();">
+            <input type="date" id="uiArchTo" onchange="archiveData=null;archiveKey=null;document.getElementById('archTo').value=this.value;document.getElementById('rangeMode').value='archive_custom';refreshArchiveAndChart();">
         </div>
 
         <div class="group">
@@ -1755,6 +1785,12 @@ async function fetchAlerts(){
                 "snowfall"
             
             ];
+            // Clampear: la API no acepta fechas >= hoy
+            const _safe = new Date(); _safe.setDate(_safe.getDate() - 5);
+            const _safeStr = _safe.toISOString().slice(0,10);
+            if (!to || to > _safeStr) to = _safeStr;
+            if (!from || from > _safeStr) { const _f=new Date(_safe); _f.setFullYear(_f.getFullYear()-5); from=_f.toISOString().slice(0,10); }
+            if (from >= to) { const _f2=new Date(_safe); _f2.setFullYear(_f2.getFullYear()-1); from=_f2.toISOString().slice(0,10); }
             const url = `${base}?latitude=${lat}&longitude=${lon}&start_date=${from}&end_date=${to}`
               + `&daily=${dailyVars.join(",")}`
               + `&hourly=${hourlyVars.join(",")}`
@@ -2663,7 +2699,8 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
             if (uiAT && at && uiAT.value) at.value = uiAT.value;
 
             // Actualiza gráfico
-            updateChart();
+            const _rmVal2 = document.getElementById('rangeMode')?.value;
+            updateChart(_rmVal2 === 'archive_custom');
         }
 
         function __syncMenuVisibility() {
@@ -2696,7 +2733,8 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
             }
 
             populateHourDaySelect();
-            updateChart();
+            const _rmVal = document.getElementById('rangeMode')?.value;
+            updateChart(_rmVal === 'archive_custom');
 
             try{ __syncMenuVisibility(); }catch(e){}
         }
@@ -2704,10 +2742,10 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
         function ensureArchiveDatesDefaults() {
             const fromEl = document.getElementById('archFrom');
             const toEl = document.getElementById('archTo');
-            if (!fromEl.value || !toEl.value) {
+            if (!fromEl.value && !toEl.value) {
                 const now = new Date();
-                const end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-                const start = new Date(now.getFullYear() - 5, now.getMonth(), now.getDate());
+                const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 5);
+                const start = new Date(now.getFullYear() - 5, now.getMonth(), now.getDate() - 5);
                 fromEl.value = start.toISOString().slice(0,10);
                 toEl.value = end.toISOString().slice(0,10);
             }
@@ -3431,6 +3469,12 @@ function __updateAnalysisPanel(variableKey, rawLabels, rawSeries, yLabelText){
                 ? ["relative_humidity_2m","pressure_msl","cloud_cover"]
                 : [];
 
+            // Clampear: la API no acepta fechas >= hoy
+            const _safe = new Date(); _safe.setDate(_safe.getDate() - 5);
+            const _safeStr = _safe.toISOString().slice(0,10);
+            if (!to || to > _safeStr) to = _safeStr;
+            if (!from || from > _safeStr) { const _f=new Date(_safe); _f.setFullYear(_f.getFullYear()-5); from=_f.toISOString().slice(0,10); }
+            if (from >= to) { const _f2=new Date(_safe); _f2.setFullYear(_f2.getFullYear()-1); from=_f2.toISOString().slice(0,10); }
             const url = `${base}?latitude=${lat}&longitude=${lon}&start_date=${from}&end_date=${to}`
                 + `&daily=${dailyVars.join(",")}`
                 + (hourlyVars.length ? `&hourly=${hourlyVars.join(",")}` : "")
@@ -3476,9 +3520,16 @@ function __updateAnalysisPanel(variableKey, rawLabels, rawSeries, yLabelText){
         }
 
         async function refreshArchiveAndChart() {
-            // fuerza refetch
             archiveData = null;
             archiveKey = null;
+            const _rm = document.getElementById('rangeMode');
+            if (_rm) _rm.value = 'archive_custom';
+            const _uiF = document.getElementById('uiArchFrom');
+            const _uiT = document.getElementById('uiArchTo');
+            const _af  = document.getElementById('archFrom');
+            const _at  = document.getElementById('archTo');
+            if (_uiF && _af && _uiF.value) _af.value = _uiF.value;
+            if (_uiT && _at && _uiT.value) _at.value = _uiT.value;
             await updateChart(true);
         }
 
@@ -3647,8 +3698,24 @@ if (smoothMode === "ma3") series = movingAverage(series, 3);
                         if (sm) { sm.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS"; sm.style.color = "var(--text)"; }
                     } catch (e) {
                         console.error(e);
-                        alert("No se pudo cargar ARCHIVO climático. Verifique fechas y conexión.");
-                        // fallback: usar datos cargados
+                        // Auto-corregir fechas y reintentar silenciosamente
+                        const _safe2 = new Date(); _safe2.setDate(_safe2.getDate() - 5);
+                        const _s2 = _safe2.toISOString().slice(0,10);
+                        const _fe = document.getElementById('archFrom');
+                        const _te = document.getElementById('archTo');
+                        const _ufe = document.getElementById('uiArchFrom');
+                        const _ute = document.getElementById('uiArchTo');
+                        if (_te) _te.value = _s2;
+                        if (_ute) _ute.value = _s2;
+                        const _sf = new Date(_safe2); _sf.setFullYear(_sf.getFullYear()-5);
+                        const _sfs = _sf.toISOString().slice(0,10);
+                        if (_fe && (!_fe.value || _fe.value >= _s2)) { _fe.value = _sfs; if(_ufe) _ufe.value = _sfs; }
+                        archiveData = null; archiveKey = null;
+                        try {
+                            const _r = await fetchArchiveDaily(lat, lon, _fe?.value||_sfs, _s2, variable);
+                            archiveData = _r;
+                            archiveKey = JSON.stringify({lat,lon,from:_fe?.value||_sfs,to:_s2,variable});
+                        } catch(e2) { console.error("Archivo: reintento fallido", e2); }
                     }
                 }
 
@@ -4041,6 +4108,344 @@ function renderTemp7dChart(forecastJson) {
   });
 }
 
+// ===============================
+// ANEXO 2 – ACCUWEATHER (CORE) como fuente alternativa (Ahora / 12h / 5 días)
+// Implementación segura para GitHub Pages: el front llama a tu Worker (/accu/*).
+// Requiere que tu Worker tenga:
+//   /accu/current?lat=..&lon=..
+//   /accu/hourly12?lat=..&lon=..
+//   /accu/daily5?lat=..&lon=..
+// ===============================
+window.__accuCache = window.__accuCache || { now: new Map(), h12: new Map(), d5: new Map() };
+window.__annex2ReqId = 0;
+
+function getAnnex2LatLon() {
+  // prioridad: últimos coords de búsqueda
+  if (typeof lastLat === "number" && typeof lastLon === "number") return { lat: lastLat, lon: lastLon };
+  // fallback: si el JSON de Open‑Meteo trae lat/lon
+  if (globalData?.latitude != null && globalData?.longitude != null) return { lat: globalData.latitude, lon: globalData.longitude };
+  return null;
+}
+
+function getWorkerBase() {
+  // WORKER_BASE_URL existe en tu código principal (Open‑Meteo proxy).
+  const base = (typeof WORKER_BASE_URL === "string" ? WORKER_BASE_URL : "").replace(/\/$/, "");
+  if (!base) throw new Error("Falta WORKER_BASE_URL (base del Worker).");
+  return base;
+}
+
+async function workerFetchJSON(url, signal) {
+  const res = await fetch(url, { headers: { "Accept": "application/json" }, signal });
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    const err = new Error(`Worker ${res.status}: ${t || res.statusText}`);
+    err.status = res.status;
+    throw err;
+  }
+  return res.json();
+}
+
+function renderAnnex2Status(msg) {
+  const note = document.querySelector("#temp7dWrap .note-accu");
+  if (note) note.textContent = msg;
+}
+
+function ensureAnnex2NoteNode() {
+  const wrap = document.getElementById("temp7dWrap");
+  if (!wrap) return;
+  let n = wrap.querySelector(".note-accu");
+  if (!n) {
+    n = document.createElement("div");
+    n.className = "note-accu";
+    n.style.cssText = "font-size:11px; margin-top:6px; color:var(--muted);";
+    const existing = wrap.querySelector("div[style*='Nota:']");
+    if (existing && existing.parentElement) existing.parentElement.insertBefore(n, existing);
+    else wrap.appendChild(n);
+  }
+}
+
+
+function renderAnnex2Vars(items) {
+  const box = document.getElementById("annex2Vars");
+  if (!box) return;
+  box.innerHTML = "";
+  if (!Array.isArray(items) || !items.length) return;
+
+  for (const it of items) {
+    const val = (it.value === null || it.value === undefined || Number.isNaN(it.value)) ? "—" : String(it.value);
+    const unit = it.unit ? String(it.unit) : "";
+    const el = document.createElement("div");
+    el.style.cssText = "border:1px solid var(--border); background:var(--panel2); padding:4px 6px; border-radius:8px; font-size:11px; line-height:1.15; min-width:92px;";
+    el.innerHTML = `<div style="color:var(--muted); font-size:10px;">${escapeHtml(it.label || "")}</div>
+                    <div style="font-weight:700;">${escapeHtml(val)}${unit ? " " + escapeHtml(unit) : ""}</div>`;
+    box.appendChild(el);
+  }
+}
+
+function escapeHtml(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c]));
+}
+
+function renderAnnex2Chart(labels, datasets, chartType, yLabel, title) {
+  const canvas = document.getElementById("chartTemp7d");
+  if (!canvas) return;
+  if (canvas._chart) canvas._chart.destroy();
+
+  const titleEl = document.getElementById("forecastVarTitle");
+  if (titleEl) titleEl.textContent = title || "AccuWeather";
+
+  if (!labels?.length || !datasets?.length) return;
+
+  canvas._chart = new Chart(canvas.getContext("2d"), {
+    type: chartType || "line",
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: true } },
+      scales: { y: { title: { display: true, text: yLabel || "" } } }
+    }
+  });
+}
+
+function pickAccuValue(obj, varSel) {
+  try {
+    if (varSel === "temp") return obj?.Temperature?.Metric?.Value ?? obj?.Temperature?.Value;
+    if (varSel === "humidity") return obj?.RelativeHumidity ?? obj?.Humidity;
+    if (varSel === "wind") return obj?.Wind?.Speed?.Metric?.Value ?? obj?.Wind?.Speed?.Value;
+    if (varSel === "gusts") return obj?.WindGust?.Speed?.Metric?.Value ?? obj?.WindGust?.Speed?.Value;
+    if (varSel === "pressure") return obj?.Pressure?.Metric?.Value ?? obj?.Pressure?.Value;
+    if (varSel === "cloud") return obj?.CloudCover ?? obj?.Cloud;
+    if (varSel === "precip") {
+      const mm = obj?.PrecipitationSummary?.PastHour?.Metric?.Value;
+      if (mm != null) return mm;
+      return obj?.TotalLiquid?.Value ?? obj?.Rain?.Value ?? obj?.PrecipitationProbability;
+    }
+  } catch (e) {}
+  return null;
+}
+
+function accuUnitsLabel(varSel) {
+  if (varSel === "temp") return "°C";
+  if (varSel === "humidity") return "%";
+  if (varSel === "wind" || varSel === "gusts") return "km/h";
+  if (varSel === "pressure") return "hPa";
+  if (varSel === "cloud") return "%";
+  if (varSel === "precip") return "mm / %";
+  return "";
+}
+
+function accuCacheKey(lat, lon) {
+  return `${lat.toFixed(4)},${lon.toFixed(4)}`;
+}
+
+async function updateAnnex2Accu() {
+  const coords = getAnnex2LatLon();
+  ensureAnnex2NoteNode();
+  if (!coords) { renderAnnex2Status("AccuWeather: sin coordenadas aún."); return; }
+
+  const { lat, lon } = coords;
+  const varSel = document.getElementById("forecastVar")?.value || "temp";
+  const mode = document.getElementById("accuMode")?.value || "now";
+
+  const reqId = ++window.__annex2ReqId;
+  const controller = new AbortController();
+  const signal = controller.signal;
+
+  try { if (window.__annex2Abort) window.__annex2Abort.abort(); } catch(e){}
+  window.__annex2Abort = controller;
+
+  renderAnnex2Status("AccuWeather: consultando…");
+
+  try {
+    const base = getWorkerBase();
+    const k = accuCacheKey(lat, lon);
+
+    if (mode === "now") {
+      let payload = window.__accuCache.now.get(k);
+      if (!payload) {
+        payload = await workerFetchJSON(`${base}/accu/current?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`, signal);
+        window.__accuCache.now.set(k, payload);
+      }
+      if (reqId !== window.__annex2ReqId) return;
+
+      const cc = payload?.data || null;
+      // Variables clave (Now)
+      renderAnnex2Vars([
+        { label: "Temp", value: cc?.Temperature?.Metric?.Value ?? null, unit: "°C" },
+        { label: "Sensación", value: cc?.RealFeelTemperature?.Metric?.Value ?? null, unit: "°C" },
+        { label: "Humedad", value: cc?.RelativeHumidity ?? null, unit: "%" },
+        { label: "Viento", value: cc?.Wind?.Speed?.Metric?.Value ?? null, unit: "km/h" },
+        { label: "Ráfaga", value: cc?.WindGust?.Speed?.Metric?.Value ?? null, unit: "km/h" },
+        { label: "Presión", value: cc?.Pressure?.Metric?.Value ?? null, unit: "mb" },
+        { label: "Visib.", value: cc?.Visibility?.Metric?.Value ?? null, unit: "km" },
+        { label: "Nubos.", value: cc?.CloudCover ?? null, unit: "%" }
+      ]);
+
+      const v = pickAccuValue(cc, varSel);
+
+      const yLabel = `${varSel.toUpperCase()} ${accuUnitsLabel(varSel)}`.trim();
+      const locName = payload?.location?.LocalizedName || payload?.location?.EnglishName || "";
+      const title = `AccuWeather – Ahora (${varSel})`;
+
+      renderAnnex2Chart(["Ahora"], [{
+        label: varSel,
+        data: [v],
+        borderWidth: 2
+      }], "bar", yLabel, title);
+
+      renderAnnex2Status(v == null
+        ? "AccuWeather: no hay dato para esta variable en 'Ahora'."
+        : `AccuWeather (Ahora): OK · ${lat.toFixed(3)}, ${lon.toFixed(3)}${locName ? " · " + locName : ""}`);
+      return;
+    }
+
+    if (mode === "12h") {
+      let payload = window.__accuCache.h12.get(k);
+      if (!payload) {
+        payload = await workerFetchJSON(`${base}/accu/hourly12?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`, signal);
+        window.__accuCache.h12.set(k, payload);
+      }
+      if (reqId !== window.__annex2ReqId) return;
+
+      const arr = Array.isArray(payload?.data) ? payload.data : [];
+      // Variables clave (12h) usando el primer tramo disponible
+      const first = arr[0] || null;
+      renderAnnex2Vars([
+        { label: "Temp", value: first?.Temperature?.Value ?? null, unit: "°C" },
+        { label: "Sensación", value: first?.RealFeelTemperature?.Value ?? null, unit: "°C" },
+        { label: "Prob. precip", value: first?.PrecipitationProbability ?? null, unit: "%" },
+        { label: "Viento", value: first?.Wind?.Speed?.Value ?? null, unit: "km/h" },
+        { label: "Ráfaga", value: first?.WindGust?.Speed?.Value ?? null, unit: "km/h" },
+        { label: "Humedad", value: first?.RelativeHumidity ?? null, unit: "%" },
+        { label: "Nubos.", value: first?.CloudCover ?? null, unit: "%" },
+        { label: "Visib.", value: first?.Visibility?.Value ?? null, unit: "km" }
+      ]);
+
+      const labels = arr.map(x => {
+        const dt = x?.DateTime || x?.LocalObservationDateTime;
+        if (!dt) return "";
+        const d = new Date(dt);
+        const hh = String(d.getHours()).padStart(2,"0");
+        const mi = String(d.getMinutes()).padStart(2,"0");
+        return `${hh}:${mi}`;
+      });
+
+      const vals = arr.map(x => pickAccuValue(x, varSel));
+      const yLabel = `${varSel.toUpperCase()} ${accuUnitsLabel(varSel)}`.trim();
+      const locName = payload?.location?.LocalizedName || payload?.location?.EnglishName || "";
+      const title = `AccuWeather – 12h (${varSel})`;
+
+      renderAnnex2Chart(labels, [{
+        label: varSel,
+        data: vals,
+        borderWidth: 2,
+        tension: 0.25,
+        fill: false
+      }], "line", yLabel, title);
+
+      renderAnnex2Status(`AccuWeather (12h): OK · ${lat.toFixed(3)}, ${lon.toFixed(3)}${locName ? " · " + locName : ""}`);
+      return;
+    }
+
+    if (mode === "5d") {
+      let payload = window.__accuCache.d5.get(k);
+      if (!payload) {
+        payload = await workerFetchJSON(`${base}/accu/daily5?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`, signal);
+        window.__accuCache.d5.set(k, payload);
+      }
+      if (reqId !== window.__annex2ReqId) return;
+
+      const data = payload?.data || {};
+      const days = data?.DailyForecasts || [];
+      // Variables clave (5d) usando el día 1
+      const d0 = days[0] || null;
+      renderAnnex2Vars([
+        { label: "Máx", value: d0?.Temperature?.Maximum?.Value ?? null, unit: "°C" },
+        { label: "Mín", value: d0?.Temperature?.Minimum?.Value ?? null, unit: "°C" },
+        { label: "Prob. precip", value: d0?.Day?.PrecipitationProbability ?? null, unit: "%" },
+        { label: "Viento", value: d0?.Day?.Wind?.Speed?.Value ?? null, unit: "km/h" },
+        { label: "Ráfaga", value: d0?.Day?.WindGust?.Speed?.Value ?? null, unit: "km/h" },
+        { label: "Nubos.", value: d0?.Day?.CloudCover ?? null, unit: "%" },
+        { label: "Frase", value: d0?.Day?.ShortPhrase ?? d0?.Day?.IconPhrase ?? null, unit: "" }
+      ]);
+
+      const labels = days.map(d => {
+        let dt = null;
+        if (d?.EpochDate) dt = new Date(d.EpochDate * 1000);
+        else if (d?.Date) dt = new Date(d.Date);
+        if (!dt || isNaN(dt)) return "";
+        return dt.toISOString().slice(5,10);
+      });
+
+      let vals = [];
+      if (varSel === "temp") {
+        vals = days.map(d => d?.Temperature?.Maximum?.Value ?? null);
+      } else if (varSel === "wind") {
+        vals = days.map(d => d?.Day?.Wind?.Speed?.Value ?? null);
+      } else if (varSel === "gusts") {
+        vals = days.map(d => d?.Day?.WindGust?.Speed?.Value ?? null);
+      } else if (varSel === "humidity") {
+        vals = days.map(d => d?.Day?.RelativeHumidity?.Average ?? null);
+      } else if (varSel === "pressure") {
+        vals = days.map(d => d?.Day?.Pressure?.Value ?? null);
+      } else if (varSel === "cloud") {
+        vals = days.map(d => d?.Day?.CloudCover ?? null);
+      } else if (varSel === "precip") {
+        vals = days.map(d => d?.Day?.PrecipitationProbability ?? null);
+      } else {
+        vals = days.map(_ => null);
+      }
+
+      const yLabel = `${varSel.toUpperCase()} ${accuUnitsLabel(varSel)}`.trim();
+      const locName = payload?.location?.LocalizedName || payload?.location?.EnglishName || "";
+      const title = `AccuWeather – 5 días (${varSel})`;
+
+      renderAnnex2Chart(labels, [{
+        label: varSel,
+        data: vals,
+        borderWidth: 2,
+        tension: 0.25,
+        fill: false
+      }], "line", yLabel, title);
+
+      renderAnnex2Status(`AccuWeather (5 días): OK · ${lat.toFixed(3)}, ${lon.toFixed(3)}${locName ? " · " + locName : ""}`);
+      return;
+    }
+
+    renderAnnex2Status("AccuWeather: modo no soportado.");
+
+  } catch (e) {
+    const msg = (e && e.message) ? e.message : String(e);
+    renderAnnex2Status("AccuWeather: " + msg);
+    renderAnnex2Vars([]);
+
+  }
+}
+
+function updateAnnex2UI() {
+  const src = document.getElementById("forecastSource")?.value || "openmeteo";
+  const rangeSel = document.getElementById("forecastRange");
+  const accuMode = document.getElementById("accuMode");
+  const label = document.getElementById("forecastSourceLabel");
+
+  if (src === "accuweather") {
+    if (rangeSel) rangeSel.style.display = "none";
+    if (accuMode) accuMode.style.display = "inline-block";
+    if (label) label.textContent = "Fuente: AccuWeather (Core)";
+    // render en base a modo
+    updateAnnex2Accu();
+  } else {
+    if (rangeSel) rangeSel.style.display = "inline-block";
+    if (accuMode) accuMode.style.display = "none";
+    if (label) label.textContent = "Fuente: Open‑Meteo (forecast)";
+    renderAnnex2Vars([]);
+
+    // re-render con el forecast actual cacheado
+    if (window.__temp7dForecast) renderTemp7dChart(window.__temp7dForecast);
+  }
+}
+
 </script>
 
 
@@ -4050,13 +4455,21 @@ function renderTemp7dChart(forecastJson) {
 document.addEventListener("DOMContentLoaded", () => {
   const rangeSel = document.getElementById("forecastRange");
   const varSel = document.getElementById("forecastVar");
+  const srcSel = document.getElementById("forecastSource");
+  const accuMode = document.getElementById("accuMode");
 
   function rerender() {
-    if (window.__temp7dForecast) renderTemp7dChart(window.__temp7dForecast);
+    // decide si Open‑Meteo o AccuWeather según selector
+    updateAnnex2UI();
   }
 
   if (rangeSel) rangeSel.addEventListener("change", rerender);
   if (varSel) varSel.addEventListener("change", rerender);
+  if (srcSel) srcSel.addEventListener("change", rerender);
+  if (accuMode) accuMode.addEventListener("change", rerender);
+
+  // estado inicial
+  rerender();
 });
 </script>
 
