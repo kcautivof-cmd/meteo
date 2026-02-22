@@ -503,10 +503,13 @@ body.dark-mode .leaflet-control{ background: rgba(15,23,42,0.95) !important; }
   display:none;
   padding:8px;
   background: var(--panel);
-
-  max-height: 260px;
+  max-height: 300px;
   overflow-y: auto;
 }
+.uav15fbtn{font-size:9px;font-weight:700;letter-spacing:.5px;padding:3px 7px;border:1px solid var(--border);background:var(--panel);color:var(--muted);cursor:pointer;border-radius:3px;}
+.uav15factive{background:var(--accent)!important;color:#fff!important;border-color:var(--accent)!important;}
+.anexo-sep{margin:10px 0 4px 0;border-top:2px solid var(--border);padding-top:4px;}
+.anexo-tag{display:inline-block;font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--muted);padding:2px 8px;background:var(--panel2);border-left:3px solid var(--orange);margin-bottom:4px;}
 .analysis-grid{
   display:grid;
   grid-template-columns: 1fr 1fr;
@@ -912,10 +915,12 @@ input, select {
                         <button class="analysis-btn" id="btnToggleAnalysis" type="button">VER ANÁLISIS</button>
                     </div>
                     <div class="analysis-body" id="analysisBody">
+                        <div class="anexo-tag">ANÁLISIS · ANEXO 1</div>
                         <div class="analysis-grid" id="analysisGrid"></div>
                         <div class="analysis-note" id="analysisNote"></div>
 
-                        <div id="temp7dWrap" style="margin-top:10px; border:1px solid var(--border); background:#fff;">
+                        <div class="anexo-sep"><span class="anexo-tag">ANEXO 2 – EVOLUCIÓN TEMPORAL</span></div>
+                        <div id="temp7dWrap" style="border:1px solid var(--border); background:#fff;">
   <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border-bottom:1px solid var(--border); background:var(--panel2);">
     <div style="font-weight:700;">ANEXO 2 – <span id="forecastVarTitle">Evolución térmica</span></div>
     <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
@@ -950,13 +955,154 @@ input, select {
   </div>
 </div>
   </div>
-  <div style="height:150px; padding:10px;">
-    <div style="height:180px;">
+  <div style="padding:8px 10px 6px 10px;">
+    <div style="height:130px; position:relative;">
       <canvas id="chartTemp7d"></canvas>
-      <div id="annex2Vars" style="margin-top:8px; display:flex; flex-wrap:wrap; gap:6px;"></div>
     </div>
-    <div style="font-size:11px; margin-top:6px; color:var(--muted);">
+    <div id="annex2Vars" style="margin-top:6px; display:flex; flex-wrap:wrap; gap:5px; min-height:0;"></div>
+  </div>
+</div>
+
+
+<div class="anexo-sep"><span class="anexo-tag">ANEXO 3 – UAV FORECAST</span></div>
+<div id="uavForecastWrap" style="border:1px solid var(--border);background:var(--bg);border-radius:3px;overflow:hidden;">
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;border-bottom:1px solid var(--border);background:var(--panel2);flex-wrap:wrap;gap:5px;">
+    <div style="font-weight:700;letter-spacing:1px;font-size:12px;">✈ UAV FORECAST</div>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+      <select id="uavSource" onchange="loadUAVForecast()" style="font-size:11px;padding:2px 6px;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:3px;">
+        <option value="openmeteo">🌐 Open-Meteo</option>
+        <option value="accuweather">🎯 AccuWeather</option>
+      </select>
+      <span style="font-size:10px;color:var(--muted);white-space:nowrap;" id="uavLastUpdate">Sin datos</span>
+      <button onclick="loadUAVForecast()" style="font-size:11px;padding:2px 7px;border:1px solid var(--border);background:var(--panel);color:var(--text);cursor:pointer;border-radius:3px;">↻</button>
     </div>
+  </div>
+  <div id="uavStatus" style="text-align:center;padding:8px 10px;font-weight:700;font-size:11px;letter-spacing:1px;background:#888;color:#fff;transition:background .4s,color .4s;word-break:break-word;line-height:1.4;">EVALUANDO CONDICIONES...</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px;padding:3px;background:var(--border);">
+    <div style="background:#f5f5f5;padding:7px 4px;text-align:center;border-radius:3px;">
+      <div style="font-size:8px;font-weight:700;color:#666;letter-spacing:.5px;margin-bottom:2px;">CONDICIÓN</div>
+      <div style="font-size:22px;line-height:1.1;" id="uavWeatherIcon">🌤</div>
+      <div style="font-size:9px;color:#444;margin-top:2px;line-height:1.2;" id="uavWeatherText">--</div>
+    </div>
+    <div style="background:#ffe566;padding:7px 4px;text-align:center;border-radius:3px;">
+      <div style="font-size:8px;font-weight:700;color:#555;letter-spacing:.5px;margin-bottom:2px;">🌅 AMANECER</div>
+      <div style="font-size:18px;font-weight:700;color:#333;" id="uavSunrise">--:--</div>
+    </div>
+    <div style="background:#ffe566;padding:7px 4px;text-align:center;border-radius:3px;">
+      <div style="font-size:8px;font-weight:700;color:#555;letter-spacing:.5px;margin-bottom:2px;">🌇 ATARDECER</div>
+      <div style="font-size:18px;font-weight:700;color:#333;" id="uavSunset">--:--</div>
+    </div>
+    <div id="uavWindCell" style="background:#c8f7c8;padding:7px 4px;text-align:center;border-radius:3px;transition:background .4s;">
+      <div style="font-size:8px;font-weight:700;color:#444;letter-spacing:.5px;margin-bottom:2px;">VIENTO</div>
+      <div style="font-size:16px;font-weight:700;" id="uavWind">-- km/h</div>
+    </div>
+    <div id="uavWindDirCell" style="background:#c8f7c8;padding:7px 4px;text-align:center;border-radius:3px;transition:background .4s;">
+      <div style="font-size:8px;font-weight:700;color:#444;letter-spacing:.5px;margin-bottom:2px;">DIRECCIÓN</div>
+      <div style="font-size:22px;line-height:1.1;" id="uavWindDir">↑</div>
+      <div style="font-size:10px;font-weight:600;color:#555;" id="uavWindDirText">--</div>
+    </div>
+    <div id="uavGustsCell" style="background:#c8f7c8;padding:7px 4px;text-align:center;border-radius:3px;transition:background .4s;">
+      <div style="font-size:8px;font-weight:700;color:#444;letter-spacing:.5px;margin-bottom:2px;">RÁFAGAS</div>
+      <div style="font-size:16px;font-weight:700;" id="uavGusts">-- km/h</div>
+    </div>
+    <div style="background:#f0f0f0;padding:7px 4px;text-align:center;border-radius:3px;">
+      <div style="font-size:8px;font-weight:700;color:#444;letter-spacing:.5px;margin-bottom:2px;">SENSACIÓN</div>
+      <div style="font-size:16px;font-weight:700;" id="uavFeelsLike">--°C</div>
+    </div>
+    <div id="uavPrecipCell" style="background:#c8f7c8;padding:7px 4px;text-align:center;border-radius:3px;transition:background .4s;">
+      <div style="font-size:8px;font-weight:700;color:#444;letter-spacing:.5px;margin-bottom:2px;">PROB. LLUVIA</div>
+      <div style="font-size:16px;font-weight:700;" id="uavPrecip">--%</div>
+    </div>
+    <div id="uavCloudCell" style="background:#c8f7c8;padding:7px 4px;text-align:center;border-radius:3px;transition:background .4s;">
+      <div style="font-size:8px;font-weight:700;color:#444;letter-spacing:.5px;margin-bottom:2px;">NUBOSIDAD</div>
+      <div style="font-size:16px;font-weight:700;" id="uavCloud">--%</div>
+    </div>
+    <div id="uavVisCell" style="background:#c8f7c8;padding:7px 4px;text-align:center;border-radius:3px;transition:background .4s;">
+      <div style="font-size:8px;font-weight:700;color:#444;letter-spacing:.5px;margin-bottom:2px;">VISIBILIDAD</div>
+      <div style="font-size:16px;font-weight:700;" id="uavVis">-- km</div>
+    </div>
+    <div id="uavKpCell" style="background:#f0f0f0;padding:7px 4px;text-align:center;border-radius:3px;transition:background .4s;">
+      <div style="font-size:8px;font-weight:700;color:#444;letter-spacing:.5px;margin-bottom:2px;">Kp GEOMAG</div>
+      <div style="font-size:16px;font-weight:700;" id="uavKp">--</div>
+    </div>
+    <div style="background:#f0f0f0;padding:7px 4px;text-align:center;border-radius:3px;">
+      <div style="font-size:8px;font-weight:700;color:#444;letter-spacing:.5px;margin-bottom:2px;">TEMPERATURA</div>
+      <div style="font-size:16px;font-weight:700;" id="uavTemp">--°C</div>
+    </div>
+  </div>
+  <div id="uavSourceNote" style="text-align:center;padding:3px 8px;font-size:9px;color:var(--muted);border-top:1px solid var(--border);">📡 Sin TFRs ni NFZs · Fuente: Open-Meteo + NOAA Kp</div>
+  <div style="border-top:2px solid var(--border);padding:8px 10px;background:var(--panel);">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;margin-bottom:6px;">
+      <div style="font-weight:700;font-size:11px;letter-spacing:.8px;">⚙️ UMBRAL DE VUELO</div>
+      <select id="uavDronePreset" onchange="applyDronePreset()" style="font-size:11px;padding:2px 7px;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:3px;max-width:100%;">
+        <option value="mini2">DJI Mini 2 / Mini 3 Pro</option>
+        <option value="mini4">DJI Mini 4 Pro</option>
+        <option value="air2s">DJI Air 2S</option>
+        <option value="mavic3">DJI Mavic 3 / 3 Classic</option>
+        <option value="phantom4">DJI Phantom 4 Pro</option>
+        <option value="matrice">DJI Matrice 300/350 RTK</option>
+        <option value="m30t">DJI Matrice M30T ★</option>
+        <option value="autel">Autel EVO II Pro</option>
+        <option value="skydio">Skydio 2+</option>
+        <option value="custom">✏️ Personalizado</option>
+      </select>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;">
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:5px 3px;text-align:center;">
+        <div style="font-size:8px;color:var(--muted);margin-bottom:1px;">VIENTO MÁX</div>
+        <input id="threshWind" type="number" min="0" max="200" step="1" value="38" style="width:46px;text-align:center;font-size:15px;font-weight:700;border:none;background:transparent;color:var(--text);outline:none;" onchange="loadUAVForecast()">
+        <div style="font-size:8px;color:var(--muted);">km/h</div>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:5px 3px;text-align:center;">
+        <div style="font-size:8px;color:var(--muted);margin-bottom:1px;">RÁFAGAS MÁX</div>
+        <input id="threshGusts" type="number" min="0" max="200" step="1" value="46" style="width:46px;text-align:center;font-size:15px;font-weight:700;border:none;background:transparent;color:var(--text);outline:none;" onchange="loadUAVForecast()">
+        <div style="font-size:8px;color:var(--muted);">km/h</div>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:5px 3px;text-align:center;">
+        <div style="font-size:8px;color:var(--muted);margin-bottom:1px;">LLUVIA MÁX</div>
+        <input id="threshPrecip" type="number" min="0" max="100" step="5" value="30" style="width:46px;text-align:center;font-size:15px;font-weight:700;border:none;background:transparent;color:var(--text);outline:none;" onchange="loadUAVForecast()">
+        <div style="font-size:8px;color:var(--muted);">%</div>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:5px 3px;text-align:center;">
+        <div style="font-size:8px;color:var(--muted);margin-bottom:1px;">NUBOSIDAD MÁX</div>
+        <input id="threshCloud" type="number" min="0" max="100" step="5" value="90" style="width:46px;text-align:center;font-size:15px;font-weight:700;border:none;background:transparent;color:var(--text);outline:none;" onchange="loadUAVForecast()">
+        <div style="font-size:8px;color:var(--muted);">%</div>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:5px 3px;text-align:center;">
+        <div style="font-size:8px;color:var(--muted);margin-bottom:1px;">VISIB. MÍN</div>
+        <input id="threshVis" type="number" min="0" max="50" step="0.5" value="3" style="width:46px;text-align:center;font-size:15px;font-weight:700;border:none;background:transparent;color:var(--text);outline:none;" onchange="loadUAVForecast()">
+        <div style="font-size:8px;color:var(--muted);">km</div>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:5px 3px;text-align:center;">
+        <div style="font-size:8px;color:var(--muted);margin-bottom:1px;">Kp MÁX</div>
+        <input id="threshKp" type="number" min="0" max="9" step="1" value="4" style="width:46px;text-align:center;font-size:15px;font-weight:700;border:none;background:transparent;color:var(--text);outline:none;" onchange="loadUAVForecast()">
+        <div style="font-size:8px;color:var(--muted);">índice</div>
+      </div>
+    </div>
+    <button onclick="loadUAVForecast()" style="margin-top:6px;width:100%;padding:7px 0;font-weight:700;font-size:11px;letter-spacing:1px;border:1px solid var(--border);background:var(--panel2);color:var(--text);cursor:pointer;border-radius:3px;">🔄 EVALUAR VENTANA DE VUELO</button>
+  </div>
+  <div style="border-top:2px solid var(--border);padding:8px 10px 10px 10px;background:var(--bg);">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;margin-bottom:5px;">
+      <div style="font-weight:700;font-size:11px;letter-spacing:.8px;">📅 PRONÓSTICO VUELO · 15 DÍAS</div>
+      <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;">
+        <select id="uav15source" onchange="loadUAV15Day()" style="font-size:10px;padding:2px 5px;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:3px;cursor:pointer;">
+          <option value="openmeteo">🌐 Open-Meteo</option>
+          <option value="accuweather">🎯 AccuWeather</option>
+        </select>
+        <span style="font-size:9px;color:var(--muted);" id="uav15ts">--</span>
+        <button onclick="loadUAV15Day()" style="font-size:10px;padding:2px 7px;border:1px solid var(--border);background:var(--panel);color:var(--text);cursor:pointer;border-radius:3px;">↻</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:3px;margin-bottom:6px;flex-wrap:wrap;">
+      <button onclick="setUAV15Filter('all')" id="uav15f_all" class="uav15fbtn uav15factive">🕐 TODO</button>
+      <button onclick="setUAV15Filter('am')"  id="uav15f_am"  class="uav15fbtn">🌅 06–12H</button>
+      <button onclick="setUAV15Filter('pm')"  id="uav15f_pm"  class="uav15fbtn">☀️ 12–18H</button>
+      <button onclick="setUAV15Filter('eve')" id="uav15f_eve" class="uav15fbtn">🌆 18–21H</button>
+    </div>
+    <div id="uav15DaysWrap" style="display:flex;gap:3px;overflow-x:auto;padding-bottom:4px;">
+      <div style="font-size:10px;color:var(--muted);padding:8px 0;">Cargando pronóstico...</div>
+    </div>
+    <div style="font-size:8px;color:var(--muted);margin-top:3px;text-align:center;" id="uav15note">Viento / ráfagas / lluvia máx en rango horario seleccionado</div>
   </div>
 </div>
 
@@ -2366,6 +2512,7 @@ globalData = data;
                 renderPrintCharts(data);
                 generateTacticalSummary(data);
                 checkVolcanoes();
+                                loadUAV15Day();
 
                                 try{ await fetchAlerts(); }catch(e){}
 
@@ -4471,6 +4618,201 @@ document.addEventListener("DOMContentLoaded", () => {
   // estado inicial
   rerender();
 });
+
+// ================================================================
+// ANEXO 3 – UAV FORECAST  (Open-Meteo + AccuWeather + NOAA Kp)
+// ================================================================
+const UAV_PRESETS={
+  mini2:{wind:38,gusts:46,precip:30,cloud:90,vis:3,kp:3},mini4:{wind:43,gusts:52,precip:30,cloud:90,vis:3,kp:3},
+  air2s:{wind:38,gusts:46,precip:30,cloud:90,vis:3,kp:3},mavic3:{wind:43,gusts:52,precip:30,cloud:90,vis:3,kp:3},
+  phantom4:{wind:36,gusts:43,precip:20,cloud:80,vis:3,kp:3},matrice:{wind:54,gusts:65,precip:50,cloud:95,vis:2,kp:4},
+  m30t:{wind:43,gusts:54,precip:50,cloud:95,vis:2,kp:4},autel:{wind:43,gusts:52,precip:30,cloud:90,vis:3,kp:3},
+  skydio:{wind:50,gusts:60,precip:40,cloud:95,vis:2,kp:4},custom:{wind:38,gusts:45,precip:30,cloud:90,vis:3,kp:4}
+};
+function applyDronePreset(){
+  const p=UAV_PRESETS[document.getElementById('uavDronePreset').value];if(!p)return;
+  document.getElementById('threshWind').value=p.wind;document.getElementById('threshGusts').value=p.gusts;
+  document.getElementById('threshPrecip').value=p.precip;document.getElementById('threshCloud').value=p.cloud;
+  document.getElementById('threshVis').value=p.vis;document.getElementById('threshKp').value=p.kp;
+  loadUAVForecast();
+}
+function _ua(d){return['↑','↗','→','↘','↓','↙','←','↖'][Math.round(d/45)%8];}
+function _uc(d){return['N','NE','E','SE','S','SO','O','NO'][Math.round(d/45)%8];}
+function _uw(c){if(c===0)return{i:'☀️',t:'Despejado'};if(c<=3)return{i:'🌤',t:'Parc. nublado'};if(c<=48)return{i:'🌫',t:'Niebla'};if(c<=57)return{i:'🌦',t:'Llovizna'};if(c<=67)return{i:'🌧',t:'Lluvia'};if(c<=77)return{i:'❄️',t:'Nieve'};if(c<=82)return{i:'🌧',t:'Chubascos'};return{i:'⛈',t:'Tormenta'};}
+function _uae(n,tx){const ic=parseInt(n)||0;if(ic<=5)return{i:'☀️',t:tx||'Soleado'};if(ic<=11)return{i:'🌤',t:tx||'Parc. nublado'};if(ic<=14)return{i:'🌦',t:tx||'Lluvia leve'};if(ic<=17)return{i:'🌩',t:tx||'Tormentas'};if(ic<=26)return{i:'❄️',t:tx||'Nieve'};if(ic<=31)return{i:'🌤',t:tx||'Parc. despejado'};if(ic<=40)return{i:'☁️',t:tx||'Nublado'};return{i:'⛈',t:tx||'Tormenta'};}
+function _ubg(v,t,m){if(v===null||v===undefined||isNaN(v))return'#f0f0f0';const r=m==='max'?v/t:t/v;if(r<0.70)return'#5ae65a';if(r<=1.00)return'#ffe566';return'#ff5e5e';}
+function _us(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
+function _ub(id,c){const e=document.getElementById(id);if(e)e.style.background=c;}
+function _uf(v,d,s){return(v===null||v===undefined||isNaN(v))?'--'+(s||''):v.toFixed(d)+(s||'');}
+async function _uKp(){try{const r=await fetch('https://services.swpc.noaa.gov/json/planetary_k_index_1m.json');const a=await r.json();if(!Array.isArray(a)||!a.length)return NaN;const l=a[a.length-1];const v=parseFloat(Array.isArray(l)?l[1]:(l.Kp||l.kp_index||l.estimated_kp));return isNaN(v)?NaN:v;}catch(e){return NaN;}}
+async function _uSun(lat,lon){try{const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lon+'&daily=sunrise,sunset&timezone=auto&forecast_days=1');const d=await r.json();return{sr:(d?.daily?.sunrise?.[0]||'').slice(11,16)||'--:--',ss:(d?.daily?.sunset?.[0]||'').slice(11,16)||'--:--'};}catch(e){return{sr:'--:--',ss:'--:--'};}}
+function _uApply(d){
+  const{wind,gusts,wDir,precip,cloud,visKm,feels,temp,wx,sunrise,sunset,kpVal,src}=d;
+  _us('uavWeatherIcon',wx.i);_us('uavWeatherText',wx.t);_us('uavSunrise',sunrise);_us('uavSunset',sunset);
+  _us('uavWind',_uf(wind,0,' km/h'));_us('uavWindDir',wind!=null?_ua(wDir):'↑');_us('uavWindDirText',wind!=null?_uc(wDir):'--');
+  _us('uavGusts',_uf(gusts,0,' km/h'));_us('uavFeelsLike',_uf(feels,0,'°C'));
+  _us('uavPrecip',precip!=null?precip+'%':'--%');_us('uavCloud',cloud!=null?cloud+'%':'--%');
+  _us('uavVis',visKm!=null?(visKm>=10?'>10 km':visKm.toFixed(1)+' km'):'-- km');
+  _us('uavTemp',_uf(temp,0,'°C'));_us('uavKp',isNaN(kpVal)?'--':kpVal.toFixed(1));
+  _us('uavLastUpdate','Últ. act.: '+new Date().toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'}));
+  _us('uavSourceNote','📡 Sin TFRs ni NFZs · Fuente: '+(src||'--'));
+  const tW=+document.getElementById('threshWind')?.value||38,tG=+document.getElementById('threshGusts')?.value||46;
+  const tP=+document.getElementById('threshPrecip')?.value||30,tC=+document.getElementById('threshCloud')?.value||90;
+  const tV=+document.getElementById('threshVis')?.value||3,tK=+document.getElementById('threshKp')?.value||4;
+  _ub('uavWindCell',_ubg(wind,tW,'max'));_ub('uavWindDirCell',_ubg(wind,tW,'max'));_ub('uavGustsCell',_ubg(gusts,tG,'max'));
+  _ub('uavPrecipCell',_ubg(precip,tP,'max'));_ub('uavCloudCell',_ubg(cloud,tC,'max'));_ub('uavVisCell',_ubg(visKm,tV,'min'));
+  _ub('uavKpCell',isNaN(kpVal)?'#f0f0f0':_ubg(kpVal,tK,'max'));
+  const kpOk=isNaN(kpVal)||kpVal<=tK;
+  const ok=((wind==null||wind<=tW)&&(gusts==null||gusts<=tG)&&(precip==null||precip<=tP)&&(cloud==null||cloud<=tC)&&(visKm==null||visKm>=tV)&&kpOk);
+  const reasons=[];
+  if(wind!=null&&wind>tW)reasons.push('VIENTO ('+wind.toFixed(0)+'>'+tW+')');
+  if(gusts!=null&&gusts>tG)reasons.push('RÁFAGAS ('+gusts.toFixed(0)+'>'+tG+')');
+  if(precip!=null&&precip>tP)reasons.push('LLUVIA ('+precip+'%>'+tP+'%)');
+  if(cloud!=null&&cloud>tC)reasons.push('NUBOSIDAD ('+cloud+'%>'+tC+'%)');
+  if(visKm!=null&&visKm<tV)reasons.push('VISIB. ('+visKm.toFixed(1)+'<'+tV+'km)');
+  if(!kpOk&&!isNaN(kpVal))reasons.push('Kp ('+kpVal.toFixed(1)+'>'+tK+')');
+  const warn=[];
+  if(ok&&wind!=null&&wind>tW*0.78)warn.push('viento');
+  if(ok&&gusts!=null&&gusts>tG*0.78)warn.push('ráfagas');
+  if(ok&&precip!=null&&precip>tP*0.55)warn.push('lluvia');
+  const st=document.getElementById('uavStatus');if(!st)return;
+  if(!ok){st.style.background='#e53935';st.style.color='#fff';st.textContent='🚫 NO APTO PARA VOLAR · '+reasons.join(' · ');}
+  else if(warn.length){st.style.background='#f9a825';st.style.color='#1a1a1a';st.textContent='⚠️ PRECAUCIÓN: '+warn.join(', ').toUpperCase();}
+  else{st.style.background='#2ecc71';st.style.color='#fff';st.textContent='✅ APTO PARA VOLAR';}
+}
+async function _uOM(lat,lon){
+  const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lon+'&current=temperature_2m,apparent_temperature,wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation_probability,cloud_cover,visibility,weather_code&daily=sunrise,sunset&wind_speed_unit=kmh&timezone=auto');
+  if(!r.ok)throw new Error('Open-Meteo '+r.status);
+  const o=await r.json(),c=o.current,dy=o.daily;
+  return{wind:c.wind_speed_10m,gusts:c.wind_gusts_10m,wDir:c.wind_direction_10m,precip:c.precipitation_probability??0,cloud:c.cloud_cover,visKm:c.visibility/1000,feels:c.apparent_temperature,temp:c.temperature_2m,wx:_uw(c.weather_code),sunrise:(dy?.sunrise?.[0]||'').slice(11,16)||'--:--',sunset:(dy?.sunset?.[0]||'').slice(11,16)||'--:--',src:'Open-Meteo + NOAA Kp'};
+}
+async function _uAW(lat,lon){
+  const base=(typeof WORKER_BASE_URL==='string'?WORKER_BASE_URL:'').replace(/\/$/,'');
+  if(!base)throw new Error('WORKER_BASE_URL no definida');
+  const la=encodeURIComponent(lat),lo=encodeURIComponent(lon);
+  const[pC,pH,sun]=await Promise.all([workerFetchJSON(base+'/accu/current?lat='+la+'&lon='+lo),workerFetchJSON(base+'/accu/hourly12?lat='+la+'&lon='+lo).catch(()=>null),_uSun(lat,lon)]);
+  const cc=pC?.data||null;const h12=Array.isArray(pH?.data)?pH.data:Array.isArray(pH)?pH:null;
+  let precip=h12?.[0]?.PrecipitationProbability??null;if(precip===null)precip=cc?.HasPrecipitation?80:5;
+  return{wind:cc?.Wind?.Speed?.Metric?.Value??null,gusts:cc?.WindGust?.Speed?.Metric?.Value??null,wDir:cc?.Wind?.Direction?.Degrees??0,precip,cloud:cc?.CloudCover??null,visKm:cc?.Visibility?.Metric?.Value??null,feels:cc?.RealFeelTemperature?.Metric?.Value??null,temp:cc?.Temperature?.Metric?.Value??null,wx:_uae(cc?.WeatherIcon??1,cc?.WeatherText||null),sunrise:sun.sr,sunset:sun.ss,src:'AccuWeather (Core) + NOAA Kp'};
+}
+async function loadUAVForecast(){
+  const st=document.getElementById('uavStatus');if(!st)return;
+  st.textContent='EVALUANDO CONDICIONES...';st.style.background='#888';st.style.color='#fff';
+  let lat=-33.4489,lon=-70.6693;
+  const co=(typeof getAnnex2LatLon==='function')?getAnnex2LatLon():null;
+  if(co){lat=co.lat;lon=co.lon;}else if(typeof lastLat==='number'&&lastLat){lat=lastLat;lon=lastLon;}
+  const kpP=_uKp();const src=document.getElementById('uavSource')?.value||'openmeteo';
+  try{const data=await(src==='accuweather'?_uAW(lat,lon):_uOM(lat,lon));data.kpVal=await kpP;_uApply(data);}
+  catch(err){st.style.background='#e53935';st.style.color='#fff';st.textContent='⚠️ Error: '+err.message;console.error('[UAV]',err);}
+}
+(function(){const r=()=>{if(document.getElementById('uavStatus'))loadUAVForecast();};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(r,2500));else setTimeout(r,2500);})();
+// ================================================================
+
+
+// ================================================================
+// UAV 15-DAY FORECAST — Open-Meteo + AccuWeather
+// ================================================================
+let uav15Cache=null,uav15Filter='all';
+const UAV15_HOURS={all:[...Array(24).keys()],am:[6,7,8,9,10,11],pm:[12,13,14,15,16,17],eve:[18,19,20]};
+const _u15dn=['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'];
+const _u15mn=['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+function _u15wx(c){if(c===0)return'☀️';if(c<=2)return'🌤';if(c<=3)return'☁️';if(c<=48)return'🌫';if(c<=57)return'🌦';if(c<=67)return'🌧';if(c<=77)return'❄️';if(c<=82)return'🌧';return'⛈';}
+function _u15wxAW(i){if(i<=5)return'☀️';if(i<=8)return'🌤';if(i<=11)return'☁️';if(i<=14)return'🌦';if(i<=17)return'⛈';if(i<=29)return'❄️';return'🌧';}
+function _u15badge(w,g,p,tW,tG,tP){
+  if((w!=null&&w>tW)||(g!=null&&g>tG)||(p!=null&&p>tP))return{bg:'#e53935',fg:'#fff',icon:'🚫'};
+  if((w!=null&&w>tW*.78)||(g!=null&&g>tG*.78)||(p!=null&&p>tP*.55))return{bg:'#f9a825',fg:'#1a1a1a',icon:'⚠️'};
+  return{bg:'#2ecc71',fg:'#fff',icon:'✅'};
+}
+function _u15maxH(arr,dayIdx,hrs){let mx=null;for(const h of hrs){const v=arr?.[dayIdx*24+h];if(v!=null&&!isNaN(v)&&(mx===null||v>mx))mx=v;}return mx;}
+function _u15card(b,isT,dt,wx,w,g,p,tmax,tmin){
+  return `<div style="flex:0 0 60px;background:${b.bg};color:${b.fg};border-radius:3px;padding:5px 2px;text-align:center;box-sizing:border-box;${isT?'outline:2px solid var(--accent);':''}">
+    <div style="font-size:8px;font-weight:bold;border-bottom:1px solid rgba(255,255,255,.3);padding-bottom:2px;margin-bottom:2px;">${isT?'HOY':_u15dn[dt.getDay()]}<br><span style="opacity:.75;">${dt.getDate()} ${_u15mn[dt.getMonth()]}</span></div>
+    <div style="font-size:15px;line-height:1.2;">${wx}</div>
+    <div style="font-size:12px;margin:1px 0;">${b.icon}</div>
+    <div style="font-size:10px;font-weight:bold;">${w!=null?Math.round(w):'--'}<span style="font-size:7px;font-weight:400;"> km/h</span></div>
+    <div style="font-size:8px;opacity:.85;">ráf ${g!=null?Math.round(g):'--'}</div>
+    <div style="font-size:8px;">${p!=null?Math.round(p)+'%':''}</div>
+    <div style="font-size:8px;opacity:.8;">${tmax!=null?Math.round(tmax)+'°':'--'}/${tmin!=null?Math.round(tmin)+'°':'--'}</div>
+  </div>`;}
+function setUAV15Filter(f){
+  uav15Filter=f;
+  ['all','am','pm','eve'].forEach(k=>{const b=document.getElementById('uav15f_'+k);if(b)b.classList.toggle('uav15factive',k===f);});
+  renderUAV15Days();
+}
+function renderUAV15Days(){
+  const wrap=document.getElementById('uav15DaysWrap');
+  if(!wrap||!uav15Cache)return;
+  const tW=+document.getElementById('threshWind')?.value||38;
+  const tG=+document.getElementById('threshGusts')?.value||46;
+  const tP=+document.getElementById('threshPrecip')?.value||30;
+  const today=new Date().toISOString().slice(0,10);
+  let html='';
+  if(uav15Cache.type==='openmeteo'){
+    const hrs=UAV15_HOURS[uav15Filter]||UAV15_HOURS.all;
+    const h=uav15Cache.hourly,d=uav15Cache.daily;
+    for(let i=0;i<Math.min(15,d.time.length);i++){
+      const ds=d.time[i],dt=new Date(ds+'T12:00:00'),isT=ds===today;
+      const w=_u15maxH(h.wind_speed_10m,i,hrs)??d.wind_speed_10m_max?.[i];
+      const g=_u15maxH(h.wind_gusts_10m,i,hrs)??d.wind_gusts_10m_max?.[i];
+      const p=_u15maxH(h.precipitation_probability,i,hrs)??d.precipitation_probability_max?.[i];
+      html+=_u15card(_u15badge(w,g,p,tW,tG,tP),isT,dt,_u15wx(d.weather_code?.[i]??0),w,g,p,d.temperature_2m_max?.[i],d.temperature_2m_min?.[i]);
+    }
+  } else if(uav15Cache.type==='accuweather'){
+    const days=uav15Cache.days;
+    for(let i=0;i<Math.min(15,days.length);i++){
+      const day=days[i],ds=day.date.slice(0,10),dt=new Date(ds+'T12:00:00'),isT=ds===today;
+      let w,g,p;
+      if(uav15Filter==='eve'){w=day.night.wind;g=day.night.gusts;p=day.night.precip;}
+      else if(uav15Filter==='all'){w=Math.max(day.day.wind??0,day.night.wind??0);g=Math.max(day.day.gusts??0,day.night.gusts??0);p=Math.max(day.day.precip??0,day.night.precip??0);}
+      else{w=day.day.wind;g=day.day.gusts;p=day.day.precip;}
+      html+=_u15card(_u15badge(w,g,p,tW,tG,tP),isT,dt,_u15wxAW(day.icon??1),w,g,p,day.tmax,day.tmin);
+    }
+  }
+  wrap.innerHTML=html||'<div style="font-size:10px;color:var(--muted);padding:6px;">Sin datos.</div>';
+}
+async function _u15fetchOM(lat,lon){
+  const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lon+'&daily=weather_code,temperature_2m_max,temperature_2m_min,wind_speed_10m_max,wind_gusts_10m_max,precipitation_probability_max&hourly=wind_speed_10m,wind_gusts_10m,precipitation_probability&wind_speed_unit=kmh&timezone=auto&forecast_days=16');
+  if(!r.ok)throw new Error('Open-Meteo '+r.status);
+  const d=await r.json();
+  return{type:'openmeteo',daily:d.daily,hourly:d.hourly};
+}
+async function _u15fetchAW(lat,lon){
+  const base=(typeof WORKER_BASE_URL==='string'?WORKER_BASE_URL:'').replace(/\/$/,'');
+  if(!base)throw new Error('WORKER_BASE_URL no definida');
+  const la=encodeURIComponent(lat),lo=encodeURIComponent(lon);
+  let data=null;
+  try{const r=await workerFetchJSON(base+'/accu/daily15?lat='+la+'&lon='+lo);data=r?.data||r;}
+  catch(e){const r=await workerFetchJSON(base+'/accu/daily5?lat='+la+'&lon='+lo);data=r?.data||r;}
+  const fc=data?.DailyForecasts||data?.dailyForecasts||[];
+  return{type:'accuweather',days:fc.map(f=>({
+    date:f.Date||f.date||'',icon:f.Day?.Icon||1,
+    tmax:f.Temperature?.Maximum?.Value??null,tmin:f.Temperature?.Minimum?.Value??null,
+    day:{wind:f.Day?.Wind?.Speed?.Value??null,gusts:f.Day?.WindGust?.Speed?.Value??null,precip:f.Day?.PrecipitationProbability??null},
+    night:{wind:f.Night?.Wind?.Speed?.Value??null,gusts:f.Night?.WindGust?.Speed?.Value??null,precip:f.Night?.PrecipitationProbability??null}
+  }))};
+}
+async function loadUAV15Day(){
+  const wrap=document.getElementById('uav15DaysWrap'),tsEl=document.getElementById('uav15ts'),noteEl=document.getElementById('uav15note');
+  if(!wrap)return;
+  wrap.innerHTML='<div style="font-size:10px;color:var(--muted);padding:8px 0;">Cargando...</div>';
+  let lat=-33.4489,lon=-70.6693;
+  const co=(typeof getAnnex2LatLon==='function')?getAnnex2LatLon():null;
+  if(co){lat=co.lat;lon=co.lon;}else if(typeof lastLat==='number'&&lastLat){lat=lastLat;lon=lastLon;}
+  const src=document.getElementById('uav15source')?.value||'openmeteo';
+  try{
+    uav15Cache=src==='accuweather'?await _u15fetchAW(lat,lon):await _u15fetchOM(lat,lon);
+    if(tsEl)tsEl.textContent=new Date().toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'});
+    if(noteEl){const lbl=src==='accuweather'?'AccuWeather '+(uav15Cache.days?.length>=10?'15d':'5d fallback'):'Open-Meteo 16d';noteEl.textContent='Viento / ráfagas / lluvia máx en rango horario · '+lbl;}
+    renderUAV15Days();
+  }catch(err){wrap.innerHTML='<div style="font-size:10px;color:#e53935;padding:6px;">⚠️ '+err.message+'</div>';console.error('[UAV15]',err);}
+}
+const _oPD15=applyDronePreset;
+applyDronePreset=function(){_oPD15.apply(this,arguments);renderUAV15Days();};
+(function(){const r=()=>{if(document.getElementById('uav15DaysWrap'))loadUAV15Day();};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(r,3500));
+  else setTimeout(r,3500);})();
+// ================================================================
+
 </script>
 
 </body>
