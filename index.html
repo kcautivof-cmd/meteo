@@ -1521,7 +1521,7 @@ async function fetchAlerts(){
     try{
         meta.textContent = "ACTUALIZANDO ALERTAS...";
         const url = buildWorkerUrlPath("/alerts", { region: "nacional", limit: "40" });
-        const r = await fetch(url, { headers: { "Accept": "application/json", ...(AUTH_TOKEN ? { "Authorization": "Bearer " + AUTH_TOKEN } : {}) } });
+        const r = await fetch(url, { headers: { "Accept": "application/json" } });
         if(!r.ok) throw new Error("HTTP " + r.status);
         const js = await r.json();
 
@@ -1619,7 +1619,7 @@ async function fetchAlerts(){
             try{
                 meta.textContent = "ACTUALIZANDO ALERTAS...";
                 const url = buildWorkerUrlPath("/alerts", { region: "nacional", limit: "8" });
-                const r = await fetch(url, { headers: { "Accept": "application/json", ...(AUTH_TOKEN ? { "Authorization": "Bearer " + AUTH_TOKEN } : {}) } });
+                const r = await fetch(url, { headers: { "Accept": "application/json" } });
                 if(!r.ok) throw new Error("HTTP " + r.status);
                 const js = await r.json();
 
@@ -4294,7 +4294,12 @@ function getWorkerBase() {
 }
 
 async function workerFetchJSON(url, signal) {
-  const res = await fetch(url, { headers: { "Accept": "application/json" }, signal });
+  const headers = { "Accept": "application/json" };
+  // Si el Worker protege endpoints (401/403), enviamos el JWT guardado por el login.
+  if (typeof AUTH_TOKEN === "string" && AUTH_TOKEN) {
+    headers["Authorization"] = "Bearer " + AUTH_TOKEN;
+  }
+  const res = await fetch(url, { headers, signal });
   if (!res.ok) {
     const t = await res.text().catch(() => "");
     const err = new Error(`Worker ${res.status}: ${t || res.statusText}`);
