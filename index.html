@@ -672,6 +672,18 @@ input, select {
 </head>
 <body>
 
+<!-- LOGIN MODAL (meteo-auth) -->
+<div id="loginModal" style="position:fixed;inset:0;z-index:99999;display:none;background:rgba(0,0,0,.55);align-items:center;justify-content:center;">
+  <div style="width:340px;max-width:92vw;background:var(--bg,#111);color:var(--text,#fff);border:1px solid var(--border,#333);padding:14px;border-radius:10px;">
+    <div style="font-weight:800;margin-bottom:10px;letter-spacing:1px;">ACCESO</div>
+    <input id="loginUser" placeholder="USUARIO" autocomplete="username" style="width:100%;margin-bottom:8px;padding:8px;">
+    <input id="loginPass" placeholder="CLAVE" type="password" autocomplete="current-password" style="width:100%;margin-bottom:10px;padding:8px;">
+    <button id="btnLogin" onclick="doLogin()" style="width:100%;padding:9px;cursor:pointer;">INGRESAR</button>
+    <div id="loginMsg" style="font-size:11px;opacity:.85;margin-top:8px;min-height:14px;"></div>
+  </div>
+</div>
+
+
     <div id="splashScreen">
         <div class="splash-content">
             
@@ -4814,16 +4826,112 @@ applyDronePreset=function(){_oPD15.apply(this,arguments);renderUAV15Days();};
 // ================================================================
 
 </script>
-<div id="loginOverlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:#fff;z-index:9999;display:flex;align-items:center;justify-content:center;">
-  <div style="background:#fff;border:1px solid #000;padding:50px 40px;text-align:center;">
-    <h2 style="color:#000;font-family:Consolas;letter-spacing:3px;">METEOROLOGÍA</h2>
-    
-    <input id="loginUser" placeholder="usuario" autocapitalize="none" style="width:250px;padding:10px;margin:5px;border:1px solid #aaa;text-transform:none;">
-    <input id="loginPass" type="password" placeholder="contraseña" autocapitalize="none" style="width:250px;padding:10px;margin:5px;border:1px solid #aaa;text-transform:none;">
-    
-    <br><br>
-    <button onclick="doLogin()" style="padding:8px 20px;background:#fff;color:#000;border:1px solid #000;font-family:Consolas;font-weight:bold;cursor:pointer;">INGRESAR</button>
-  </div>
-</div>
+
+
+<script>
+/* ===========================
+   AUTH (meteo-auth) - DROP-IN
+   =========================== */
+const AUTH_BASE_URL = "https://meteo-auth.kcautivof.workers.dev";
+function authUrl(path){ return AUTH_BASE_URL.replace(/\/+$/,'') + path; }
+
+let AUTH_TOKEN = localStorage.getItem("auth_token") || "";
+let AUTH_USER  = localStorage.getItem("auth_user")  || "";
+let AUTH_ROLE  = localStorage.getItem("auth_role")  || "";
+
+function showLogin(msg=""){
+  const modal = document.getElementById("loginModal");
+  const m = document.getElementById("loginMsg");
+  if(m) m.textContent = msg || "";
+  if(modal) modal.style.display = "flex";
+}
+function hideLogin(){
+  const modal = document.getElementById("loginModal");
+  const m = document.getElementById("loginMsg");
+  if(m) m.textContent = "";
+  if(modal) modal.style.display = "none";
+}
+
+async function verifySession(){
+  if(!AUTH_TOKEN) return false;
+  try{
+    const r = await fetch(authUrl("/auth/verify"), {
+      method: "POST",
+      headers: { "Authorization": "Bearer " + AUTH_TOKEN, "Accept":"application/json" }
+    });
+    if(!r.ok) return false;
+    const js = await r.json().catch(()=>({}));
+    return !!js.valid;
+  }catch(e){
+    return false;
+  }
+}
+
+async function doLogin(){
+  const username = (document.getElementById("loginUser")?.value || "").trim();
+  const password = (document.getElementById("loginPass")?.value || "");
+  const msg = document.getElementById("loginMsg");
+  const btn = document.getElementById("btnLogin");
+
+  if(!username || !password){
+    if(msg) msg.textContent = "Completa usuario y clave.";
+    return;
+  }
+
+  try{
+    if(btn) btn.disabled = true;
+    if(msg) msg.textContent = "Validando credenciales...";
+
+    const r = await fetch(authUrl("/auth/login"), {
+      method: "POST",
+      headers: {"Content-Type":"application/json","Accept":"application/json"},
+      body: JSON.stringify({ username, password })
+    });
+
+    const js = await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(js?.error || ("HTTP " + r.status));
+    if(!js.token) throw new Error("No vino token.");
+
+    AUTH_TOKEN = js.token;
+    AUTH_USER  = js.user || username.toLowerCase();
+    AUTH_ROLE  = js.role || "user";
+
+    localStorage.setItem("auth_token", AUTH_TOKEN);
+    localStorage.setItem("auth_user", AUTH_USER);
+    localStorage.setItem("auth_role", AUTH_ROLE);
+
+    hideLogin();
+
+    // Si tu UI usa splash "ENTRAR", la dejamos tal cual.
+    // Si no, intentamos activar lo que exista.
+    try{ if (typeof enterSystem === "function") enterSystem(); }catch(e){}
+  }catch(e){
+    if(msg) msg.textContent = "ERROR: " + (e?.message || e);
+  }finally{
+    if(btn) btn.disabled = false;
+  }
+}
+
+// Envolvemos el window.onload existente SIN romper tu lógica
+(function(){
+  const _prevOnload = window.onload;
+  window.onload = async function(){
+    const ok = await verifySession();
+    if(!ok){
+      AUTH_TOKEN = "";
+      localStorage.removeItem("auth_token");
+      showLogin("Ingresa credenciales.");
+      return;
+    }
+    if(typeof _prevOnload === "function"){
+      try{
+        const r = _prevOnload();
+        if(r && typeof r.then === "function") await r;
+      }catch(e){}
+    }
+  };
+})();
+</script>
+
 </body>
 </html>
