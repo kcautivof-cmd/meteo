@@ -4295,8 +4295,16 @@ function getWorkerBase() {
   return base;
 }
 
+// CÓDIGO CORREGIDO (CON AUTORIZACIÓN)
 async function workerFetchJSON(url, signal) {
-  const res = await fetch(url, { headers: { "Accept": "application/json" }, signal });
+  const headers = { "Accept": "application/json" };
+  
+  // Aquí le inyectamos el token para que no te tire 401 Unauthorized
+  if (typeof AUTH_TOKEN !== 'undefined' && AUTH_TOKEN) {
+    headers["Authorization"] = "Bearer " + AUTH_TOKEN;
+  }
+
+  const res = await fetch(url, { headers: headers, signal });
   if (!res.ok) {
     const t = await res.text().catch(() => "");
     const err = new Error(`Worker ${res.status}: ${t || res.statusText}`);
