@@ -674,9 +674,9 @@ input, select {
 #loginBox{background:#fff;border:1px solid #000;padding:52px 44px;width:310px;text-align:center;}
 #loginTitle{color:#000;font-family:Consolas,monospace;font-size:17px;letter-spacing:4px;font-weight:normal;margin-bottom:4px;}
 #loginSub{color:#555;font-family:Consolas;font-size:10px;letter-spacing:2px;margin-bottom:36px;}
-#loginBox input{width:100%;padding:11px;margin:5px 0;background:#fff;border:1px solid #aaa;color:#000;font-family:Consolas;box-sizing:border-box;font-size:12px;letter-spacing:2px;border-radius:0;}
+#loginBox input{width:100%;padding:11px;margin:5px 0;background:#fff;border:1px solid #aaa;color:#000;font-family:Consolas;box-sizing:border-box;font-size:12px;letter-spacing:2px;border-radius:0;text-transform:none !important;}
 #loginBox input:focus{outline:none;border-color:#000;}
-#loginBox input::placeholder{color:#aaa;letter-spacing:1px;}
+#loginBox input::placeholder{color:#aaa;letter-spacing:1px;text-transform:none !important;}
 #loginBtn{width:100%;padding:13px;margin-top:20px;background:#000;color:#fff;border:none;font-family:Consolas;font-size:12px;letter-spacing:5px;cursor:pointer;font-weight:bold;}
 #loginBtn:hover{background:#333;}
 #loginError{color:#000;font-size:10px;margin-top:12px;display:none;font-family:Consolas;letter-spacing:1px;border:1px solid #aaa;padding:7px;}
@@ -688,8 +688,8 @@ input, select {
   <div id="loginBox">
     <div id="loginTitle">METEOROLOG&Iacute;A APLICADA</div>
     <div id="loginSub">PLATAFORMA METEOROL&Oacute;GICA</div>
-    <input type="text" id="loginUser" placeholder="USUARIO" autocomplete="off"/>
-    <input type="password" id="loginPass" placeholder="CONTRASE&Ntilde;A"/>
+    <input type="text" id="loginUser" placeholder="usuario" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"/>
+    <input type="password" id="loginPass" placeholder="contraseña" autocapitalize="none" autocorrect="off" spellcheck="false"/>
     <button id="loginBtn" onclick="doLogin()">INGRESAR</button>
     <div id="loginError">USUARIO O CONTRASE&Ntilde;A INCORRECTO</div>
     <div id="loginFooter">v2.0 &middot; Acceso restringido</div>
