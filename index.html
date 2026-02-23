@@ -59,7 +59,6 @@ body {
         /* CONTROLS */
         .control-bar { display: flex; gap: 10px; border: 1px solid var(--border); padding: 10px; margin-bottom: 10px; align-items: center; background: var(--panel); flex-wrap: wrap; }
         input, select, button { background: var(--bg); color: var(--text); border: 1px solid var(--border); padding: 8px; font-family: 'Consolas', monospace; text-transform: uppercase; font-size: 11px; }
-        #loginUser, #loginPass { text-transform: none !important; background:#fff !important; color:#000 !important; border:1px solid #aaa !important; }
         input { width: 200px; }
         button { cursor: pointer; border: 1px solid var(--text); background: var(--panel); font-weight: bold; }
         button:hover { filter: brightness(0.98); }
@@ -670,30 +669,8 @@ input, select {
   .print-chart-row { grid-template-columns: 1fr !important; }
 }
 </style>
-<style id="login-style">
-#loginOverlay{position:fixed;top:0;left:0;width:100%;height:100%;background:#fff;z-index:99999;display:flex;align-items:center;justify-content:center;}
-#loginBox{background:#ffffff;border:1px solid #000;padding:52px 44px;width:310px;text-align:center;}
-#loginTitle{color:#000000;font-family:Consolas,monospace;font-size:17px;letter-spacing:4px;font-weight:normal;margin-bottom:4px;}
-#loginSub{color:#555;font-family:Consolas;font-size:10px;letter-spacing:2px;margin-bottom:36px;}
-#loginBtn{width:auto;padding:10px 30px;margin-top:20px;background:#ffffff !important;color:#000000 !important;border:1px solid #000;font-family:Consolas;font-size:12px;letter-spacing:5px;cursor:pointer;font-weight:bold;}
-#loginBtn:hover{background:#eeeeee !important;}
-#loginError{color:#000;font-size:10px;margin-top:12px;display:none;font-family:Consolas;letter-spacing:1px;border:1px solid #aaa;padding:7px;}
-#loginFooter{color:#aaa;font-size:10px;margin-top:30px;font-family:Consolas;letter-spacing:1px;}
-</style>
 </head>
 <body>
-<div id="loginOverlay">
-  <div id="loginBox">
-    <div id="loginTitle">METEOROLOG&Iacute;A APLICADA</div>
-    <div id="loginSub">PLATAFORMA METEOROL&Oacute;GICA</div>
-    <input type="text" id="loginUser" placeholder="usuario" autocomplete="off" autocapitalize="none"/>
-    <input type="password" id="loginPass" placeholder="contrase&ntilde;a" autocapitalize="none"/>
-    <button id="loginBtn" onclick="doLogin()">INGRESAR</button>
-    <div id="loginError">USUARIO O CONTRASE&Ntilde;A INCORRECTO</div>
-    <div id="loginFooter">v2.0 &middot; Acceso restringido</div>
-  </div>
-</div>
-
 
     <div id="splashScreen">
         <div class="splash-content">
@@ -4837,35 +4814,16 @@ applyDronePreset=function(){_oPD15.apply(this,arguments);renderUAV15Days();};
 // ================================================================
 
 </script>
-
-<script id="login-script">
-(function(){
-  var _sysOnload = window.onload;
-  window.onload = null;
-  var USERS = {"admin":"meteo2024","kcautivo":"cmd2024"};
-  function arrancarSistema(){
-    document.getElementById('loginOverlay').style.display='none';
-    if(typeof _sysOnload === 'function') _sysOnload();
-  }
-  var auth = localStorage.getItem('meteo_auth');
-  if(auth){try{var ts=parseInt(atob(auth).split(':')[1]);if(Date.now()-ts<86400000){arrancarSistema();return;}else{localStorage.removeItem('meteo_auth');}}catch(e){localStorage.removeItem('meteo_auth');}}
-  setTimeout(function(){var u=document.getElementById('loginUser');if(u)u.focus();},100);
-  window.doLogin = function(){
-    var u=document.getElementById('loginUser').value.trim().toLowerCase();
-    var p=document.getElementById('loginPass').value;
-    var err=document.getElementById('loginError');
-    if(USERS[u]&&USERS[u]===p){
-      localStorage.setItem('meteo_auth',btoa(u+':'+Date.now()));
-      err.style.display='none';
-      arrancarSistema();
-    } else {
-      err.style.display='block';
-      document.getElementById('loginPass').value='';
-      document.getElementById('loginPass').focus();
-    }
-  };
-  document.addEventListener('keypress',function(e){if(e.key==='Enter')window.doLogin();});
-})();
-</script>
+<div id="loginOverlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:#fff;z-index:9999;display:flex;align-items:center;justify-content:center;">
+  <div style="background:#fff;border:1px solid #000;padding:50px 40px;text-align:center;">
+    <h2 style="color:#000;font-family:Consolas;letter-spacing:3px;">METEOROLOGÍA</h2>
+    
+    <input id="loginUser" placeholder="usuario" autocapitalize="none" style="width:250px;padding:10px;margin:5px;border:1px solid #aaa;text-transform:none;">
+    <input id="loginPass" type="password" placeholder="contraseña" autocapitalize="none" style="width:250px;padding:10px;margin:5px;border:1px solid #aaa;text-transform:none;">
+    
+    <br><br>
+    <button onclick="doLogin()" style="padding:8px 20px;background:#fff;color:#000;border:1px solid #000;font-family:Consolas;font-weight:bold;cursor:pointer;">INGRESAR</button>
+  </div>
+</div>
 </body>
 </html>
