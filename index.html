@@ -668,9 +668,52 @@ input, select {
   .chart-menu-bottom select, .chart-menu-bottom input { padding: 5px !important; font-size: 9px !important; }
   .print-chart-row { grid-template-columns: 1fr !important; }
 }
+
+        #loginScreen{position:fixed;top:0;left:0;width:100%;height:100%;background:#1a1a2e;z-index:99999;display:flex;align-items:center;justify-content:center;}
+        #loginScreen.hidden{display:none;}
+        .login-card{background:#fff;border-radius:6px;padding:36px 40px 32px 40px;width:100%;max-width:340px;box-shadow:0 8px 32px rgba(0,0,0,.4);text-align:center;}
+        .login-title{font-size:13px;font-weight:900;letter-spacing:2px;color:#1a1a2e;text-transform:uppercase;margin-bottom:4px;}
+        .login-subtitle{font-size:10px;color:#888;letter-spacing:1px;margin-bottom:28px;text-transform:uppercase;}
+        .login-field{width:100%;box-sizing:border-box;border:1px solid #ccc;border-radius:4px;padding:10px 12px;font-size:13px;margin-bottom:12px;outline:none;}
+        .login-field:focus{border-color:#1a1a2e;}
+        .login-btn{width:100%;padding:11px 0;background:#1a1a2e;color:#fff;border:none;border-radius:4px;font-size:12px;font-weight:700;letter-spacing:1.5px;cursor:pointer;text-transform:uppercase;margin-top:4px;}
+        .login-btn:hover{background:#2d2d4e;}
+        .login-btn:disabled{background:#999;cursor:not-allowed;}
+        .login-error{color:#e53935;font-size:11px;margin-top:10px;min-height:16px;font-weight:600;}
+        .login-version{font-size:9px;color:#bbb;margin-top:20px;}
+        #logoutBtn{position:fixed;bottom:12px;right:12px;font-size:10px;padding:5px 10px;border:1px solid var(--border);background:var(--panel);color:var(--muted);cursor:pointer;border-radius:3px;z-index:1000;opacity:.6;}
+        #logoutBtn:hover{opacity:1;}
+        #adminPanel{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border:1px solid #ccc;border-radius:6px;padding:24px;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.3);z-index:9000;}
 </style>
 </head>
 <body>
+  <div id="loginScreen">
+    <div class="login-card">
+      <div class="login-title">&#127750; Meteorolog&#237;a Aplicada</div>
+      <div class="login-subtitle">Plataforma Meteorol&#243;gica</div>
+      <input id="loginUser" class="login-field" type="text" placeholder="Usuario" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('loginPass').focus()">
+      <input id="loginPass" class="login-field" type="password" placeholder="Contrase&#241;a" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+      <button class="login-btn" id="loginBtn" onclick="doLogin()">INGRESAR</button>
+      <div class="login-error" id="loginError"></div>
+      <div class="login-version">v2.0 &middot; Acceso restringido</div>
+    </div>
+  </div>
+  <button id="logoutBtn" onclick="doLogout()">&#9211; Salir</button>
+  <div id="adminPanel">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div style="font-weight:800;font-size:12px;letter-spacing:1px;">&#128100; GESTI&#211;N DE USUARIOS</div>
+      <button onclick="document.getElementById('adminPanel').style.display='none'" style="border:none;background:none;cursor:pointer;font-size:16px;color:#888;">&#x2715;</button>
+    </div>
+    <input id="newUserName" placeholder="Usuario nuevo" style="width:100%;box-sizing:border-box;border:1px solid #ccc;border-radius:3px;padding:7px 10px;font-size:12px;margin-bottom:6px;">
+    <input id="newUserPass" type="password" placeholder="Contrase&#241;a" style="width:100%;box-sizing:border-box;border:1px solid #ccc;border-radius:3px;padding:7px 10px;font-size:12px;margin-bottom:6px;">
+    <select id="newUserRole" style="width:100%;box-sizing:border-box;border:1px solid #ccc;border-radius:3px;padding:7px 10px;font-size:12px;margin-bottom:8px;">
+      <option value="user">Usuario</option>
+      <option value="admin">Admin</option>
+    </select>
+    <button onclick="adminAddUser()" style="width:100%;padding:8px;background:#1a1a2e;color:#fff;border:none;border-radius:3px;font-size:11px;font-weight:700;cursor:pointer;">&#10133; AGREGAR USUARIO</button>
+    <div id="adminMsg" style="font-size:11px;min-height:16px;margin-top:8px;font-weight:600;"></div>
+  </div>
+
 
     <div id="splashScreen">
         <div class="splash-content">
@@ -4812,6 +4855,55 @@ applyDronePreset=function(){_oPD15.apply(this,arguments);renderUAV15Days();};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(r,3500));
   else setTimeout(r,3500);})();
 // ================================================================
+
+
+
+const AUTH_WORKER_URL='https://meteo-auth.kcautivof.workers.dev';
+async function doLogin(){
+  const user=document.getElementById('loginUser').value.trim();
+  const pass=document.getElementById('loginPass').value;
+  const err=document.getElementById('loginError');
+  const btn=document.getElementById('loginBtn');
+  if(!user||!pass){err.textContent='Ingresa usuario y contrasena';return;}
+  btn.disabled=true;btn.textContent='VERIFICANDO...';err.textContent='';
+  try{
+    const r=await fetch(AUTH_WORKER_URL+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:user,password:pass})});
+    const d=await r.json();
+    if(!r.ok||!d.token){err.textContent=d.error||'Credenciales incorrectas';btn.disabled=false;btn.textContent='INGRESAR';return;}
+    sessionStorage.setItem('auth_token',d.token);sessionStorage.setItem('auth_user',d.user);sessionStorage.setItem('auth_role',d.role);
+    showApp(d.user,d.role);
+  }catch(e){err.textContent='Worker no configurado aun - completa el Paso 1 en Cloudflare';btn.disabled=false;btn.textContent='INGRESAR';}
+}
+function showApp(user,role){
+  document.getElementById('loginScreen').classList.add('hidden');
+  const btn=document.getElementById('logoutBtn');
+  if(!btn)return;
+  if(role==='admin'){
+    btn.innerHTML='Usuario: '+user+' (ADMIN) <span onclick="event.stopPropagation();document.getElementById('adminPanel').style.display='block'" style="cursor:pointer;margin:0 4px;" title="Gestionar usuarios">+</span> | Salir';
+  }else{btn.textContent='Usuario: '+user+' | Salir';}
+}
+function doLogout(){sessionStorage.clear();location.reload();}
+async function adminAddUser(){
+  const username=document.getElementById('newUserName').value.trim();
+  const password=document.getElementById('newUserPass').value;
+  const role=document.getElementById('newUserRole').value;
+  const msg=document.getElementById('adminMsg');
+  if(!username||!password){msg.style.color='#e53935';msg.textContent='Completa todos los campos';return;}
+  try{
+    const r=await fetch(AUTH_WORKER_URL+'/auth/add-user',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+sessionStorage.getItem('auth_token')},body:JSON.stringify({username,password,role})});
+    const d=await r.json();
+    if(r.ok){msg.style.color='#2ecc71';msg.textContent='"'+username+'" creado correctamente';document.getElementById('newUserName').value='';document.getElementById('newUserPass').value='';}
+    else{msg.style.color='#e53935';msg.textContent=d.error||'Error';}
+  }catch(e){msg.style.color='#e53935';msg.textContent='Error de conexion';}
+}
+(async function checkAuth(){
+  const token=sessionStorage.getItem('auth_token');
+  const user=sessionStorage.getItem('auth_user');
+  const role=sessionStorage.getItem('auth_role');
+  if(!token)return;
+  try{const r=await fetch(AUTH_WORKER_URL+'/auth/verify',{method:'POST',headers:{'Authorization':'Bearer '+token}});if(r.ok)showApp(user,role);else sessionStorage.clear();}
+  catch(e){if(token)showApp(user||'usuario',role||'user');}
+})();
 
 </script>
 
