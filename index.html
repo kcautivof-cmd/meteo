@@ -1224,6 +1224,12 @@ function buildWorkerUrlPath(path, params){
     return qs.toString() ? (url + "?" + qs.toString()) : url;
 }
 
+function workerAuthHeaders(baseHeaders){
+    const h = Object.assign({}, baseHeaders || {});
+    if (typeof AUTH_TOKEN === "string" && AUTH_TOKEN) h["Authorization"] = "Bearer " + AUTH_TOKEN;
+    return h;
+}
+
 function clean(input){
     // Quita HTML y deja texto limpio (sin "HTML sucio")
     if (input === null || input === undefined) return "";
@@ -1521,7 +1527,7 @@ async function fetchAlerts(){
     try{
         meta.textContent = "ACTUALIZANDO ALERTAS...";
         const url = buildWorkerUrlPath("/alerts", { region: "nacional", limit: "40" });
-        const r = await fetch(url, { headers: { "Accept": "application/json" } });
+        const r = await fetch(url, { headers: workerAuthHeaders({ "Accept": "application/json" }) });
         if(!r.ok) throw new Error("HTTP " + r.status);
         const js = await r.json();
 
@@ -1619,7 +1625,7 @@ async function fetchAlerts(){
             try{
                 meta.textContent = "ACTUALIZANDO ALERTAS...";
                 const url = buildWorkerUrlPath("/alerts", { region: "nacional", limit: "8" });
-                const r = await fetch(url, { headers: { "Accept": "application/json" } });
+                const r = await fetch(url, { headers: workerAuthHeaders({ "Accept": "application/json" }) });
                 if(!r.ok) throw new Error("HTTP " + r.status);
                 const js = await r.json();
 
