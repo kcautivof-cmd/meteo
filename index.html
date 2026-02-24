@@ -1982,6 +1982,38 @@ try {
                     __dqUpdateCoordLabel();
                     executeSearch();
                 });
+
+
+                // ===== DOUBLE TAP MÓVIL (2 toques) =====
+                let __lastTap = 0;
+                __pickMap.on('touchend', function(e){
+                    const now = Date.now();
+                    if(now - __lastTap < 300){
+                        const touch = e.originalEvent.changedTouches && e.originalEvent.changedTouches[0];
+                        if(touch){
+                            const latlng = __pickMap.mouseEventToLatLng(touch);
+                            const newLat = latlng.lat;
+                            const newLon = latlng.lng;
+
+                            // Mueve marcador
+                            if (__pickMarker) __pickMarker.setLatLng(latlng);
+
+                            // Activa coords manuales y rellena GMS para copiar/pegar
+                            const chk = document.getElementById('useManualCoords');
+                            if (chk) chk.checked = true;
+
+                            const latD = document.getElementById('latDms');
+                            const lonD = document.getElementById('lonDms');
+                            if (latD) latD.value = decimalToDMS(newLat, 'lat');
+                            if (lonD) lonD.value = decimalToDMS(newLon, 'lon');
+
+                            // Ejecuta actualización
+                            __dqUpdateCoordLabel();
+                            executeSearch();
+                        }
+                    }
+                    __lastTap = now;
+                });
             } catch (err) {
                 console.warn('MAPA: no se pudo inicializar', err);
             }
