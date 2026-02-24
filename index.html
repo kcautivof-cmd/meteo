@@ -677,6 +677,225 @@ input, select {
   .print-chart-row { grid-template-columns: 1fr !important; }
 }
 </style>
+<style>
+
+/* =========================
+   MOBILE UI LAYER (ONLY)
+   Adds: UAV window, Ops semaphore, Hourly cards timeline
+   ========================= */
+#mobileUI{display:none;}
+@media (max-width: 720px){
+  #mainSystem{display:none !important;}
+  #mobileUI{display:block !important;}
+  body{padding:8px !important;}
+}
+#mobileUI .m-wrap{max-width: 720px; margin:0 auto; display:flex; flex-direction:column; gap:10px;}
+#mobileUI .m-card{border:1px solid var(--border); background:var(--panel); padding:10px; border-radius:10px;}
+#mobileUI .m-head{display:flex; justify-content:space-between; align-items:center; gap:10px;}
+#mobileUI .m-title{font-weight:800; letter-spacing:1px; font-size:12px;}
+#mobileUI .m-sub{font-size:10px; color:var(--muted);}
+#mobileUI .m-hero{display:grid; grid-template-columns: 1fr auto; gap:10px; align-items:center;}
+#mobileUI .m-temp{font-size:52px; font-weight:900; line-height:1;}
+#mobileUI .m-desc{font-size:12px; font-weight:800; margin-top:2px;}
+#mobileUI .m-kpis{display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:8px;}
+#mobileUI .m-kpi{border:1px solid var(--border); background:var(--bg); border-radius:10px; padding:8px;}
+#mobileUI .m-kpi .k{font-size:9px; color:var(--muted); letter-spacing:1px;}
+#mobileUI .m-kpi .v{font-size:14px; font-weight:900; margin-top:4px;}
+#mobileUI .m-btn{border:1px solid var(--border); background:var(--panel2); font-weight:900; padding:10px 12px; border-radius:10px; cursor:pointer;}
+#mobileUI .m-btn:active{transform:scale(.99);}
+#mobileUI .m-pillrow{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;}
+#mobileUI .m-pill{border:1px solid var(--border); background:var(--bg); padding:4px 8px; border-radius:999px; font-size:10px; font-weight:800;}
+#mobileUI .m-state{font-size:14px; font-weight:900;}
+#mobileUI .m-state.green{color:#1b7a1b !important;}
+#mobileUI .m-state.yellow{color:#9a7a00 !important;}
+#mobileUI .m-state.red{color:#b10000 !important;}
+#mobileUI .m-hourly{display:flex; gap:8px; overflow-x:auto; padding-bottom:4px;}
+#mobileUI .m-hour{min-width:86px; border:1px solid var(--border); background:var(--bg); border-radius:12px; padding:8px; text-align:center;}
+#mobileUI .m-hour .t{font-size:10px; font-weight:900;}
+#mobileUI .m-hour .ico{font-size:18px; margin:4px 0;}
+#mobileUI .m-hour .x{font-size:14px; font-weight:900;}
+#mobileUI .m-hour .y{font-size:9px; color:var(--muted);}
+#mobileUI .m-secTitle{font-size:11px; font-weight:900; letter-spacing:1px; margin-bottom:6px;}
+#mobileUI #mDaily .timeline-container{border:none !important; padding:0 !important; background:transparent !important;}
+#mobileUI #mDaily .day-card{width:190px !important;}
+
+
+/* =====================================================
+   MOBILE MODERN DARK UI (ONLY) — does not affect desktop
+   ===================================================== */
+@media (max-width: 900px){
+  body.mobile-modern{
+    --bg:#0b1220;
+    --panel:#0f1b2e;
+    --panel2:#13233a;
+    --border: rgba(255,255,255,0.10);
+    --text:#e5e7eb;
+    --muted:#9ca3af;
+    --accent:#60a5fa;
+    --orange:#60a5fa;
+    --cyan:#60a5fa;
+    --red:#fb7185;
+    --yellow:#fbbf24;
+    background: radial-gradient(1200px 600px at 20% 0%, rgba(96,165,250,0.15), transparent 60%),
+                radial-gradient(900px 500px at 90% 10%, rgba(251,113,133,0.10), transparent 55%),
+                var(--bg) !important;
+    color: var(--text) !important;
+    text-transform: none !important;
+    font-family: system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif !important;
+  }
+
+  /* Hide CONSULTAR DATOS on mobile to free map space */
+  body.mobile-modern .dq-box{ display:none !important; }
+
+  /* Hide desktop DataQuery wrapper too (mobile only) */
+  body.mobile-modern #dataQueryWrap{ display:none !important; }
+
+  /* Mobile title above map */
+  body.mobile-modern .mobile-map-app-title{
+    font-weight:900;
+    letter-spacing:1px;
+    margin:0 0 6px 0;
+    padding:10px 12px;
+    border:1px solid var(--border);
+    border-radius:14px;
+    background: rgba(15,27,46,0.65);
+    backdrop-filter: blur(10px);
+  }
+
+  /* GEOZONAS ultra-compact & inline (mobile only) */
+  body.mobile-modern .uav-geozonas{
+    padding:4px !important;
+    max-width: calc(100vw - 24px) !important;
+    width: auto !important;
+    border-radius: 12px !important;
+    background: rgba(10,16,28,0.78) !important;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+  }
+  /* Hide GEOZONAS title line to save space */
+  body.mobile-modern .uav-geozonas > div:first-child{ display:none !important; }
+
+  /* Put rows in a single flowing line */
+  body.mobile-modern .uav-geozonas .uav-row{
+    display:flex !important;
+    flex-wrap: nowrap !important;
+    gap:6px !important;
+    align-items:center !important;
+    margin: 0 !important;
+  }
+  /* Make all controls tiny */
+  body.mobile-modern .uav-geozonas select,
+  body.mobile-modern .uav-geozonas button{
+    font-size:8px !important;
+    padding:2px 6px !important;
+    height: 26px !important;
+    border-radius: 10px !important;
+  }
+  body.mobile-modern .uav-geozonas span{ font-size:8px !important; white-space:nowrap; }
+  /* Reduce spacing between row blocks */
+  body.mobile-modern .uav-geozonas .uav-row + .uav-row{ margin-top:4px !important; }
+
+
+  /* AeroForecast tiles: darker + higher contrast (mobile only) */
+  body.mobile-modern #uavForecastWrap{
+    background: rgba(11,18,32,0.9) !important;
+    border-color: rgba(255,255,255,0.12) !important;
+  }
+  body.mobile-modern #uavCondCell,
+  body.mobile-modern #uavFeelsCell{
+    background: rgba(148,163,184,0.14) !important;
+    border: 1px solid rgba(255,255,255,0.10) !important;
+  }
+  body.mobile-modern #uavSunriseCell,
+  body.mobile-modern #uavSunsetCell{
+    background: rgba(251,191,36,0.18) !important;
+    border: 1px solid rgba(251,191,36,0.28) !important;
+  }
+  body.mobile-modern #uavWindCell,
+  body.mobile-modern #uavWindDirCell,
+  body.mobile-modern #uavGustsCell,
+  body.mobile-modern #uavPrecipCell,
+  body.mobile-modern #uavCloudCell,
+  body.mobile-modern #uavVisCell{
+    background: rgba(34,197,94,0.18) !important;
+    border: 1px solid rgba(34,197,94,0.28) !important;
+  }
+  body.mobile-modern #uavKpCell{
+    background: rgba(96,165,250,0.14) !important;
+    border: 1px solid rgba(96,165,250,0.24) !important;
+  }
+  body.mobile-modern #uavForecastWrap *{ color: var(--text) !important; }
+  body.mobile-modern #uavForecastWrap [style*="background:#ffe566"] *{ color: var(--text) !important; }
+
+  /* Mobile UI container */
+  body.mobile-modern #mobileUI{
+    display:block;
+    padding: 10px 10px 14px 10px;
+  }
+  body.mobile-modern #mobileUI *{ text-transform:none !important; }
+
+  body.mobile-modern #mobileUI .m-wrap{ display:flex; flex-direction:column; gap:10px; }
+  body.mobile-modern #mobileUI .m-card{
+    background: rgba(15,27,46,0.78);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    overflow:hidden;
+    backdrop-filter: blur(10px);
+  }
+  body.mobile-modern #mobileUI .m-head{
+    padding: 12px 12px 10px 12px;
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:10px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  body.mobile-modern #mobileUI .m-title{
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: .3px;
+  }
+  body.mobile-modern #mobileUI .m-sub{
+    font-size: 12px;
+    color: var(--muted) !important;
+    margin-top: 2px;
+  }
+
+  body.mobile-modern #mobileUI .m-big{
+    font-size: 54px;
+    font-weight: 900;
+    letter-spacing: -1px;
+    line-height: 1;
+  }
+
+  body.mobile-modern #mobileUI .m-btn{
+    background: rgba(96,165,250,0.16) !important;
+    border: 1px solid rgba(96,165,250,0.35) !important;
+    color: var(--text) !important;
+    border-radius: 12px !important;
+    padding: 10px 12px !important;
+    font-weight: 800 !important;
+  }
+
+  /* Chips / badges */
+  body.mobile-modern #mobileUI .m-chip{
+    border-radius: 999px;
+    padding: 6px 10px;
+    border: 1px solid rgba(255,255,255,0.10);
+    background: rgba(255,255,255,0.04);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text) !important;
+  }
+
+  /* Fullscreen map overlay tweaks (if present) */
+  body.mobile-modern .m-map-fullscreen{
+    background: var(--bg) !important;
+  }
+}
+
+</style>
 </head>
 <body>
 
@@ -710,7 +929,7 @@ input, select {
                 </div>
 
                 <div>
-                    <h1>METEOROLOGIA</h1>
+                    <h1>METEOROLOGIA APLICADA</h1>
                     <div class="status" id="statusMsg">SISTEMA ACTIVO - DATOS RECIBIDOS</div>
                     <div id="printDateLabel">--/--/---- --:--</div>
                 </div>
@@ -984,10 +1203,10 @@ input, select {
 </div>
 
 
-<div class="anexo-sep"><span class="anexo-tag">ANEXO 3 – UAV FORECAST</span></div>
+<div class="anexo-sep"><span class="anexo-tag">ANEXO 3 – AeroForecast</span></div>
 <div id="uavForecastWrap" style="border:1px solid var(--border);background:var(--bg);border-radius:3px;overflow:hidden;">
   <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;border-bottom:1px solid var(--border);background:var(--panel2);flex-wrap:wrap;gap:5px;">
-    <div style="font-weight:700;letter-spacing:1px;font-size:12px;">✈ UAV FORECAST</div>
+    <div style="font-weight:700;letter-spacing:1px;font-size:12px;">✈ AeroForecast</div>
     <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
       <select id="uavSource" onchange="loadUAVForecast()" style="font-size:11px;padding:2px 6px;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:3px;">
         <option value="openmeteo">🌐 Open-Meteo</option>
@@ -999,16 +1218,16 @@ input, select {
   </div>
   <div id="uavStatus" style="text-align:center;padding:8px 10px;font-weight:700;font-size:11px;letter-spacing:1px;background:#888;color:#fff;transition:background .4s,color .4s;word-break:break-word;line-height:1.4;">EVALUANDO CONDICIONES...</div>
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px;padding:3px;background:var(--border);">
-    <div style="background:#f5f5f5;padding:7px 4px;text-align:center;border-radius:3px;">
+    <div id="uavCondCell" style="background:#f5f5f5;padding:7px 4px;text-align:center;border-radius:3px;">
       <div style="font-size:8px;font-weight:700;color:#666;letter-spacing:.5px;margin-bottom:2px;">CONDICIÓN</div>
       <div style="font-size:22px;line-height:1.1;" id="uavWeatherIcon">🌤</div>
       <div style="font-size:9px;color:#444;margin-top:2px;line-height:1.2;" id="uavWeatherText">--</div>
     </div>
-    <div style="background:#ffe566;padding:7px 4px;text-align:center;border-radius:3px;">
+    <div id="uavSunriseCell" style="background:#ffe566;padding:7px 4px;text-align:center;border-radius:3px;">
       <div style="font-size:8px;font-weight:700;color:#555;letter-spacing:.5px;margin-bottom:2px;">🌅 AMANECER</div>
       <div style="font-size:18px;font-weight:700;color:#333;" id="uavSunrise">--:--</div>
     </div>
-    <div style="background:#ffe566;padding:7px 4px;text-align:center;border-radius:3px;">
+    <div id="uavSunsetCell" style="background:#ffe566;padding:7px 4px;text-align:center;border-radius:3px;">
       <div style="font-size:8px;font-weight:700;color:#555;letter-spacing:.5px;margin-bottom:2px;">🌇 ATARDECER</div>
       <div style="font-size:18px;font-weight:700;color:#333;" id="uavSunset">--:--</div>
     </div>
@@ -1025,7 +1244,7 @@ input, select {
       <div style="font-size:8px;font-weight:700;color:#444;letter-spacing:.5px;margin-bottom:2px;">RÁFAGAS</div>
       <div style="font-size:16px;font-weight:700;" id="uavGusts">-- km/h</div>
     </div>
-    <div style="background:#f0f0f0;padding:7px 4px;text-align:center;border-radius:3px;">
+    <div id="uavFeelsCell" style="background:#f0f0f0;padding:7px 4px;text-align:center;border-radius:3px;">
       <div style="font-size:8px;font-weight:700;color:#444;letter-spacing:.5px;margin-bottom:2px;">SENSACIÓN</div>
       <div style="font-size:16px;font-weight:700;" id="uavFeelsLike">--°C</div>
     </div>
@@ -1174,6 +1393,7 @@ input, select {
 
         
         <div class="fullwidth-panel">
+            <div class="mobile-map-app-title">METEOROLOGÍA APLICADA</div>
             <span class="panel-title">MAPA</span>
             <div id="pickMap"></div>
             <div class="map-hint">CLICK EN EL MAPA PARA ACTUALIZAR LA UBICACIÓN (ACTIVA COORD. MANUALES GMS Y EJECUTA ACTUALIZACIÓN)</div>
@@ -1687,11 +1907,90 @@ async function fetchAlerts(){
 
 
 
-                __pickMap = L.map('pickMap', { zoomControl: true, doubleClickZoom: false }).setView([lat, lon], 8);
+                __pickMap = L.map('pickMap', { zoomControl: true }).setView([lat, lon], 8);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     maxZoom: 18,
                     attribution: '&copy; OpenStreetMap'
                 }).addTo(__pickMap);
+
+                // Mobile quick-control: center to device location (GPS)
+                try{
+                    if (navigator.geolocation && !__pickMap.__hasGeoBtn) {
+                        const GeoCtl = L.Control.extend({
+                            options: { position: 'topleft' },
+                            onAdd: function(map){
+                                const btn = L.DomUtil.create('button', 'leaflet-bar');
+                                btn.type = 'button';
+                                btn.title = 'MI UBICACIÓN';
+                                btn.style.width = '34px';
+                                btn.style.height = '34px';
+                                btn.style.lineHeight = '34px';
+                                btn.style.textAlign = 'center';
+                                btn.style.fontSize = '18px';
+                                btn.style.background = 'rgba(10,16,28,0.78)';
+                                btn.style.color = '#fff';
+                                btn.style.border = '1px solid rgba(255,255,255,0.18)';
+                                btn.style.borderRadius = '10px';
+                                btn.style.marginTop = '6px';
+                                btn.innerHTML = '📍';
+
+                                L.DomEvent.disableClickPropagation(btn);
+
+                                function __doLocate(ev){
+                                    if (ev) { try{ L.DomEvent.stop(ev); }catch(e){} }
+                                    // iOS/Safari: geoloc suele exigir contexto seguro (https/http). En file:// puede fallar.
+                                    if (!navigator.geolocation){
+                                        btn.innerHTML = '⚠️';
+                                        setTimeout(()=>btn.innerHTML='📍', 1200);
+                                        return;
+                                    }
+                                    if (!(window.isSecureContext || location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')){
+                                        btn.innerHTML = '⚠️';
+                                        try{ alert('MI UBICACIÓN requiere abrir la página por HTTPS o por un servidor local (http://). En modo file:// Safari puede bloquear el GPS.'); }catch(e){}
+                                        setTimeout(()=>btn.innerHTML='📍', 1400);
+                                        return;
+                                    }
+
+                                    btn.innerHTML = '⌛';
+                                    navigator.geolocation.getCurrentPosition(function(pos){
+                                        const lat = pos.coords.latitude;
+                                        const lon = pos.coords.longitude;
+                                        try{
+                                            __pickMap.setView([lat, lon], Math.max(__pickMap.getZoom(), 12));
+                                            if (__pickMarker) __pickMarker.setLatLng([lat, lon]);
+
+                                            // Sync a campos GMS + actualizar
+                                            const chk = document.getElementById('useManualCoords');
+                                            if (chk) chk.checked = true;
+                                            const latD = document.getElementById('latDms');
+                                            const lonD = document.getElementById('lonDms');
+                                            if (typeof decimalToDMS === 'function'){
+                                                if (latD) latD.value = decimalToDMS(lat, 'lat');
+                                                if (lonD) lonD.value = decimalToDMS(lon, 'lon');
+                                            } else {
+                                                if (latD) latD.value = String(lat.toFixed(6));
+                                                if (lonD) lonD.value = String(lon.toFixed(6));
+                                            }
+                                            if (typeof __dqUpdateCoordLabel === 'function') __dqUpdateCoordLabel();
+                                            if (typeof executeSearch === 'function') executeSearch();
+                                        }catch(e){}
+                                        btn.innerHTML = '📍';
+                                    }, function(err){
+                                        btn.innerHTML = '⚠️';
+                                        setTimeout(()=>btn.innerHTML='📍', 1200);
+                                    }, { enableHighAccuracy:true, timeout:10000, maximumAge:30000 });
+                                }
+
+                                L.DomEvent.on(btn, 'click', __doLocate);
+                                L.DomEvent.on(btn, 'touchstart', __doLocate);
+
+                                return btn;
+                            }
+                        });
+                        __pickMap.addControl(new GeoCtl());
+                        __pickMap.__hasGeoBtn = true;
+                    }
+                }catch(e){}
 
                 __pickMarker = L.marker([lat, lon]).addTo(__pickMap);
 
@@ -1800,16 +2099,45 @@ try {
         __uav.drawColor = __uav.drawColor || "#d32f2f"; // rojo default
         __uav.bufferKm = __uav.bufferKm || 5;
 
-        __uav.uiCtl = L.control({ position: "topright" });
+        const __isMobileUav = (window.matchMedia && window.matchMedia("(max-width: 720px)").matches);
+        __uav.uiCtl = L.control({ position: __isMobileUav ? "bottomleft" : "topright" });
         __uav.uiCtl.onAdd = function() {
-            const div = L.DomUtil.create("div", "leaflet-control");
+            const div = L.DomUtil.create("div", "leaflet-control uav-geozonas");
             div.style.padding = "8px";
             div.style.maxWidth = "230px";
 
+            if(__isMobileUav){
+            div.innerHTML = `
+              <div class="uav-row" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                <span style="font-weight:800; font-size:10px; letter-spacing:1px;">GEOZONAS</span>
+                <span style="font-size:10px;">BUF</span>
+                <select id="uavBufferKm" style="font-size:10px; padding:2px 6px;">
+                  <option value="0">0</option>
+                  <option value="1">1 KM</option>
+                  <option value="3">3 KM</option>
+                  <option value="5" selected>5 KM</option>
+                  <option value="10">10 KM</option>
+                  <option value="15">15 KM</option>
+                  <option value="20">20 KM</option>
+                </select>
+                <span style="font-size:10px;">COL</span>
+                <select id="uavDrawColor" style="font-size:10px; padding:2px 6px;">
+                  <option value="#d32f2f" selected>ROJO</option>
+                  <option value="#1976d2">AZUL</option>
+                  <option value="#2e7d32">VERDE</option>
+                  <option value="#ff8f00">NARANJA</option>
+                  <option value="#6a1b9a">MORADO</option>
+                </select>
+                <button id="uavApplyBuffer" style="font-size:10px; padding:2px 8px; font-weight:800;">APLICAR</button>
+                <button id="uavExport" style="font-size:10px; padding:2px 8px; font-weight:800;">EXPORT</button>
+              </div>
+
+            `;
+          } else {
             div.innerHTML = `
               <div style="font-weight:700; margin-bottom:6px;">GEOZONAS</div>
 
-              <div style="display:flex; gap:6px; align-items:center; margin-bottom:6px;">
+              <div class="uav-row" style="display:flex; gap:6px; align-items:center; margin-bottom:6px;">
                 <span style="font-size:10px;">BUFFER</span>
                 <select id="uavBufferKm" style="font-size:10px; padding:2px 6px;">
                   <option value="0">OFF</option>
@@ -1821,7 +2149,7 @@ try {
                 <button id="uavApplyBuffer" style="font-size:10px; padding:2px 6px;">APLICAR</button>
               </div>
 
-              <div style="display:flex; gap:6px; align-items:center; margin-bottom:6px;">
+              <div class="uav-row" style="display:flex; gap:6px; align-items:center; margin-bottom:6px;">
                 <span style="font-size:10px;">COLOR</span>
                 <select id="uavDrawColor" style="font-size:10px; padding:2px 6px;">
                   <option value="#d32f2f">ROJO</option>
@@ -1835,6 +2163,7 @@ try {
                 DIBUJO: POLÍGONO / RECT / CÍRCULO · EXPORTA GEOJSON.
               </div>
             `;
+          }
 
             // evitar que el control “capture” el drag del mapa
             L.DomEvent.disableClickPropagation(div);
@@ -1960,9 +2289,7 @@ try {
 
 
 
-                __pickMap.on('dblclick', (e) => {
-                    e.originalEvent?.preventDefault?.();
-                    e.originalEvent?.stopPropagation?.();
+                __pickMap.on('click', (e) => {
                     const newLat = e.latlng.lat;
                     const newLon = e.latlng.lng;
 
@@ -1982,96 +2309,6 @@ try {
                     __dqUpdateCoordLabel();
                     executeSearch();
                 });
-
-
-                // ===== DOUBLE TAP MÓVIL (2 toques) =====
-                let __lastTap = 0;
-                __pickMap.on('touchend', function(e){
-                    const now = Date.now();
-                    if(now - __lastTap < 300){
-                        const touch = e.originalEvent.changedTouches && e.originalEvent.changedTouches[0];
-                        if(touch){
-                            const latlng = __pickMap.mouseEventToLatLng(touch);
-                            const newLat = latlng.lat;
-                            const newLon = latlng.lng;
-
-                            // Mueve marcador
-                            if (__pickMarker) __pickMarker.setLatLng(latlng);
-
-                            // Activa coords manuales y rellena GMS para copiar/pegar
-                            const chk = document.getElementById('useManualCoords');
-                            if (chk) chk.checked = true;
-
-                            const latD = document.getElementById('latDms');
-                            const lonD = document.getElementById('lonDms');
-                            if (latD) latD.value = decimalToDMS(newLat, 'lat');
-                            if (lonD) lonD.value = decimalToDMS(newLon, 'lon');
-
-                            // Ejecuta actualización
-                            __dqUpdateCoordLabel();
-                            executeSearch();
-                        }
-                    }
-                    __lastTap = now;
-                });
-
-                // ===== DOUBLE TAP MÓVIL (FIX DOM) =====
-                // En iOS/Android Leaflet a veces NO dispara eventos 'touchend' vía map.on().
-                // Por eso escuchamos el touchend directo en el contenedor del mapa.
-                (function(){
-                    try{
-                        const __container = __pickMap.getContainer();
-                        let __lastTapTs2 = 0;
-
-                        __container.addEventListener('touchend', function(ev){
-                            // Si estás usando herramientas (Geoman), evitamos disparar selección accidental
-                            if (__pickMap.pm) {
-                                try{
-                                    if ((__pickMap.pm.globalDrawModeEnabled && __pickMap.pm.globalDrawModeEnabled()) ||
-                                        (__pickMap.pm.globalEditModeEnabled && __pickMap.pm.globalEditModeEnabled())) {
-                                        return;
-                                    }
-                                }catch(_){}
-                            }
-
-                            const now = Date.now();
-                            if (now - __lastTapTs2 < 320) {
-                                const t = ev.changedTouches && ev.changedTouches[0];
-                                if (!t) return;
-
-                                // Ignora doble tap en controles (zoom, layers, etc.)
-                                const target = ev.target;
-                                if (target && target.closest && target.closest('.leaflet-control')) return;
-
-                                ev.preventDefault();
-                                ev.stopPropagation();
-
-                                const latlng = __pickMap.mouseEventToLatLng({ clientX: t.clientX, clientY: t.clientY });
-
-                                const newLat = latlng.lat;
-                                const newLon = latlng.lng;
-
-                                // Mueve marcador
-                                if (__pickMarker) __pickMarker.setLatLng(latlng);
-
-                                // Activa coords manuales y rellena GMS
-                                const chk = document.getElementById('useManualCoords');
-                                if (chk) chk.checked = true;
-
-                                const latD = document.getElementById('latDms');
-                                const lonD = document.getElementById('lonDms');
-                                if (latD) latD.value = decimalToDMS(newLat, 'lat');
-                                if (lonD) lonD.value = decimalToDMS(newLon, 'lon');
-
-                                __dqUpdateCoordLabel();
-                                executeSearch();
-                            }
-
-                            __lastTapTs2 = now;
-                        }, { passive: false });
-                    }catch(_err){}
-                })();
-
             } catch (err) {
                 console.warn('MAPA: no se pudo inicializar', err);
             }
@@ -4972,7 +5209,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ================================================================
-// ANEXO 3 – UAV FORECAST  (Open-Meteo + AccuWeather + NOAA Kp)
+// ANEXO 3 – AeroForecast  (Open-Meteo + AccuWeather + NOAA Kp)
 // ================================================================
 const UAV_PRESETS={
   mini2:{wind:38,gusts:46,precip:30,cloud:90,vis:3,kp:3},mini4:{wind:43,gusts:52,precip:30,cloud:90,vis:3,kp:3},
@@ -5055,8 +5292,29 @@ async function loadUAVForecast(){
   if(co){lat=co.lat;lon=co.lon;}else if(typeof lastLat==='number'&&lastLat){lat=lastLat;lon=lastLon;}
   const kpP=_uKp();const src=document.getElementById('uavSource')?.value||'openmeteo';
   try{const data=await(src==='accuweather'?_uAW(lat,lon):_uOM(lat,lon));data.kpVal=await kpP;_uApply(data);}
-  catch(err){st.style.background='#e53935';st.style.color='#fff';st.textContent='⚠️ Error: '+err.message;console.error('[UAV]',err);}
+  catch(err){
+    console.error('[UAV]',err);
+    // Fallback local (Safari file:// bloquea fetch): mostrar DEMO para que la sección cargue
+    try{
+      if(location.protocol==='file:'){
+        const demo={
+          source:'DEMO',
+          weather:{icon:'🌤',text:'Parcial',feels:6,temp:7},
+          wind:{speed:18,dir:260,dirText:'O',gusts:28},
+          precip:{prob:10},
+          cloud:{cover:25},
+          vis:{km:18},
+          kpVal:3
+        };
+        _uApply(demo);
+        st.style.background='#1f2937';st.style.color='#fff';st.textContent='DEMO (modo local)';
+        return;
+      }
+    }catch(e){}
+    st.style.background='#e53935';st.style.color='#fff';st.textContent='⚠️ Error: '+err.message;
+  }
 }
+
 (function(){const r=()=>{if(document.getElementById('uavStatus'))loadUAVForecast();};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(r,2500));else setTimeout(r,2500);})();
 // ================================================================
 
@@ -5331,5 +5589,536 @@ async function abrirMetarTaf(){
 
   </div>
 </div>
+
+<!-- =========================
+     MOBILE UI (ONLY)
+     ========================= -->
+<div id="mobileUI">
+  <div class="m-wrap">
+    <div class="m-card">
+      <div class="m-head">
+        <div>
+          <div class="m-title" id="mCity">UBICACIÓN</div>
+          <div class="m-sub" id="mSource">FUENTE: --</div>
+        </div>
+        <button class="m-btn" id="mBtnRefresh" type="button">ACTUALIZAR DATOS</button>
+      </div>
+
+      <div class="m-hero" style="margin-top:10px;">
+        <div>
+          <div class="m-desc" id="mDesc">--</div>
+          <div class="m-sub">SENSACIÓN: <span id="mFeels">--</span></div>
+        </div>
+        <div class="m-temp" id="mTemp">--°</div>
+      </div>
+
+      <div class="m-kpis">
+        <div class="m-kpi"><div class="k">VIENTO</div><div class="v" id="mWind">--</div></div>
+        <div class="m-kpi"><div class="k">RÁFAGAS</div><div class="v" id="mGust">--</div></div>
+        <div class="m-kpi"><div class="k">HUMEDAD</div><div class="v" id="mHum">--</div></div>
+        <div class="m-kpi"><div class="k">VISIBILIDAD</div><div class="v" id="mVis">--</div></div>
+      </div>
+
+      <div class="m-pillrow">
+        <span class="m-pill">UV: <span id="mUV">--</span></span>
+        <span class="m-pill">NUBES: <span id="mCloudBase">--</span></span>
+        <span class="m-pill">CCCM: <span id="mCccm">--</span></span>
+        <span class="m-pill">TCCV: <span id="mTccv">--</span></span>
+      </div>
+    </div>
+    </div>
+<div class="m-card" id="mDaily">
+      <div class="m-secTitle">PRONÓSTICO (DÍAS)</div>
+      <div id="mDailyInner"></div>
+    </div>
+
+    <div class="m-card" id="mUavEmbed">
+      <div class="m-secTitle">AeroForecast</div>
+      <div id="mUavEmbedInner"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const MOBILE_MAX = 720;
+
+  function isMobile(){
+    try{ return window.matchMedia && window.matchMedia('(max-width:'+MOBILE_MAX+'px)').matches; }
+    catch(e){ return (window.innerWidth||9999) <= MOBILE_MAX; }
+  }
+
+  function txt(id){ const el=document.getElementById(id); return el ? (el.textContent||'').trim() : ''; }
+  function val(id){ const el=document.getElementById(id); return el ? (el.value||'').trim() : ''; }
+
+  function numFrom(s){
+    if(!s) return NaN;
+    const m = String(s).replace(',', '.').match(/-?\d+(?:\.\d+)?/);
+    return m ? parseFloat(m[0]) : NaN;
+  }
+
+  function getThresholds(){
+    // Use UAV threshold inputs if present; else sensible defaults
+    const t = {
+      wind: parseFloat(val('threshWind')) || 38,
+      gust: parseFloat(val('threshGusts')) || 46,
+      precipP: parseFloat(val('threshPrecip')) || 30, // percent
+      cloud: parseFloat(val('threshCloud')) || 90,    // percent
+      vis: parseFloat(val('threshVis')) || 3,         // km
+      kp: parseFloat(val('threshKp')) || 4
+    };
+    return t;
+  }
+
+  function severityForHigherIsWorse(x, thr){
+    if(!isFinite(x)) return null;
+    if(x > thr) return 2;
+    if(x > thr*0.85) return 1;
+    return 0;
+  }
+
+  function severityForLowerIsWorse(x, thr){
+    if(!isFinite(x)) return null;
+    if(x < thr) return 2;
+    if(x < thr*1.35) return 1;
+    return 0;
+  }
+
+  function sevColorClass(sev){
+    return sev===2 ? 'red' : (sev===1 ? 'yellow' : 'green');
+  }
+
+  function labelState(sev){
+    return sev===2 ? '🔴 AFECTA' : (sev===1 ? '🟡 MARGINAL' : '🟢 FAVORECE');
+  }
+
+  function setState(elId, sev){
+    const el=document.getElementById(elId);
+    if(!el) return;
+    el.classList.remove('green','yellow','red');
+    el.classList.add(sevColorClass(sev));
+    el.textContent = labelState(sev);
+  }
+
+  function updateMobileHeaderAndNow(){
+    document.getElementById('mCity').textContent = (txt('lblCity') || val('cityInput') || 'UBICACIÓN').toUpperCase();
+    const srcSel = document.getElementById('sourceSelect');
+    const modelSel = document.getElementById('modelSelect');
+    const src = srcSel ? (srcSel.options[srcSel.selectedIndex]?.text || srcSel.value) : '--';
+    const mdl = modelSel ? (modelSel.options[modelSel.selectedIndex]?.text || modelSel.value) : '';
+    document.getElementById('mSource').textContent = ('FUENTE: '+src + (mdl?(' · '+mdl):'')).toUpperCase();
+
+    document.getElementById('mTemp').textContent = txt('valTemp') || '--°';
+    document.getElementById('mDesc').textContent = (txt('valWeatherDesc') || '--').toUpperCase();
+    document.getElementById('mFeels').textContent = txt('valApparent') || '--';
+
+    document.getElementById('mWind').textContent = txt('valWind') || '--';
+    document.getElementById('mGust').textContent = txt('valGust') || '--';
+    document.getElementById('mHum').textContent  = txt('valHum') || '--';
+    document.getElementById('mVis').textContent  = txt('valVis') || '--';
+
+    document.getElementById('mUV').textContent = txt('valUv') || '--';
+    document.getElementById('mCloudBase').textContent = txt('valCloudBase') || '--';
+    document.getElementById('mCccm').textContent = txt('valCccm') || '--';
+    document.getElementById('mTccv').textContent = txt('valTccv') || '--';
+  }
+
+  function renderOpsSemaphore(){
+    const th = getThresholds();
+
+    // Prefer hourly "now" if available, else parse from DOM values
+    const gd = window.globalData || {};
+    let wind = NaN, gust = NaN, vis = NaN, cloud = NaN, kp = NaN, precipP = NaN;
+
+    if(gd.hourly && Array.isArray(gd.hourly.time) && gd.hourly.time.length){
+      const h = gd.hourly;
+      wind = numFrom(h.windspeed_10m?.[0] ?? h.wind_speed_10m?.[0] ?? h.wind_speed?.[0]);
+      gust = numFrom(h.windgusts_10m?.[0] ?? h.wind_gusts_10m?.[0] ?? h.wind_gusts?.[0]);
+      vis  = numFrom(h.visibility?.[0]);
+      if(isFinite(vis)) vis = vis/1000; // Open-Meteo visibility often in meters
+      cloud = numFrom(h.cloudcover?.[0] ?? h.cloud_cover?.[0]);
+      kp = numFrom(gd.kpNow ?? gd.kp ?? (h.kp_index?.[0]));
+      precipP = numFrom(h.precipitation_probability?.[0] ?? h.precipitation_probability_max?.[0] ?? h.pop?.[0]);
+    } else {
+      wind = numFrom(txt('valWind'));
+      gust = numFrom(txt('valGust'));
+      vis  = numFrom(txt('valVis'));
+      cloud = NaN;
+      kp = NaN;
+      precipP = NaN;
+    }
+
+    const sWind = severityForHigherIsWorse(wind, th.wind);
+    const sGust = severityForHigherIsWorse(gust, th.gust);
+    const sVis  = severityForLowerIsWorse(vis, th.vis);
+    const sCloud= severityForHigherIsWorse(cloud, th.cloud);
+    const sKp   = severityForHigherIsWorse(kp, th.kp);
+    const sPop  = severityForHigherIsWorse(precipP, th.precipP);
+
+    const sevs = [sWind,sGust,sVis,sCloud,sKp,sPop].filter(v=>v!==null);
+    const worst = sevs.length ? Math.max.apply(null, sevs) : 1;
+
+    setState('mOpsState', worst);
+
+    const reasons = [];
+    if(sWind===2) reasons.push('VIENTO > UMBRAL');
+    if(sGust===2) reasons.push('RÁFAGAS > UMBRAL');
+    if(sVis===2)  reasons.push('VISIBILIDAD BAJA');
+    if(sPop===2)  reasons.push('LLUVIA ALTA');
+    if(sKp===2)   reasons.push('KP ALTO');
+    if(!reasons.length){
+      if(worst===1) reasons.push('CONDICIONES MIXTAS');
+      else reasons.push('CONDICIONES FAVORABLES');
+    }
+    (document.getElementById('mOpsReason')||{textContent:''}).textContent = reasons.join(' · ');
+
+    const chips = document.getElementById('mOpsChips'); if(!chips) return;
+    chips.innerHTML = '';
+    function addChip(label, value, sev){
+      if(sev===null) return;
+      const span=document.createElement('span');
+      span.className='m-pill';
+      span.textContent = label+': '+(isFinite(value)?value:'--');
+      span.style.borderColor = sev===2 ? '#b10000' : (sev===1 ? '#9a7a00' : '#2a7a2a');
+      chips.appendChild(span);
+    }
+    addChip('VIENTO', isFinite(wind)?(Math.round(wind)+' km/h'):'--', sWind);
+    addChip('RÁFAGAS', isFinite(gust)?(Math.round(gust)+' km/h'):'--', sGust);
+    addChip('VIS', isFinite(vis)?(vis.toFixed(1)+' km'):'--', sVis);
+    addChip('POP', isFinite(precipP)?(Math.round(precipP)+'%'):'--', sPop);
+    addChip('NUBES', isFinite(cloud)?(Math.round(cloud)+'%'):'--', sCloud);
+    addChip('KP', isFinite(kp)?String(Math.round(kp)):'--', sKp);
+  }
+
+  function pickIconFromHourly(h, i){
+    const pop = numFrom(h.precipitation_probability?.[i] ?? h.pop?.[i]);
+    const pr  = numFrom(h.precipitation?.[i]);
+    const snow = numFrom(h.snowfall?.[i] ?? h.snow?.[i]);
+    const cloud = numFrom(h.cloudcover?.[i] ?? h.cloud_cover?.[i]);
+
+    if(isFinite(snow) && snow>0) return '❄️';
+    if((isFinite(pr) && pr>0) || (isFinite(pop) && pop>=40)) return '🌧';
+    if(isFinite(cloud) && cloud>=80) return '☁️';
+    if(isFinite(cloud) && cloud>=45) return '🌤';
+    return '☀️';
+  }
+
+  function renderHourlyTimeline(){
+    const box=document.getElementById('mHourly');
+    const note=document.getElementById('mHourlyNote');
+    box.innerHTML = '';
+
+    const gd = window.globalData || {};
+    const h = gd.hourly;
+    if(!h || !Array.isArray(h.time) || !h.time.length){
+      note.textContent = 'SIN DATOS HORARIOS EN ESTA FUENTE/MODO.';
+      return;
+    }
+
+    const th = getThresholds();
+    const n = Math.min(18, h.time.length);
+
+    for(let i=0;i<n;i++){
+      const t = h.time[i];
+      const hour = (typeof t==='string' && t.includes('T')) ? t.split('T')[1].slice(0,5) : (String(t).slice(11,16)||'--:--');
+
+      const temp = numFrom(h.temperature_2m?.[i] ?? h.temp?.[i] ?? h.temperature?.[i]);
+      const wind = numFrom(h.windspeed_10m?.[i] ?? h.wind_speed_10m?.[i] ?? h.wind_speed?.[i]);
+      const gust = numFrom(h.windgusts_10m?.[i] ?? h.wind_gusts_10m?.[i] ?? h.wind_gusts?.[i]);
+      const pop  = numFrom(h.precipitation_probability?.[i] ?? h.pop?.[i]);
+
+      // small per-card severity (simple)
+      const sWind = severityForHigherIsWorse(wind, th.wind);
+      const sGust = severityForHigherIsWorse(gust, th.gust);
+      const sPop  = severityForHigherIsWorse(pop, th.precipP);
+      const sev = Math.max.apply(null, [sWind,sGust,sPop].filter(v=>v!==null).concat([0]));
+
+      const card=document.createElement('div');
+      card.className='m-hour';
+      card.style.borderColor = sev===2 ? '#b10000' : (sev===1 ? '#9a7a00' : '#2a7a2a');
+
+      card.innerHTML =
+        '<div class="t">'+hour+'</div>'+
+        '<div class="ico">'+pickIconFromHourly(h,i)+'</div>'+
+        '<div class="x">'+(isFinite(temp)?(Math.round(temp)+'°'):'--')+'</div>'+
+        '<div class="y">'+(isFinite(wind)?('🌬 '+Math.round(wind)):'🌬 --')+(isFinite(gust)?(' / '+Math.round(gust)):'')+'</div>'+
+        '<div class="y">'+(isFinite(pop)?('☔ '+Math.round(pop)+'%'):'')+'</div>';
+
+      box.appendChild(card);
+    }
+
+    note.textContent = 'COLOR = SEMÁFORO (VIENTO/RÁFAGAS/LLUVIA) · UMBRALES UAV.';
+  }
+
+  function renderUavWindow(){
+    const gd = window.globalData || {};
+    const h = gd.hourly;
+
+    const th = getThresholds();
+
+    // If no hourly: fallback to existing UAV status text if present
+    if(!h || !Array.isArray(h.time) || !h.time.length){
+      // Use existing UAV status bar if present
+      const status = txt('uavStatus');
+      const w = status ? status.toUpperCase() : 'SIN DATOS';
+      document.getElementById('mUavState').textContent = w.includes('NO') ? '🔴 AFECTA' : (w.includes('LIMIT') ? '🟡 MARGINAL' : '🟢 FAVORECE');
+      document.getElementById('mUavWindow').textContent = 'VENTANA: SEGÚN AeroForecast (TRAMOS)';
+      document.getElementById('mUavWhy').textContent = 'SIN SERIES HORARIAS DISPONIBLES PARA BUSCAR BLOQUES CONTINUOS.';
+      return;
+    }
+
+    // Build boolean per hour "good"
+    const N = Math.min(36, h.time.length);
+    const good = [];
+    const score = []; // 0 good, 1 marginal, 2 bad
+    for(let i=0;i<N;i++){
+      const wind = numFrom(h.windspeed_10m?.[i] ?? h.wind_speed_10m?.[i] ?? h.wind_speed?.[i]);
+      const gust = numFrom(h.windgusts_10m?.[i] ?? h.wind_gusts_10m?.[i] ?? h.wind_gusts?.[i]);
+      const pop  = numFrom(h.precipitation_probability?.[i] ?? h.pop?.[i]);
+      const cloud= numFrom(h.cloudcover?.[i] ?? h.cloud_cover?.[i]);
+      let vis = numFrom(h.visibility?.[i]);
+      if(isFinite(vis)) vis = vis/1000;
+      const kp = numFrom(gd.kpNow ?? gd.kp ?? (h.kp_index?.[i]));
+
+      const s1 = severityForHigherIsWorse(wind, th.wind);
+      const s2 = severityForHigherIsWorse(gust, th.gust);
+      const s3 = severityForHigherIsWorse(pop, th.precipP);
+      const s4 = severityForHigherIsWorse(cloud, th.cloud);
+      const s5 = severityForLowerIsWorse(vis, th.vis);
+      const s6 = severityForHigherIsWorse(kp, th.kp);
+
+      const sev = Math.max.apply(null, [s1,s2,s3,s4,s5,s6].filter(v=>v!==null).concat([0]));
+      score.push(sev);
+      good.push(sev===0);
+    }
+
+    // find best consecutive good block length>=2
+    let bestStart=-1, bestLen=0;
+    let curStart=-1, curLen=0;
+    for(let i=0;i<N;i++){
+      if(good[i]){
+        if(curStart<0){ curStart=i; curLen=1; }
+        else curLen++;
+      } else {
+        if(curLen>bestLen){ bestLen=curLen; bestStart=curStart; }
+        curStart=-1; curLen=0;
+      }
+    }
+    if(curLen>bestLen){ bestLen=curLen; bestStart=curStart; }
+
+    if(bestLen>=2){
+      const t0 = String(h.time[bestStart]).split('T')[1]?.slice(0,5) || '--:--';
+      const t1 = String(h.time[Math.min(bestStart+bestLen-1, N-1)]).split('T')[1]?.slice(0,5) || '--:--';
+      setState('mUavState', 0);
+      document.getElementById('mUavWindow').textContent = 'MEJOR VENTANA: '+t0+' – '+t1+' ('+bestLen+'H)';
+      document.getElementById('mUavWhy').textContent = 'CUMPLE UMBRALES UAV (VIENTO/RÁFAGAS/LLUVIA/NUBES/VIS/KP).';
+      return;
+    }
+
+    // else choose least-bad 2h window by average severity
+    let bestI=0, bestAvg=999;
+    for(let i=0;i<N-1;i++){
+      const avg = (score[i]+score[i+1])/2;
+      if(avg<bestAvg){ bestAvg=avg; bestI=i; }
+    }
+    const sev = bestAvg>=1.5 ? 2 : 1;
+    setState('mUavState', sev);
+    const a = String(h.time[bestI]).split('T')[1]?.slice(0,5) || '--:--';
+    const b = String(h.time[Math.min(bestI+1,N-1)]).split('T')[1]?.slice(0,5) || '--:--';
+    document.getElementById('mUavWindow').textContent = 'MEJOR TRAMO DISPONIBLE: '+a+' – '+b;
+    document.getElementById('mUavWhy').textContent = 'NO HAY BLOQUE CONTINUO ÓPTIMO ≥2H · REVISAR UMBRALES / CONDICIONES.';
+  }
+
+  function renderDailyForecast(){
+    const src = document.getElementById('timelineBox');
+    const dst = document.getElementById('mDailyInner');
+    if(!src || !dst) return;
+    dst.innerHTML = '';
+    // clone children only (keeps your day cards)
+    const clone = src.cloneNode(true);
+    clone.id = 'mTimelineClone';
+    // Solo desde HOY en adelante (móvil): elimina tarjetas pasadas
+    try{
+      const past = clone.querySelectorAll('.day-card.past');
+      past.forEach(el=>el.remove());
+    }catch(e){}
+    dst.appendChild(clone);
+  }
+
+  function embedUavForecast(){
+    const wrap = document.getElementById('uavForecastWrap');
+    const dst = document.getElementById('mUavEmbedInner');
+    if(!wrap || !dst) return;
+    if(dst.getAttribute('data-done')==='1') return;
+
+    const clone = wrap.cloneNode(true);
+    clone.id = 'uavForecastWrap_mobile';
+    dst.innerHTML = '';
+    dst.appendChild(clone);
+    dst.setAttribute('data-done','1');
+
+    // ensure visible in mobile clone
+    clone.style.display = 'block';
+  }
+
+  function renderMobileAll(){
+    if(!isMobile()) return;
+    updateMobileHeaderAndNow();
+    renderDailyForecast();
+    embedUavForecast();
+
+    // Fuerza carga UAV (móvil): si existen funciones, ejecútalas
+    try{
+      if(typeof window.loadUAVForecast==='function') window.loadUAVForecast();
+      if(typeof window.loadUAV15Day==='function') window.loadUAV15Day();
+    }catch(e){}
+  }
+
+  function hookRefresh(){
+    const btn = document.getElementById('mBtnRefresh');
+    if(btn && !btn.getAttribute('data-hook')){
+      btn.addEventListener('click', function(){
+        if(typeof window.executeSearch==='function'){
+          window.executeSearch();
+          // render after data likely updated
+          setTimeout(renderMobileAll, 1200);
+          setTimeout(renderMobileAll, 2500);
+        }
+      });
+      btn.setAttribute('data-hook','1');
+    }
+
+    // wrap executeSearch once so ANY refresh updates mobile too
+    if(typeof window.executeSearch==='function' && !window.executeSearch.__mobileWrapped){
+      const _ex = window.executeSearch;
+      window.executeSearch = function(){
+        const r = _ex.apply(this, arguments);
+        // render a bit later (covers async fetch)
+        setTimeout(renderMobileAll, 1200);
+        setTimeout(renderMobileAll, 2500);
+        return r;
+      };
+      window.executeSearch.__mobileWrapped = true;
+    }
+  }
+
+  function activateMobileLayer(){
+    if(!isMobile()) return;
+    const ms = document.getElementById('mainSystem');
+    if(ms) ms.style.display = 'none';
+    const mu = document.getElementById('mobileUI');
+    if(mu) mu.style.display = 'block';
+    hookRefresh();
+    setTimeout(renderMobileAll, 900);
+  }
+
+  // Ensure we activate after your splash "enterSystem"
+  const _enter = window.enterSystem;
+  if(typeof _enter === 'function' && !_enter.__mobileWrapped){
+    window.enterSystem = function(){
+      const r = _enter.apply(this, arguments);
+      setTimeout(activateMobileLayer, 80);
+      return r;
+    };
+    window.enterSystem.__mobileWrapped = true;
+  }
+
+  document.addEventListener('DOMContentLoaded', function(){
+    // If system is already visible (no splash) still activate
+    setTimeout(function(){
+      if(isMobile()){
+        const splash = document.getElementById('splashScreen');
+        if(splash && splash.style.display !== 'none'){
+          // wait for user to press enter
+          hookRefresh();
+        } else {
+          activateMobileLayer();
+        }
+      }
+    }, 300);
+  });
+})();
+</script>
+
+
+<script>
+(function(){
+  const isMobile = window.matchMedia && window.matchMedia("(max-width: 900px)").matches;
+  if(isMobile){
+    document.body.classList.add("mobile-modern");
+  }
+
+  // Helper: read current desktop values and mirror into mobile UI (if mobile UI exists)
+  function mirrorMobileFromDesktop(){
+    const mobile = document.getElementById("mobileUI");
+    if(!mobile) return;
+
+    const getTxt = (id)=> (document.getElementById(id)?.textContent || "").trim();
+    const setTxt = (id, v)=> { const el=document.getElementById(id); if(el) el.textContent = v; };
+
+    // These ids exist in your mobile UI layer
+    // (If any are missing, it will no-op)
+    setTxt("mTemp", getTxt("valTemp") || "--");
+    setTxt("mFeels", getTxt("valApparent") || "--");
+    setTxt("mHum", getTxt("valHum") || "--");
+    setTxt("mWind", getTxt("valWind") || "--");
+    setTxt("mGust", getTxt("valGust") || "--");
+    setTxt("mVis", getTxt("valVis") || "--");
+    setTxt("mUv", getTxt("valUv") || "--");
+    setTxt("mCity", (document.getElementById("lblCity")?.textContent || "UBICACIÓN").trim());
+  }
+
+  // Auto-run on mobile so the user sees data without hunting for the button
+  function tryAutoLoad(){
+    try{
+      if(typeof executeSearch === "function"){
+        executeSearch();
+      }
+    }catch(e){}
+  }
+
+  // Demo fallback for iOS Safari local file:// (often blocks or breaks fetch/cors)
+  function applyLocalDemoIfStillEmpty(){
+    // if values are still placeholders after a few seconds, populate demo values so it "loads"
+    const t = (document.getElementById("valTemp")?.textContent || "").trim();
+    if(t && t !== "--°" && t !== "--") return; // it loaded
+    // Demo values
+    const set = (id, v)=>{ const el=document.getElementById(id); if(el) el.textContent=v; };
+    set("valTemp","14°");
+    set("valApparent","13°");
+    set("valHum","38%");
+    set("valWind","12 KM/H");
+    set("valGust","22 KM/H");
+    set("valVis","10 KM");
+    set("valUv","2");
+    const lbl = document.getElementById("lblCity"); if(lbl) lbl.textContent = "MODO DEMO (LOCAL)";
+    // Also mirror into mobile
+    mirrorMobileFromDesktop();
+
+    // Small banner (mobile only) explaining local limitation
+    if(window.matchMedia && window.matchMedia("(max-width: 900px)").matches){
+      let b = document.getElementById("mLocalBanner");
+      if(!b){
+        b = document.createElement("div");
+        b.id="mLocalBanner";
+        b.style.cssText="margin:10px 10px 0 10px;padding:10px 12px;border:1px solid rgba(255,255,255,0.12);border-radius:14px;background:rgba(255,255,255,0.05);font-size:12px;color:rgba(229,231,235,0.9);";
+        b.textContent="MODO DEMO: Safari en file:// puede bloquear la carga real. Para datos reales abre en GitHub Pages o vía HTTP local (python -m http.server).";
+        const mobile = document.getElementById("mobileUI");
+        if(mobile) mobile.prepend(b);
+      }
+    }
+  }
+
+  // Keep mobile in sync after updates (light polling, mobile only)
+  if(isMobile){
+    setTimeout(tryAutoLoad, 900);
+    setInterval(mirrorMobileFromDesktop, 650);
+    if(location.protocol === "file:"){
+      setTimeout(applyLocalDemoIfStillEmpty, 2800);
+    }
+  }
+})();
+</script>
+
 </body>
 </html>
