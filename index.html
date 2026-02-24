@@ -5951,14 +5951,13 @@ async function abrirMetarTaf(){
     if(!wrap || !dst) return;
     if(dst.getAttribute('data-done')==='1') return;
 
-    const clone = wrap.cloneNode(true);
-    clone.id = 'uavForecastWrap_mobile';
+    // IMPORTANTE (móvil): mover el bloque real (NO clonar) para evitar IDs duplicados
+    // y asegurar que loadUAVForecast() actualice los elementos correctos.
     dst.innerHTML = '';
-    dst.appendChild(clone);
+    dst.appendChild(wrap);
     dst.setAttribute('data-done','1');
 
-    // ensure visible in mobile clone
-    clone.style.display = 'block';
+    wrap.style.display = 'block';
   }
 
   function renderMobileAll(){
