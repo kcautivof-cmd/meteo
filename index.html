@@ -10,6 +10,10 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
+    <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.14.2/dist/leaflet-geoman.css"/>
+    <script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.14.2/dist/leaflet-geoman.min.js"></script>
+
+
 
     <style>
         :root {
@@ -376,10 +380,14 @@ a { color: var(--text) !important; }
 .dq-box {
   width: 310px;         
   max-width: 310px;
-  max-height: 450px;
+  max-height: 320px;
   border-radius: 8px;
   overflow-y: auto;
   overflow-x: hidden;
+}
+
+.dq-box::-webkit-scrollbar-track {
+  margin-top: 32px;
 }
 .dq-box select, .dq-box input[type="date"] {
   font-size: 10px;
@@ -1686,6 +1694,207 @@ async function fetchAlerts(){
                 }).addTo(__pickMap);
 
                 __pickMarker = L.marker([lat, lon]).addTo(__pickMap);
+
+// ===================== UAV / GEOZONAS (MVP CHILE) =====================
+try {
+    // Base layer (ya agregado) y overlays
+    const __uav = window.__uavLayers || (window.__uavLayers = {});
+    __uav.map = __pickMap;
+
+    // LayerGroups
+    __uav.layerPRD = __uav.layerPRD || L.geoJSON(null, {
+        style: (f) => {
+            const t = String(f?.properties?.type || f?.properties?.tipo || "").toUpperCase();
+            // PROHIBIDA / RESTRINGIDA / PELIGROSA
+            let color = "#f9a825"; // default amarillo
+            if (t.includes("PROHIB") || t.startsWith("P")) color = "#d32f2f";
+            else if (t.includes("RESTR") || t.startsWith("R")) color = "#ff8f00";
+            else if (t.includes("PELIG") || t.startsWith("D")) color = "#6d4c41";
+            return { color, weight: 2, fillColor: color, fillOpacity: 0.14 };
+        },
+        onEachFeature: (f, layer) => {
+            const name = f?.properties?.name || f?.properties?.nombre || f?.properties?.id || "ZONA";
+            const t = f?.properties?.type || f?.properties?.tipo || "";
+            const note = f?.properties?.note || f?.properties?.nota || "";
+            layer.bindPopup(`<b>${String(name).toUpperCase()}</b><br>TIPO: ${String(t).toUpperCase()}<br>${note ? ("<small>"+String(note)+"</small>") : ""}`);
+        }
+    });
+
+    __uav.layerAirports = __uav.layerAirports || L.geoJSON(null, {
+        pointToLayer: (f, latlng) => L.circleMarker(latlng, { radius: 4, weight: 2, fillOpacity: 0.4 }),
+        onEachFeature: (f, layer) => {
+            const icao = f?.properties?.icao || f?.properties?.ident || "";
+            const name = f?.properties?.name || f?.properties?.nombre || "";
+            layer.bindPopup(`<b>${String(icao).toUpperCase()}</b><br>${String(name)}`);
+        }
+    });
+
+    __uav.layerBuffers = __uav.layerBuffers || L.layerGroup();
+    __uav.layerDraw = __uav.layerDraw || L.featureGroup();
+
+    // Add overlays (solo una vez)
+    if (!__uav._added) {
+        __uav.layerPRD.addTo(__pickMap);
+        __uav.layerAirports.addTo(__pickMap);
+        __uav.layerBuffers.addTo(__pickMap);
+        __uav.layerDraw.addTo(__pickMap);
+
+        // Control de capas
+        __uav.layersCtl = L.control.layers(null, {
+            "ZONAS DGAC (P/R/D) — CHILE": __uav.layerPRD,
+            "AERÓDROMOS (CHILE)": __uav.layerAirports,
+            "BUFFERS RPAS": __uav.layerBuffers,
+            "Layers edit": __uav.layerDraw
+        }, { collapsed: true }).addTo(__pickMap);
+
+        __uav._added = true;
+    }
+
+    // Cargar GeoJSON desde repo (misma carpeta que index.html)
+    if (!__uav._loaded) {
+        Promise.allSettled([
+            fetch("./chile_prd_zones.geojson", { cache: "no-store" }).then(r => r.ok ? r.json() : null),
+            fetch("./chile_airports.geojson", { cache: "no-store" }).then(r => r.ok ? r.json() : null)
+        ]).then(([prdRes, aptRes]) => {
+            const prd = prdRes.status === "fulfilled" ? prdRes.value : null;
+            const apts = aptRes.status === "fulfilled" ? aptRes.value : null;
+
+            if (prd && prd.features) __uav.layerPRD.addData(prd);
+            if (apts && apts.features) __uav.layerAirports.addData(apts);
+
+            __uav._loaded = true;
+        }).catch(() => { /* silencioso */ });
+    }
+
+    // Control mini: buffer + color + export geojson (draw)
+    if (!__uav.uiCtl) {
+        __uav.drawColor = __uav.drawColor || "#d32f2f"; // rojo default
+        __uav.bufferKm = __uav.bufferKm || 5;
+
+        __uav.uiCtl = L.control({ position: "topright" });
+        __uav.uiCtl.onAdd = function() {
+            const div = L.DomUtil.create("div", "leaflet-control");
+            div.style.padding = "8px";
+            div.style.maxWidth = "230px";
+
+            div.innerHTML = `
+              <div style="font-weight:700; margin-bottom:6px;">GEOZONAS RPAS</div>
+
+              <div style="display:flex; gap:6px; align-items:center; margin-bottom:6px;">
+                <span style="font-size:10px;">BUFFER</span>
+                <select id="uavBufferKm" style="font-size:10px; padding:2px 6px;">
+                  <option value="0">OFF</option>
+                  <option value="3">3 KM</option>
+                  <option value="5" selected>5 KM</option>
+                  <option value="8">8 KM</option>
+                  <option value="10">10 KM</option>
+                </select>
+                <button id="uavApplyBuffer" style="font-size:10px; padding:2px 6px;">APLICAR</button>
+              </div>
+
+              <div style="display:flex; gap:6px; align-items:center; margin-bottom:6px;">
+                <span style="font-size:10px;">COLOR</span>
+                <select id="uavDrawColor" style="font-size:10px; padding:2px 6px;">
+                  <option value="#d32f2f">ROJO</option>
+                  <option value="#ff8f00">NARANJO</option>
+                  <option value="#2e7d32">VERDE</option>
+                </select>
+                <button id="uavExport" style="font-size:10px; padding:2px 6px;">EXPORT</button>
+              </div>
+
+              <div style="font-size:9px; color:var(--muted); line-height:1.2;">
+                DIBUJO: POLÍGONO / RECT / CÍRCULO · EXPORTA GEOJSON.
+              </div>
+            `;
+
+            // evitar que el control “capture” el drag del mapa
+            L.DomEvent.disableClickPropagation(div);
+            L.DomEvent.disableScrollPropagation(div);
+
+            // handlers
+            setTimeout(() => {
+                const selBuf = div.querySelector("#uavBufferKm");
+                const btnBuf = div.querySelector("#uavApplyBuffer");
+                const selCol = div.querySelector("#uavDrawColor");
+                const btnExp = div.querySelector("#uavExport");
+
+                if (selBuf) selBuf.value = String(__uav.bufferKm || 5);
+                if (selCol) selCol.value = String(__uav.drawColor || "#d32f2f");
+
+                if (selCol) selCol.addEventListener("change", () => {
+                    __uav.drawColor = selCol.value;
+                });
+
+                if (btnBuf) btnBuf.addEventListener("click", () => {
+                    const km = parseFloat(selBuf?.value || "0");
+                    __uav.bufferKm = km;
+                    __uav.layerBuffers.clearLayers();
+                    if (!km || km <= 0) return;
+
+                    // genera buffers alrededor de aeródromos cargados
+                    __uav.layerAirports.eachLayer((lyr) => {
+                        if (!lyr.getLatLng) return;
+                        const ll = lyr.getLatLng();
+                        const c = L.circle(ll, {
+                            radius: km * 1000,
+                            color: "#d32f2f",
+                            weight: 1,
+                            fillOpacity: 0.06
+                        });
+                        __uav.layerBuffers.addLayer(c);
+                    });
+                });
+
+                if (btnExp) btnExp.addEventListener("click", () => {
+                    try {
+                        const gj = __uav.layerDraw.toGeoJSON();
+                        const blob = new Blob([JSON.stringify(gj, null, 2)], { type: "application/geo+json" });
+                        const a = document.createElement("a");
+                        a.href = URL.createObjectURL(blob);
+                        a.download = "geozones_custom.geojson";
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+                    } catch {}
+                });
+
+            }, 0);
+
+            return div;
+        };
+        __uav.uiCtl.addTo(__pickMap);
+    }
+
+    // Herramienta de dibujo (Leaflet-Geoman si está disponible)
+    if (__pickMap.pm && !__uav._pmReady) {
+        __pickMap.pm.addControls({
+            position: "topleft",
+            drawMarker: false,
+            drawCircleMarker: false,
+            drawPolyline: false,
+            drawPolygon: true,
+            drawRectangle: true,
+            drawCircle: true,
+            editMode: true,
+            dragMode: false,
+            cutPolygon: false,
+            removalMode: true
+        });
+
+        __pickMap.on("pm:create", (e) => {
+            const layer = e.layer;
+            // aplicar color elegido
+            const c = __uav.drawColor || "#d32f2f";
+            if (layer.setStyle) layer.setStyle({ color: c, fillColor: c, fillOpacity: 0.18, weight: 2 });
+            __uav.layerDraw.addLayer(layer);
+        });
+
+        __uav._pmReady = true;
+    }
+
+} catch (e) { /* ignora */ }
+// =================== /UAV / GEOZONAS (MVP CHILE) ===================
 
                 // Control "Consultar datos"
                 __dqMakeControl(__pickMap);
