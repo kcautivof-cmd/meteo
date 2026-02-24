@@ -2014,6 +2014,64 @@ try {
                     }
                     __lastTap = now;
                 });
+
+                // ===== DOUBLE TAP MÓVIL (FIX DOM) =====
+                // En iOS/Android Leaflet a veces NO dispara eventos 'touchend' vía map.on().
+                // Por eso escuchamos el touchend directo en el contenedor del mapa.
+                (function(){
+                    try{
+                        const __container = __pickMap.getContainer();
+                        let __lastTapTs2 = 0;
+
+                        __container.addEventListener('touchend', function(ev){
+                            // Si estás usando herramientas (Geoman), evitamos disparar selección accidental
+                            if (__pickMap.pm) {
+                                try{
+                                    if ((__pickMap.pm.globalDrawModeEnabled && __pickMap.pm.globalDrawModeEnabled()) ||
+                                        (__pickMap.pm.globalEditModeEnabled && __pickMap.pm.globalEditModeEnabled())) {
+                                        return;
+                                    }
+                                }catch(_){}
+                            }
+
+                            const now = Date.now();
+                            if (now - __lastTapTs2 < 320) {
+                                const t = ev.changedTouches && ev.changedTouches[0];
+                                if (!t) return;
+
+                                // Ignora doble tap en controles (zoom, layers, etc.)
+                                const target = ev.target;
+                                if (target && target.closest && target.closest('.leaflet-control')) return;
+
+                                ev.preventDefault();
+                                ev.stopPropagation();
+
+                                const latlng = __pickMap.mouseEventToLatLng({ clientX: t.clientX, clientY: t.clientY });
+
+                                const newLat = latlng.lat;
+                                const newLon = latlng.lng;
+
+                                // Mueve marcador
+                                if (__pickMarker) __pickMarker.setLatLng(latlng);
+
+                                // Activa coords manuales y rellena GMS
+                                const chk = document.getElementById('useManualCoords');
+                                if (chk) chk.checked = true;
+
+                                const latD = document.getElementById('latDms');
+                                const lonD = document.getElementById('lonDms');
+                                if (latD) latD.value = decimalToDMS(newLat, 'lat');
+                                if (lonD) lonD.value = decimalToDMS(newLon, 'lon');
+
+                                __dqUpdateCoordLabel();
+                                executeSearch();
+                            }
+
+                            __lastTapTs2 = now;
+                        }, { passive: false });
+                    }catch(_err){}
+                })();
+
             } catch (err) {
                 console.warn('MAPA: no se pudo inicializar', err);
             }
