@@ -1687,7 +1687,7 @@ async function fetchAlerts(){
 
 
 
-                __pickMap = L.map('pickMap', { zoomControl: true }).setView([lat, lon], 8);
+                __pickMap = L.map('pickMap', { zoomControl: true, doubleClickZoom: false }).setView([lat, lon], 8);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     maxZoom: 18,
                     attribution: '&copy; OpenStreetMap'
@@ -1960,7 +1960,9 @@ try {
 
 
 
-                __pickMap.on('click', (e) => {
+                __pickMap.on('dblclick', (e) => {
+                    e.originalEvent?.preventDefault?.();
+                    e.originalEvent?.stopPropagation?.();
                     const newLat = e.latlng.lat;
                     const newLon = e.latlng.lng;
 
