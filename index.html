@@ -824,6 +824,10 @@ input, select {
     background: rgba(96,165,250,0.14) !important;
     border: 1px solid rgba(96,165,250,0.24) !important;
   }
+  body.mobile-modern #uavTempCell{
+    background: rgba(34,197,94,0.18) !important;
+    border: 1px solid rgba(34,197,94,0.28) !important;
+  }
   body.mobile-modern #uavForecastWrap *{ color: var(--text) !important; }
   body.mobile-modern #uavForecastWrap [style*="background:#ffe566"] *{ color: var(--text) !important; }
 
@@ -1264,7 +1268,7 @@ input, select {
       <div style="font-size:8px;font-weight:700;color:#444;letter-spacing:.5px;margin-bottom:2px;">Kp GEOMAG</div>
       <div style="font-size:16px;font-weight:700;" id="uavKp">--</div>
     </div>
-    <div style="background:#f0f0f0;padding:7px 4px;text-align:center;border-radius:3px;">
+    <div id="uavTempCell" style="background:#f0f0f0;padding:7px 4px;text-align:center;border-radius:3px;">
       <div style="font-size:8px;font-weight:700;color:#444;letter-spacing:.5px;margin-bottom:2px;">TEMPERATURA</div>
       <div style="font-size:16px;font-weight:700;" id="uavTemp">--°C</div>
     </div>
