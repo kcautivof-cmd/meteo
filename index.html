@@ -5,6 +5,1399 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>METEOROLOGIA APLICADA</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+// ===============================
+// GENERADOR DE INFORME / BOLETÍN
+// ===============================
+(function(){
+  const storageKey = 'meteoReportConfigV2';
+
+  function qs(id){ return document.getElementById(id); }
+  function txt(id, fallback='N/D'){ const el=qs(id); const v=(el?.textContent||el?.value||'').trim(); return v || fallback; }
+  function htmlSafe(v){ return String(v ?? '').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+  function selectedValues(containerSelector){ return Array.from(document.querySelectorAll(containerSelector+' input[type="checkbox"]:checked')).map(x=>x.value || x.id); }
+  function fmtNow(){ const d=new Date(); return d.toLocaleDateString('es-CL')+' '+d.toLocaleTimeString('es-CL',{hour12:false}); }
+  function todayIso(offset=0){ const d=new Date(); d.setDate(d.getDate()+offset); return d.toISOString().slice(0,10); }
+  function num(v){ if(v==null) return NaN; const s=String(v).replace(/,/g,'.').replace(/[^0-9+\-.]/g,''); const n=parseFloat(s); return Number.isFinite(n)?n:NaN; }
+  function fmtNum(v, unit=''){ return Number.isFinite(v) ? (Math.round(v*10)/10)+' '+unit : 'N/D'; }
+  function pad2(n){ return String(n).padStart(2,'0'); }
+  function monthAbbrEs(m){ return ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'][m] || '---'; }
+  function fmtDateCompactMDY(iso){
+    if(!iso) return 'N/D';
+    const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if(!m) return String(iso);
+    return `${m[3]}${monthAbbrEs(Number(m[2]) - 1)}${m[1]}`;
+  }
+  function fmtDateTimeMilitary(input){
+    const d = new Date(input);
+    if(Number.isNaN(d.getTime())) return String(input ?? 'N/D');
+    return `${pad2(d.getDate())}${pad2(d.getHours())}${pad2(d.getMinutes())}${monthAbbrEs(d.getMonth())}${d.getFullYear()}`;
+  }
+  function fmtHourMilitary(input){
+    const d = new Date(input);
+    if(Number.isNaN(d.getTime())) return 'N/D';
+    return `${pad2(d.getHours())}${pad2(d.getMinutes())}h.`;
+  }
+  function toDMS(value, kind){
+    if(!Number.isFinite(value)) return '';
+    const abs = Math.abs(value);
+    const deg = Math.floor(abs);
+    const minFloat = (abs - deg) * 60;
+    const min = Math.floor(minFloat);
+    const sec = Math.round((minFloat - min) * 60);
+    const hemi = kind === 'lat' ? (value < 0 ? 'S' : 'N') : (value < 0 ? 'W' : 'E');
+    return `${deg}°${pad2(min)}'${pad2(sec)}"${hemi}`;
+  }
+  function formatPointDMS(lat, lon){
+    if(!Number.isFinite(lat) || !Number.isFinite(lon)) return 'N/D';
+    return `${toDMS(lat,'lat')} ${toDMS(lon,'lon')}`;
+  }
+  function getReportSourceModel(){
+    const srcSel = qs('sourceSelect');
+    const modelSel = qs('modelSelect');
+    const sourceVal = srcSel?.value || 'auto';
+    const modelVal = modelSel?.value || 'best_match';
+    let source = 'Open-Meteo';
+    if(sourceVal === 'meteoblue') source = 'Meteoblue';
+    else if(sourceVal === 'pirate') source = 'Pirate Weather';
+    else if(sourceVal === 'accuweather') source = 'AccuWeather';
+    else if(sourceVal === 'dmc') source = 'Dirección Meteorológica de Chile';
+    else if(sourceVal === 'auto'){
+      const forecastSource = qs('forecastSource')?.value;
+      const uavSource = qs('uavSource')?.value;
+      if(forecastSource === 'accuweather' || uavSource === 'accuweather') source = 'AccuWeather';
+      else if(forecastSource === 'dmc' || uavSource === 'dmc') source = 'Dirección Meteorológica de Chile';
+      else source = 'Open-Meteo';
+    }
+    let model = '';
+    if(source === 'AccuWeather'){
+      model = 'AccuWeather';
+    }else if(source === 'Meteoblue'){
+      model = 'MultiModel';
+    }else if(source === 'Pirate Weather'){
+      model = 'Pirate Weather';
+    }else if(modelVal === 'wrf_dmc' || source === 'Dirección Meteorológica de Chile'){
+      model = 'WRF DMC';
+    }else if(modelVal === 'ecmwf_ifs04'){
+      model = 'ECMWF IFS 0.4°';
+    }else if(modelVal === 'gfs_seamless'){
+      model = 'GFS Seamless';
+    }else if(modelVal === 'best_match'){
+      model = 'ECMWF IFS 0.4°';
+    }
+    return { source, model: model || 'ECMWF IFS 0.4°' };
+  }
+
+  function getAstronomicalPlanningTimes(dateIso, lat, lon){
+    try{
+      if(Number.isFinite(lat) && Number.isFinite(lon) && window.SunCalc){
+        const base = dateIso ? new Date(`${dateIso}T12:00:00`) : new Date();
+        const t = window.SunCalc.getTimes(base, lat, lon);
+        const tz = 'America/Santiago';
+        const fmt = (d) => {
+          if(!(d instanceof Date) || Number.isNaN(d.getTime())) return 'N/D';
+          try{
+            return new Intl.DateTimeFormat('es-CL', {
+              timeZone: tz,
+              hour: '2-digit',
+              minute: '2-digit',
+              hourCycle: 'h23'
+            }).format(d);
+          }catch(_e){
+            return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+          }
+        };
+        return {
+          cccm: fmt(t.dawn),
+          tccv: fmt(t.dusk),
+          sunrise: fmt(t.sunrise),
+          sunset: fmt(t.sunset)
+        };
+      }
+    }catch(_e){}
+    return {
+      cccm: txt('valCccm','N/D'),
+      tccv: txt('valTccv','N/D'),
+      sunrise: txt('valSunrise','N/D'),
+      sunset: txt('valSunset','N/D')
+    };
+  }
+
+  function getCurrentPoint(){
+    let lat = NaN, lon = NaN;
+    try{
+      if(typeof parseDMS === 'function'){
+        lat = parseDMS(qs('latDms')?.value || '', 'lat');
+        lon = parseDMS(qs('lonDms')?.value || '', 'lon');
+      }
+    }catch(_e){}
+    const label = (txt('lblCity','UBICACIÓN OPERACIONAL') || 'UBICACIÓN OPERACIONAL').trim();
+    return { lat, lon, label };
+  }
+
+  function getCurrentLocationLabel(){
+    const p = getCurrentPoint();
+    return formatPointDMS(p.lat, p.lon);
+  }
+
+  window.openReportBuilder = function(){
+    hydrateReportDefaults();
+    if(qs('rbUseLastConfig')?.checked) loadLastReportConfig();
+    qs('reportBuilderModal')?.classList.add('show');
+  };
+  window.closeReportBuilder = function(){ qs('reportBuilderModal')?.classList.remove('show'); };
+  window.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeReportBuilder(); });
+
+  function hydrateReportDefaults(){
+    const city = getCurrentLocationLabel();
+    if(qs('rbLocationLabel')) qs('rbLocationLabel').value = city;
+    if(qs('rbDateFrom') && !qs('rbDateFrom').value) qs('rbDateFrom').value = todayIso(0);
+    if(qs('rbDateTo') && !qs('rbDateTo').value) qs('rbDateTo').value = todayIso(0);
+    const aeroSel = qs('rbAeroDrone'); if(aeroSel && !aeroSel.dataset.synced){ aeroSel.value = document.getElementById('uavDronePreset')?.value || aeroSel.value; aeroSel.dataset.synced='1'; }
+    const preset = qs('rbRangePreset');
+    if(preset && !preset.dataset.bound){
+      preset.addEventListener('change', syncPresetDates);
+      preset.dataset.bound = '1';
+    }
+  }
+
+  function syncPresetDates(){
+    const p = qs('rbRangePreset')?.value || 'today';
+    const from = qs('rbDateFrom'); const to = qs('rbDateTo');
+    if(!from || !to) return;
+    if(p==='today'){ from.value=todayIso(0); to.value=todayIso(0); }
+    else if(p==='tomorrow'){ from.value=todayIso(1); to.value=todayIso(1); }
+    else if(p==='3d'){ from.value=todayIso(0); to.value=todayIso(2); }
+    else if(p==='7d'){ from.value=todayIso(0); to.value=todayIso(6); }
+  }
+
+  function readReportConfig(){
+    const vars = selectedValues('#rbVariablesBox');
+    return {
+      title: qs('rbTitle')?.value || 'Boletín Meteorológico',
+      type: qs('rbType')?.value || 'Boletín operacional',
+      focus: qs('rbFocus')?.value || 'Operacional',
+      audience: qs('rbAudience')?.value || 'Personal operativo',
+      tone: qs('rbTone')?.value || 'Técnico formal',
+      rangePreset: qs('rbRangePreset')?.value || 'today',
+      dateFrom: qs('rbDateFrom')?.value || todayIso(0),
+      dateTo: qs('rbDateTo')?.value || todayIso(0),
+      responsible: qs('rbResponsible')?.value || 'No especificado',
+      locationLabel: getCurrentLocationLabel(),
+      notes: qs('rbNotes')?.value || '',
+      includeLetterhead: !!qs('rbIncludeLetterhead')?.checked,
+      letterheadLeft1: qs('rbLetterheadLeft1')?.value || '',
+      letterheadLeft2: qs('rbLetterheadLeft2')?.value || '',
+      letterheadLeft3: qs('rbLetterheadLeft3')?.value || '',
+      letterheadRight: qs('rbLetterheadRight')?.value || '',
+      letterheadPlaceDate: qs('rbLetterheadPlaceDate')?.value || '',
+      variables: vars,
+      includeCharts: !!qs('rbIncludeCharts')?.checked,
+      includeTables: !!qs('rbIncludeTables')?.checked,
+      includeTimeline: !!qs('rbIncludeTimeline')?.checked,
+      includeAlerts: !!qs('rbIncludeAlerts')?.checked,
+      includeRecs: !!qs('rbIncludeRecs')?.checked,
+      includeConclusions: !!qs('rbIncludeConclusions')?.checked,
+      includeMap: !!qs('rbIncludeMap')?.checked,
+      includeSignature: !!qs('rbIncludeSignature')?.checked,
+      includeDistribution: !!qs('rbIncludeDistribution')?.checked,
+      signatureName: qs('rbSignatureName')?.value || '',
+      signatureRank: qs('rbSignatureRank')?.value || '',
+      signatureRole: qs('rbSignatureRole')?.value || '',
+      distribution1: qs('rbDistribution1')?.value || '',
+      distribution2: qs('rbDistribution2')?.value || '',
+      distribution3: qs('rbDistribution3')?.value || '',
+      distribution4: qs('rbDistribution4')?.value || '',
+      includeSemaforo: !!qs('rbIncludeSemaforo')?.checked,
+      includeAero: !!qs('rbIncludeAero')?.checked,
+      aeroDrone: qs('rbAeroDrone')?.value || (document.getElementById('uavDronePreset')?.value || 'custom'),
+      saveConfig: !!qs('rbSaveConfig')?.checked,
+    };
+  }
+
+  function saveReportConfig(cfg){ try{ localStorage.setItem(storageKey, JSON.stringify(cfg)); }catch(e){} }
+  window.loadLastReportConfig = function(){
+    try{
+      const raw = localStorage.getItem(storageKey); if(!raw) return;
+      const cfg = JSON.parse(raw);
+      Object.entries({rbTitle:'title',rbType:'type',rbFocus:'focus',rbAudience:'audience',rbTone:'tone',rbRangePreset:'rangePreset',rbDateFrom:'dateFrom',rbDateTo:'dateTo',rbResponsible:'responsible',rbNotes:'notes',rbAeroDrone:'aeroDrone',rbSignatureName:'signatureName',rbSignatureRank:'signatureRank',rbSignatureRole:'signatureRole',rbDistribution1:'distribution1',rbDistribution2:'distribution2',rbDistribution3:'distribution3',rbDistribution4:'distribution4'}).forEach(([id,k])=>{ if(qs(id) && cfg[k]!=null) qs(id).value = cfg[k]; });
+      if(qs('rbLocationLabel')) qs('rbLocationLabel').value = getCurrentLocationLabel();
+      ['rbIncludeCharts','rbIncludeTables','rbIncludeTimeline','rbIncludeAlerts','rbIncludeRecs','rbIncludeConclusions','rbIncludeMap','rbIncludeSignature','rbIncludeDistribution','rbIncludeSemaforo','rbIncludeAero'].forEach(id=>{
+        const key = id.replace('rbInclude','include');
+        if(qs(id) && typeof cfg[key] === 'boolean') qs(id).checked = cfg[key];
+      });
+      const selected = new Set(cfg.variables || []);
+      document.querySelectorAll('#rbVariablesBox input[type="checkbox"]').forEach(ch=> ch.checked = selected.has(ch.value));
+    }catch(e){}
+  };
+
+  function collectMetrics(){
+    const status = txt('statusMsg','SISTEMA ACTIVO');
+    const conclusion = txt('conclusionText','Sin análisis disponible.');
+    const current = {
+      ubicacion: txt('lblCity','UBICACIÓN OPERACIONAL'),
+      condicion: txt('valWeatherDesc','N/D'),
+      temp: txt('valTemp','N/D'),
+      sensacion: txt('valApparent','N/D'),
+      humedad: txt('valHum','N/D'),
+      viento: txt('valWind','N/D'),
+      rafagas: txt('valGust','N/D'),
+      visibilidad: txt('valVis','N/D'),
+      uv: txt('valUv','N/D'),
+      cloudBase: txt('valCloudBase','N/D'),
+      cccm: txt('valCccm','N/D'),
+      tccv: txt('valTccv','N/D'),
+      sunrise: txt('valSunrise','N/D'),
+      sunset: txt('valSunset','N/D'),
+      pressure: txt('valPressure','N/D'),
+      precip: txt('valPrecipProb','N/D'),
+      status,
+      conclusion,
+      source: qs('sourceSelect')?.selectedOptions?.[0]?.textContent?.trim() || 'AUTO',
+      model: qs('modelSelect')?.selectedOptions?.[0]?.textContent?.trim() || 'AUTO'
+    };
+    const aero = {
+      status: txt('uavStatus','N/D'),
+      cond: txt('uavWeatherText','N/D'),
+      wind: txt('uavWind','N/D'),
+      gusts: txt('uavGusts','N/D'),
+      precip: txt('uavPrecip','N/D'),
+      cloud: txt('uavCloud','N/D'),
+      vis: txt('uavVis','N/D'),
+      kp: txt('uavKp','N/D'),
+      sunrise: txt('uavSunrise','N/D'),
+      sunset: txt('uavSunset','N/D'),
+      temp: txt('uavTemp','N/D'),
+      feels: txt('uavFeelsLike','N/D'),
+      sourceNote: txt('uavSourceNote','N/D')
+    };
+    return {current, aero};
+  }
+
+  function classifySemaforo(metrics){
+    const base = (metrics.current.status + ' ' + metrics.aero.status + ' ' + metrics.current.conclusion).toLowerCase();
+    if(/no apt|susp|afecta|riesgo alto|desfavorable|critica|severa/.test(base)) return {cls:'afecta',label:'AFECTA'};
+    if(/marg|precauc|atenci|limit|moderad/.test(base)) return {cls:'marginal',label:'MARGINAL'};
+    return {cls:'favorable',label:'FAVORABLE'};
+  }
+
+  function inferRegionByPoint(lat, lon){
+    if(!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+    if(lon > -66 || lon < -76 || lat > -17 || lat < -57) return null;
+    if(lat >= -18.5) return 'ARICA Y PARINACOTA';
+    if(lat >= -21.9) return 'TARAPACÁ';
+    if(lat >= -26.2) return 'ANTOFAGASTA';
+    if(lat >= -29.6) return 'ATACAMA';
+    if(lat >= -32.4) return 'COQUIMBO';
+    if(lat >= -34.9) return 'VALPARAÍSO';
+    if(lat >= -35.8) return 'METROPOLITANA';
+    if(lat >= -36.8) return "O'HIGGINS";
+    if(lat >= -37.9) return 'MAULE';
+    if(lat >= -38.6) return 'ÑUBLE';
+    if(lat >= -39.8) return 'BIOBÍO';
+    if(lat >= -41.3) return 'ARAUCANÍA';
+    if(lat >= -41.9) return 'LOS RÍOS';
+    if(lat >= -44.7) return 'LOS LAGOS';
+    if(lat >= -49.5) return 'AYSÉN';
+    return 'MAGALLANES';
+  }
+
+  function pointInPolygon(lat, lon, pts){
+    let inside = false;
+    for(let i=0,j=pts.length-1;i<pts.length;j=i++){
+      const xi = pts[i][1], yi = pts[i][0];
+      const xj = pts[j][1], yj = pts[j][0];
+      const intersect = ((yi>lat)!==(yj>lat)) && (lon < (xj-xi)*(lat-yi)/((yj-yi)||1e-9)+xi);
+      if(intersect) inside = !inside;
+    }
+    return inside;
+  }
+
+  function pointNearLine(lat, lon, pts){
+    if(pts.length < 2) return false;
+    for(let i=1;i<pts.length;i++){
+      const a = pts[i-1], b = pts[i];
+      const minLat = Math.min(a[0],b[0]) - 0.2, maxLat = Math.max(a[0],b[0]) + 0.2;
+      const minLon = Math.min(a[1],b[1]) - 0.2, maxLon = Math.max(a[1],b[1]) + 0.2;
+      if(lat>=minLat && lat<=maxLat && lon>=minLon && lon<=maxLon) return true;
+    }
+    return false;
+  }
+
+  function coordsToLatLonList(coords){
+    if(!Array.isArray(coords)) return [];
+    if(coords.length && typeof coords[0] === 'object' && coords[0] && ('lat' in coords[0] || 'lon' in coords[0] || 'lng' in coords[0])){
+      return coords.map(p=>[Number(p.lat), Number(p.lon ?? p.lng)]).filter(p=>Number.isFinite(p[0])&&Number.isFinite(p[1]));
+    }
+    if(coords.length && Array.isArray(coords[0])){
+      if(Array.isArray(coords[0][0])) return coordsToLatLonList(coords[0]);
+      return coords.map(p=>{
+        const a=Number(p[0]), b=Number(p[1]);
+        if(a < 0 && a > -90 && b < 0 && b > -180) return [a,b];
+        return [b,a];
+      }).filter(p=>Number.isFinite(p[0])&&Number.isFinite(p[1]));
+    }
+    return [];
+  }
+
+  function alertMatchesPoint(it, point){
+    if(!point || !Number.isFinite(point.lat) || !Number.isFinite(point.lon)) return true;
+    try{
+      if(typeof __alertsGetGeometry === 'function'){
+        const geom = __alertsGetGeometry(it);
+        if(geom){
+          if(geom.kind === 'bbox' && Array.isArray(geom.bbox) && geom.bbox.length===4){
+            const [minLon, minLat, maxLon, maxLat] = geom.bbox.map(Number);
+            return point.lon >= minLon && point.lon <= maxLon && point.lat >= minLat && point.lat <= maxLat;
+          }
+          if(geom.kind === 'coords'){
+            const pts = coordsToLatLonList(geom.coords);
+            if(pts.length >= 3) return pointInPolygon(point.lat, point.lon, pts);
+            if(pts.length >= 2) return pointNearLine(point.lat, point.lon, pts);
+            if(pts.length === 1) return Math.abs(point.lat-pts[0][0]) < 0.25 && Math.abs(point.lon-pts[0][1]) < 0.25;
+          }
+          if(geom.kind === 'geojson' && geom.geojson){
+            const gj = geom.geojson;
+            const features = gj.type === 'FeatureCollection' ? gj.features : [gj];
+            for(const f of features){
+              const g = f.geometry || f;
+              const c = g?.coordinates;
+              if(!g || !c) continue;
+              if(g.type === 'Polygon'){
+                const pts = coordsToLatLonList(c[0] || []);
+                if(pts.length >= 3 && pointInPolygon(point.lat, point.lon, pts)) return true;
+              }else if(g.type === 'MultiPolygon'){
+                for(const poly of c){
+                  const pts = coordsToLatLonList(poly[0] || []);
+                  if(pts.length >= 3 && pointInPolygon(point.lat, point.lon, pts)) return true;
+                }
+              }else if(g.type === 'LineString'){
+                const pts = coordsToLatLonList(c);
+                if(pointNearLine(point.lat, point.lon, pts)) return true;
+              }else if(g.type === 'Point'){
+                const pt = coordsToLatLonList([c])[0];
+                if(pt && Math.abs(point.lat-pt[0]) < 0.25 && Math.abs(point.lon-pt[1]) < 0.25) return true;
+              }
+            }
+            return false;
+          }
+        }
+      }
+      const region = inferRegionByPoint(point.lat, point.lon);
+      const regs = (typeof __alertsExtractRegions === 'function' ? __alertsExtractRegions(it) : []).map(x=>String(x||'').toUpperCase());
+      if(region && regs.length) return regs.includes(region.toUpperCase()) || regs.includes('NACIONAL');
+      return true;
+    }catch(_e){
+      return true;
+    }
+  }
+
+  function getAlertsSummaryForPoint(){
+    const point = getCurrentPoint();
+    const pool = Array.isArray(window.__alertsState?.items) && window.__alertsState.items.length
+      ? window.__alertsState.items
+      : Array.from(document.querySelectorAll('#alertsList .alert-item')).map(el=>({
+          title: el.querySelector('.alert-title')?.textContent?.trim() || 'ALERTA',
+          meta: el.querySelector('.alert-meta')?.textContent?.trim() || '',
+          contenido: el.textContent?.trim() || ''
+        }));
+    const relevant = pool.filter(it=>alertMatchesPoint(it, point)).slice(0,8);
+    if(!relevant.length) return '<p class="gr-note">No se identifican alertas vigentes asociadas a la zona de interés.</p>';
+    const items = relevant.map(it=>{
+      if(it.title && it.meta) return { title: it.title, meta: it.meta, body: it.contenido || '' };
+      const title = (it.titulo || it.title || 'ALERTA').toString().trim();
+      const dateRaw = it.fechaHora || it.fecha_hora || it.date || it.fecha || '';
+      const dt = dateRaw ? new Date(dateRaw) : null;
+      const when = dt && !isNaN(dt.getTime()) ? dt.toLocaleString('es-CL',{hour12:false}) : '';
+      const regs = (typeof __alertsExtractRegions === 'function' ? __alertsExtractRegions(it) : []).join(', ');
+      const meta = [regs, when].filter(Boolean).join(' · ');
+      const body = (it.contenido || it.descripcion || it.summary || '').toString().trim();
+      return { title, meta, body };
+    });
+    return '<ul class="gr-list">'+items.map(a=>`<li><strong>${htmlSafe(a.title)}</strong>${a.meta ? ` <span class="gr-small">${htmlSafe(a.meta)}</span>`:''}${a.body ? `<div class="gr-small" style="margin-top:4px;">${htmlSafe(a.body)}</div>`:''}</li>`).join('')+'</ul>';
+  }
+
+  function reportAudienceHint(cfg){
+    const s = String(cfg.audience || '').toLowerCase();
+    if(s.includes('mando')) return 'La lectura prioriza impacto general, continuidad de actividades y necesidad de control de riesgo para la toma de decisión.';
+    if(s.includes('técnico') || s.includes('tecnico') || s.includes('análisis') || s.includes('analisis')) return 'La lectura prioriza consistencia de variables, evolución temporal y señales útiles para validación técnica del escenario.';
+    if(s.includes('externo')) return 'La lectura prioriza claridad expositiva, síntesis del riesgo y comprensión general de las condiciones del periodo.';
+    return 'La lectura prioriza efectos directos sobre ejecución, seguridad y oportunidad de las actividades previstas en terreno.';
+  }
+
+  function reportFocusHint(cfg){
+    const s = `${cfg.focus || ''} ${cfg.type || ''}`.toLowerCase();
+    if(/rpas|dron|aeron/.test(s)) return 'Se da prioridad a viento, ráfagas, visibilidad, techo y precipitación para apoyar evaluación de empleo RPAS.';
+    if(/miner/.test(s)) return 'Se da prioridad a polvo potencial, visibilidad, viento, ráfagas y estabilidad del tramo para continuidad de faena.';
+    if(/logíst|logist|convoy|desplaz/.test(s)) return 'Se da prioridad a visibilidad, precipitación, viento y ventanas de tránsito para desplazamiento seguro.';
+    if(/seguridad|patrull|terreno/.test(s)) return 'Se da prioridad a exposición del personal, lectura del entorno, radiación, viento y cambios de visibilidad.';
+    return 'Se da prioridad al comportamiento integrado de temperatura, viento, ráfagas, visibilidad, nubosidad y precipitación.';
+  }
+
+  function buildRecommendations(metrics, cfg){
+    const recs = [];
+    const windNum = num(metrics.aero.wind) || num(metrics.current.viento);
+    const gustNum = num(metrics.aero.gusts) || num(metrics.current.rafagas);
+    const visNum = num(metrics.aero.vis) || num(metrics.current.visibilidad);
+    const uvNum = num(metrics.current.uv);
+    const precipNum = num(metrics.aero.precip) || num(metrics.current.precip);
+    const cloudBase = num(metrics.current.cloudBase);
+    const pressure = num(metrics.current.pressure);
+    const sem = classifySemaforo(metrics);
+
+    recs.push(`Mantener la planificación operativa referida exactamente al punto seleccionado en el mapa (${cfg.locationLabel}), ya que las condiciones meteorológicas, el análisis y las alertas del boletín deben interpretarse para esa ubicación específica y no de forma regional genérica.`);
+    recs.push(reportAudienceHint(cfg));
+    recs.push(reportFocusHint(cfg));
+    if(Number.isFinite(gustNum) && gustNum >= 35) recs.push(`Las ráfagas registradas/proyectadas alcanzan valores relevantes (${fmtNum(gustNum,'km/h')}); por ello conviene limitar maniobras sensibles al viento, reforzar control de elementos livianos, revisar estabilidad de equipos expuestos y priorizar ventanas con menor turbulencia para actividades críticas.`);
+    else if(Number.isFinite(windNum) && windNum >= 25) recs.push(`El viento sostenido se mantiene en un rango operacional exigente (${fmtNum(windNum,'km/h')}); se recomienda ajustar secuencias de trabajo en superficie, recalcular tiempos de exposición y verificar permanentemente la deriva potencial en operaciones RPAS, izajes y desplazamientos abiertos.`);
+    else recs.push(`El componente eólico no muestra una afectación severa inmediata en el punto analizado; aun así, debe mantenerse vigilancia sobre cambios horarios, especialmente durante las ventanas de transición diurna y cualquier incremento súbito de ráfaga.`);
+    if(Number.isFinite(visNum) && visNum <= 5) recs.push(`La visibilidad proyectada resulta reducida (${fmtNum(visNum,'km')}); corresponde reforzar reconocimiento previo de rutas, uso de referencias visuales, separación entre medios y confirmación continua del entorno antes de ejecutar desplazamientos, observación o elevación de dron.`);
+    if(Number.isFinite(precipNum) && precipNum > 30) recs.push(`La probabilidad/afectación por precipitación es significativa (${fmtNum(precipNum,'%')}); se recomienda proteger sensores, ópticas y equipamiento, prever degradación de terreno y considerar que una precipitación débil pero persistente puede alterar seguridad, adherencia y calidad de observación.`);
+    if(Number.isFinite(uvNum) && uvNum >= 8) recs.push(`El índice UV es alto a extremo (${fmtNum(uvNum)}); para personal en terreno conviene establecer rotación de exposición, hidratación reforzada, protección solar completa y supervisión del periodo de mayor carga radiativa.`);
+    if(Number.isFinite(cloudBase) && cloudBase < 500) recs.push(`El techo de nubes/altura de referencia aparece bajo (${fmtNum(cloudBase,'m')}); esto obliga a validar alturas de seguridad, referencias visuales y restricciones de maniobra vertical antes de cualquier empleo aeronáutico o RPAS.`);
+    if(Number.isFinite(pressure)) recs.push(`La presión atmosférica observada (${fmtNum(pressure,'hPa')}) debe leerse en conjunto con la tendencia sinóptica del periodo; variaciones persistentes pueden anticipar cambios de escenario, por lo que conviene actualizar el boletín si la operación se desplaza varias horas desde la hora de emisión.`);
+    if(/RPAS|dron|aeron/i.test(cfg.focus + ' ' + cfg.type)) recs.push(`Para misiones RPAS o de observación aérea, la decisión de elevación debe quedar condicionada a una última verificación en sitio del viento, ráfagas, visibilidad, nubosidad útil, amanecer/atardecer y eventuales restricciones publicadas para la zona inmediata del punto seleccionado.`);
+    recs.push(`El semáforo operacional actual del boletín es ${sem.label}. La recomendación práctica es utilizar este informe como base de decisión inicial y contrastarlo con observación directa, actualización de alertas de la zona del mapa y verificación final previa al inicio de la actividad.`);
+    return recs;
+  }
+
+  function buildConclusion(metrics, cfg){
+    const sem = classifySemaforo(metrics);
+    const parts = [];
+    parts.push(`Considerando la ubicación seleccionada en el mapa (${cfg.locationLabel}), el escenario meteorológico evaluado muestra como elementos más relevantes la condición ${metrics.current.condicion}, una temperatura de ${metrics.current.temp}, humedad de ${metrics.current.humedad}, viento de ${metrics.current.viento}, ráfagas de ${metrics.current.rafagas}, precipitación de referencia de ${metrics.current.precip} y visibilidad de ${metrics.current.visibilidad}.`);
+    parts.push(`Desde el punto de vista operacional, el panorama se clasifica como ${sem.label}, lo que debe interpretarse junto con el objetivo de la misión, el nivel de exposición del personal, la duración de la actividad y la sensibilidad del material o plataforma empleada.`);
+    parts.push(reportAudienceHint(cfg));
+    parts.push(reportFocusHint(cfg));
+    parts.push(`La continuidad de actividades resulta más razonable cuando existe control del componente eólico, vigilancia de la visibilidad, monitoreo de cambios dentro del periodo analizado y revisión de alertas efectivamente asociadas al punto geográfico donde se emite el boletín. En periodos extendidos, la decisión no debe descansar solo en el dato instantáneo, sino también en la tendencia de temperatura, presión, nubosidad, precipitación y viento.`);
+    parts.push(`En consecuencia, este informe constituye una base sólida para decisión táctica y operacional, pero su valor aumenta cuando se complementa con observación local, actualización de fuentes y verificación final inmediatamente antes de ejecutar fases críticas, especialmente en ventanas de transición horaria o ante señales de inestabilidad.`);
+    return parts.join(' ');
+  }
+
+
+  function getRangeDiagnostics(cfg){
+    const src = getForecastSource() || {};
+    const H = src.hourly || {};
+    const D = src.daily || {};
+    const dates = eachDate(cfg.dateFrom, cfg.dateTo);
+    const out = { days: dates.length, labels: dates };
+
+    function collectHourly(key){
+      if(!Array.isArray(H.time) || !Array.isArray(H[key])) return [];
+      const vals = [];
+      H.time.forEach((t,i)=>{
+        const d = String(t).slice(0,10);
+        if(dates.includes(d)){
+          const v = Number(H[key][i]);
+          if(Number.isFinite(v)) vals.push(v);
+        }
+      });
+      return vals;
+    }
+    function dailyVals(key){
+      if(!Array.isArray(D.time) || !Array.isArray(D[key])) return [];
+      const idxMap = Object.fromEntries(D.time.map((d,i)=>[String(d).slice(0,10), i]));
+      return dates.map(d => {
+        const idx = idxMap[d];
+        const v = idx!=null ? Number(D[key][idx]) : NaN;
+        return Number.isFinite(v) ? v : null;
+      }).filter(v => v != null);
+    }
+    function stats(arr){
+      if(!arr.length) return null;
+      return { min: Math.min(...arr), max: Math.max(...arr), avg: arr.reduce((a,b)=>a+b,0)/arr.length };
+    }
+
+    out.temp = stats(dailyVals('temperature_2m_max').length ? dailyVals('temperature_2m_max') : collectHourly('temperature_2m'));
+    out.wind = stats(dailyVals('wind_speed_10m_max').length ? dailyVals('wind_speed_10m_max') : collectHourly('wind_speed_10m'));
+    out.gust = stats(collectHourly('wind_gusts_10m'));
+    out.precip = stats(dailyVals('precipitation_sum').length ? dailyVals('precipitation_sum') : collectHourly('precipitation'));
+    out.humidity = stats(collectHourly('relative_humidity_2m'));
+    out.visibility = stats(collectHourly('visibility'));
+    out.cloud = stats(collectHourly('cloud_cover'));
+    out.pressure = stats(collectHourly('pressure_msl'));
+    return out;
+  }
+
+  function buildIndicators(metrics, cfg){
+    const r = getRangeDiagnostics(cfg);
+    const sameDay = cfg.dateFrom === cfg.dateTo;
+    const rows = [];
+    rows.push(['Periodo evaluado', sameDay ? fmtDateCompactMDY(cfg.dateFrom) : `${fmtDateCompactMDY(cfg.dateFrom)} a ${fmtDateCompactMDY(cfg.dateTo)}`]);
+    rows.push(['Condición dominante', metrics.current.condicion || 'N/D']);
+    if(r.temp) rows.push(['Régimen térmico', sameDay ? `Oscilación estimada entre ${fmtNum(r.temp.min,'°C')} y ${fmtNum(r.temp.max,'°C')}, con valor medio cercano a ${fmtNum(r.temp.avg,'°C')}.` : `Durante el periodo la temperatura se mueve entre ${fmtNum(r.temp.min,'°C')} y ${fmtNum(r.temp.max,'°C')}, con promedio de ${fmtNum(r.temp.avg,'°C')}.`]);
+    if(r.wind) rows.push(['Viento dominante', `Promedio estimado ${fmtNum(r.wind.avg,'km/h')} y máximo sostenido de ${fmtNum(r.wind.max,'km/h')}.`]);
+    if(r.gust) rows.push(['Ráfagas relevantes', `Se proyectan pulsos de hasta ${fmtNum(r.gust.max,'km/h')}, con potencial de afectar maniobra y estabilidad de equipos livianos.`]);
+    if(r.visibility) rows.push(['Visibilidad predominante', `Media del periodo de ${fmtNum((r.visibility.avg || 0)/1000,'km')} y mínimo estimado de ${fmtNum((r.visibility.min || 0)/1000,'km')}.`]);
+    if(r.cloud) rows.push(['Cobertura nubosa', `Promedio de ${fmtNum(r.cloud.avg,'%')} y máximos del orden de ${fmtNum(r.cloud.max,'%')}.`]);
+    if(r.precip) rows.push(['Precipitación asociada', sameDay ? `Acumulado/valor de referencia de hasta ${fmtNum(r.precip.max,'mm')} para la jornada.` : `El tramo analizado muestra máximos diarios de ${fmtNum(r.precip.max,'mm')} y promedio de ${fmtNum(r.precip.avg,'mm')}.`]);
+    if(r.pressure) rows.push(['Comportamiento barométrico', `Media de ${fmtNum(r.pressure.avg,'hPa')} con oscilación de ${fmtNum(r.pressure.max - r.pressure.min,'hPa')}, útil para interpretar estabilidad o transición sinóptica.`]);
+    return `<table class="gr-table"><tbody>${rows.map(r=>`<tr><th>${htmlSafe(r[0])}</th><td>${htmlSafe(r[1])}</td></tr>`).join('')}</tbody></table>`;
+  }
+
+  function inferSynopticAnalysis(metrics, cfg){
+    const r = getRangeDiagnostics(cfg);
+    const notes = [];
+    const lat = Number(getCurrentPoint()?.lat);
+    const lon = Number(getCurrentPoint()?.lon);
+    const month = new Date((cfg.dateFrom || new Date().toISOString().slice(0,10))+'T00:00:00').getMonth()+1;
+    const hum = r.humidity?.avg;
+    const humMax = r.humidity?.max;
+    const precip = r.precip?.max;
+    const cloud = r.cloud?.avg;
+    const cloudMax = r.cloud?.max;
+    const pressureAvg = r.pressure?.avg;
+    const pressureAmp = (r.pressure && Number.isFinite(r.pressure.max) && Number.isFinite(r.pressure.min)) ? (r.pressure.max - r.pressure.min) : null;
+    const windAvg = r.wind?.avg;
+    const windMax = r.wind?.max;
+    const gustMax = r.gust?.max;
+    const visMinKm = Number.isFinite(r.visibility?.min) ? r.visibility.min/1000 : null;
+    const cloudBase = num(metrics.current.cloudBase);
+    const coastalNorth = Number.isFinite(lat) && Number.isFinite(lon) && lat <= -18 && lat >= -30 && lon <= -69.8;
+    const farNorthInterior = Number.isFinite(lat) && lat <= -16 && lat >= -24 && Number.isFinite(lon) && lon > -70.5;
+    const centralSouth = Number.isFinite(lat) && lat < -30;
+
+    notes.push('Desde el punto de vista sinóptico y mesoescala, el comportamiento del periodo fue evaluado a partir de presión, nubosidad, humedad, precipitación, visibilidad, viento y evolución térmica sobre el punto seleccionado, buscando compatibilidad con patrones atmosféricos regionales de mayor escala.');
+
+    if(farNorthInterior && [12,1,2,3].includes(month) && ((Number.isFinite(humMax) && humMax >= 60) || (Number.isFinite(precip) && precip >= 1) || (Number.isFinite(cloudMax) && cloudMax >= 65))){
+      notes.push('La señal dominante resulta compatible con influencia de la Alta de Bolivia y circulación húmeda de componente continental sobre el altiplano, favoreciendo advección húmeda, incremento de nubosidad convectiva y probabilidad de chubascos o tormentas aisladas en horas de la tarde y primera parte de la noche.');
+    }
+    if(coastalNorth && Number.isFinite(hum) && hum >= 70 && Number.isFinite(visMinKm) && visMinKm <= 8 && ((Number.isFinite(cloudBase) && cloudBase <= 900) || (Number.isFinite(cloud) && cloud >= 55)) && (!Number.isFinite(precip) || precip < 1.5)){
+      notes.push('En el borde costero y sectores inmediatamente adyacentes, la combinación de humedad elevada, visibilidad reducida y techo bajo es consistente con configuración de vaguada costera o su influencia indirecta, con estratificación baja, nubosidad de tipo estratiforme y eventuales restricciones matinales de visibilidad.');
+    }
+    if(Number.isFinite(pressureAvg) && pressureAvg >= 1017.5 && (!Number.isFinite(precip) || precip < 1) && Number.isFinite(cloud) && cloud <= 40 && Number.isFinite(windAvg) && windAvg <= 25){
+      notes.push('El campo de presión y la baja actividad precipitante también son concordantes con dorsal anticiclónica o dominio anticiclónico de subsidencia, escenario que favorece estabilidad, cielos más abiertos y continuidad operacional relativamente alta, salvo efectos locales de viento o inversión.');
+    }
+    if(Number.isFinite(hum) && hum >= 65 && Number.isFinite(cloud) && cloud >= 55 && Number.isFinite(precip) && precip >= 0.5){
+      notes.push('Se aprecia además una señal de advección húmeda o disponibilidad aumentada de humedad en capas bajas y medias, condición que sostiene nubosidad persistente y eleva la probabilidad de fenómenos asociados cuando actúan forzantes locales o sinópticos complementarios.');
+    }
+    if((centralSouth || Number.isFinite(lat) && lat < -34) && Number.isFinite(pressureAmp) && pressureAmp >= 5 && Number.isFinite(precip) && precip >= 4 && Number.isFinite(windMax) && windMax >= 28){
+      notes.push('Para latitudes medias y australes, la combinación de oscilación barométrica marcada, precipitación significativa y aumento del viento es compatible con paso frontal o tránsito de banda frontal, asociado a deterioro del tiempo, mayor cobertura nubosa y ráfagas capaces de imponer restricciones operacionales temporales.');
+    }
+    if(Number.isFinite(pressureAmp) && pressureAmp >= 4 && Number.isFinite(pressureAvg) && pressureAvg >= 1012 && Number.isFinite(windMax) && windMax >= 20 && Number.isFinite(precip) && precip >= 1 && precip < 6){
+      notes.push('El patrón del tramo final del periodo también puede interpretarse como fase de transición postfrontal o de estabilización posterior a un episodio más activo, con presión en recuperación relativa, nubosidad residual y viento aún sensible antes de consolidarse una condición más estable.');
+    }
+    if(Number.isFinite(pressureAvg) && pressureAvg >= 1016 && Number.isFinite(windAvg) && windAvg <= 12 && Number.isFinite(visMinKm) && visMinKm <= 6 && ((Number.isFinite(cloudBase) && cloudBase <= 700) || (Number.isFinite(humMax) && humMax >= 80))){
+      notes.push('La coexistencia de presión relativamente alta, viento débil y deterioro de visibilidad/techo bajo sugiere, además, probables procesos de inversión térmica o estratificación estable en capas bajas, particularmente en horas nocturnas y matinales, con posible persistencia de bruma, neblina o nubosidad baja.');
+    }
+    if(!notes.slice(1).length){
+      notes.push('No se identifica una firma sinóptica única con intensidad suficiente para atribuir con certeza un fenómeno rector dominante; sin embargo, sí se observa un escenario de transición meteorológica que exige seguimiento de presión, nubosidad, viento, visibilidad y precipitación para detectar cambios de régimen en el corto plazo.');
+    }
+    notes.push('La conclusión precedente debe considerarse como una interpretación aplicada del entorno atmosférico sobre el área de interés y no reemplaza el análisis sinóptico regional integral sustentado con cartas de superficie, altura y teledetección.');
+    return notes.join(' ');
+  }
+
+
+  function getSelectedVariableSeries(cfg){
+    const src = getForecastSource();
+    const H = src?.hourly || {};
+    const D = src?.daily || {};
+    const dates = eachDate(cfg.dateFrom, cfg.dateTo);
+    const sameDay = dates.length === 1;
+    const specs = {
+      temp:{ label:'Temperatura (°C)', hourly:'temperature_2m', daily:'temperature_2m_max', agg:'max' },
+      sensacion:{ label:'Sensación térmica (°C)', hourly:'apparent_temperature', agg:'mean' },
+      humedad:{ label:'Humedad relativa (%)', hourly:'relative_humidity_2m', agg:'mean' },
+      viento:{ label:'Viento 10 m (km/h)', hourly:'wind_speed_10m', daily:'wind_speed_10m_max', agg:'max' },
+      rafagas:{ label:'Ráfagas (km/h)', hourly:'wind_gusts_10m', agg:'max' },
+      direccion:{ label:'Dirección del viento (°)', hourly:'wind_direction_10m', agg:'mean' },
+      precipitacion:{ label:'Precipitación (mm)', hourly:'precipitation', daily:'precipitation_sum', agg:'sum' },
+      nubosidad:{ label:'Nubosidad (%)', hourly:'cloud_cover', agg:'mean' },
+      visibilidad:{ label:'Visibilidad (km)', hourly:'visibility', agg:'mean', transform:(v)=>v/1000 },
+      presion:{ label:'Presión (hPa)', hourly:'pressure_msl', agg:'mean' },
+      uv:{ label:'Índice UV', hourly:'uv_index', daily:'uv_index_max', agg:'max' },
+      cloudbase:{ label:'Techo de nubes (m)', hourly:'cloud_base', agg:'mean' }
+    };
+    function aggregate(arr, mode){
+      const vals = arr.filter(v=>Number.isFinite(v));
+      if(!vals.length) return null;
+      if(mode==='sum') return vals.reduce((a,b)=>a+b,0);
+      if(mode==='max') return Math.max(...vals);
+      return vals.reduce((a,b)=>a+b,0)/vals.length;
+    }
+    const selected = [];
+    (cfg.variables || []).forEach(key=>{
+      const spec = specs[key];
+      if(!spec) return;
+      let rows = [];
+      if(sameDay){
+        if(!Array.isArray(H.time) || !Array.isArray(H[spec.hourly])) return;
+        H.time.forEach((t,i)=>{
+          if(String(t).slice(0,10) !== dates[0]) return;
+          const raw = Number(H[spec.hourly][i]);
+          if(!Number.isFinite(raw)) return;
+          const val = spec.transform ? spec.transform(raw) : raw;
+          rows.push({ key:String(t).slice(11,16), value: val });
+        });
+      }else{
+        if(spec.daily && Array.isArray(D.time) && Array.isArray(D[spec.daily])){
+          const idxMap = Object.fromEntries(D.time.map((d,i)=>[String(d).slice(0,10), i]));
+          dates.forEach(d=>{
+            const idx = idxMap[d];
+            if(idx == null) return;
+            const raw = Number(D[spec.daily][idx]);
+            if(!Number.isFinite(raw)) return;
+            const val = spec.transform ? spec.transform(raw) : raw;
+            rows.push({ key:d, value: val });
+          });
+        }else if(Array.isArray(H.time) && Array.isArray(H[spec.hourly])){
+          dates.forEach(d=>{
+            const arr = [];
+            H.time.forEach((t,i)=>{
+              if(String(t).slice(0,10) !== d) return;
+              const raw = Number(H[spec.hourly][i]);
+              if(!Number.isFinite(raw)) return;
+              arr.push(spec.transform ? spec.transform(raw) : raw);
+            });
+            const agg = aggregate(arr, spec.agg);
+            if(agg != null) rows.push({ key:d, value: agg });
+          });
+        }
+      }
+      if(rows.length) selected.push({ key, label: spec.label, rows });
+    });
+    return { sameDay, dates, selected };
+  }
+
+  function buildVariablePeriodTable(cfg){
+    const series = getSelectedVariableSeries(cfg);
+    if(!series.selected.length){
+      return `<div class="gr-note">No hay series suficientes para construir el cuadro de variables solicitado con los datos disponibles para este periodo.</div>`;
+    }
+    const rowKeys = [];
+    series.selected.forEach(s=>s.rows.forEach(r=>{ if(!rowKeys.includes(r.key)) rowKeys.push(r.key); }));
+    rowKeys.sort();
+    const head0 = series.sameDay ? 'Hora' : 'Fecha';
+    const rowsHtml = rowKeys.map(key=>{
+      const first = series.sameDay ? key : fmtDateCompactMDY(key);
+      const cells = series.selected.map(s=>{
+        const found = s.rows.find(r=>r.key === key);
+        return `<td>${found ? htmlSafe(fmtNum(found.value,'')) : '—'}</td>`;
+      }).join('');
+      return `<tr><td>${first}</td>${cells}</tr>`;
+    }).join('');
+    return `<table class="gr-table gr-period-table"><thead><tr><th>${head0}</th>${series.selected.map(s=>`<th>${htmlSafe(s.label)}</th>`).join('')}</tr></thead><tbody>${rowsHtml}</tbody></table>`;
+  }
+
+  function variableRows(metrics, vars, cfg){
+    const r = getRangeDiagnostics(cfg);
+    const sameDay = cfg.dateFrom === cfg.dateTo;
+    const map = {
+      temp:['Temperatura', r.temp ? (sameDay ? `Rango horario entre ${fmtNum(r.temp.min,'°C')} y ${fmtNum(r.temp.max,'°C')}.` : `Rango diario entre ${fmtNum(r.temp.min,'°C')} y ${fmtNum(r.temp.max,'°C')}, con promedio de ${fmtNum(r.temp.avg,'°C')}.`) : null, sameDay ? 'Puede aumentar o reducir la exigencia térmica del personal durante las horas de mayor exposición, afectando confort, hidratación y permanencia en terreno.' : 'La amplitud térmica del periodo puede modificar el confort operativo, la exposición prolongada y la planificación de permanencia en terreno.'],
+      sensacion:['Sensación térmica', metrics.current.sensacion || null, 'Permite valorar la percepción térmica real del ambiente y advertir eventuales exigencias adicionales sobre el personal expuesto al viento o a radiación.'],
+      humedad:['Humedad relativa', r.humidity ? `Promedio ${fmtNum(r.humidity.avg,'%')} con máximos de ${fmtNum(r.humidity.max,'%')}.` : null, 'Una humedad elevada o persistente puede favorecer condensación, bruma o sensación térmica más incómoda, mientras que valores bajos acentúan sequedad ambiental y deshidratación.'],
+      viento:['Viento superficial', r.wind ? `Promedio ${fmtNum(r.wind.avg,'km/h')} y máximos de ${fmtNum(r.wind.max,'km/h')}.` : null, 'Puede afectar desplazamientos, estabilidad de equipos, observación, maniobras en terreno y toda operación sensible a transporte de polvo o turbulencia superficial.'],
+      rafagas:['Ráfagas', r.gust ? `Pulsos máximos del orden de ${fmtNum(r.gust.max,'km/h')}.` : null, 'Las rachas más intensas pueden generar afectación súbita sobre personal, material liviano, maniobra vehicular y seguridad de operaciones aéreas o RPAS.'],
+      direccion:['Dirección del viento', txt('valWindDir','N/D'), 'Su interpretación ayuda a estimar exposición de rutas, laderas, quebradas, zonas de polvo en suspensión y sectores con canalización local del flujo.'],
+      precipitacion:['Precipitación', r.precip ? (sameDay ? `Acumulación horaria disponible con máximo de ${fmtNum(r.precip.max,'mm')}.` : `Comportamiento diario con máximo de ${fmtNum(r.precip.max,'mm')} y promedio de ${fmtNum(r.precip.avg,'mm')}.`) : null, 'Puede comprometer visibilidad, adherencia, transitabilidad, operación de sensores, estado de caminos y continuidad de actividades expuestas.'],
+      nubosidad:['Nubosidad', r.cloud ? `Cobertura media de ${fmtNum(r.cloud.avg,'%')} con máximos de ${fmtNum(r.cloud.max,'%')}.` : null, 'Incide en referencia visual, radiación, enfriamiento nocturno y posible evolución de inestabilidad o cobertura persistente en la zona de interés.'],
+      visibilidad:['Visibilidad', r.visibility ? `Promedio ${fmtNum(r.visibility.avg/1000,'km')} con mínimo de ${fmtNum(r.visibility.min/1000,'km')}.` : null, 'Una reducción de visibilidad puede afectar vigilancia, conducción, observación del terreno, control de rutas y seguridad general de desplazamientos.'],
+      presion:['Presión atmosférica', r.pressure ? `Media ${fmtNum(r.pressure.avg,'hPa')} con amplitud de ${fmtNum(r.pressure.max-r.pressure.min,'hPa')}.` : null, 'Su comportamiento apoya la interpretación de estabilidad, transición sinóptica o aproximación de cambios en el patrón meteorológico dominante.'],
+      uv:['Índice UV', metrics.current.uv || null, 'Valores altos incrementan la exposición radiativa del personal en superficie y exigen medidas de protección en actividades prolongadas al aire libre.'],
+      cloudbase:['Techo de nubes', metrics.current.cloudBase || null, 'Puede limitar referencias visuales, maniobra vertical disponible y evaluación de factibilidad para operaciones aéreas o RPAS.'],
+      astronomia:['Horarios astronómicos', `${metrics.current.sunrise} / ${metrics.current.sunset}`, 'Delimitan la luz útil disponible y apoyan la organización de fases de movimiento, observación y cierre de actividades.'],
+      alertas:['Alertas oficiales', 'Revisión efectuada para la zona de interés.', 'Debe considerarse cualquier aviso o alerta vigente que pueda incrementar el riesgo operacional del sector evaluado.'],
+      operacional:['Condición operacional general', metrics.current.status || null, 'Resume el efecto combinado de las variables críticas y orienta la apreciación general de factibilidad para la operación planificada.'],
+    };
+    return (vars || []).map(v => map[v]).filter(Boolean).filter(row=>row[1]).map(row=>`<tr><th>${htmlSafe(row[0])}</th><td>${htmlSafe(row[1])}</td><td>${htmlSafe(row[2])}</td></tr>`).join('');
+  }
+
+  function buildOperationalWindows(cfg, metrics){
+    const F = getForecastSource();
+    const H = F?.hourly || {};
+    const dates = eachDate(cfg.dateFrom, cfg.dateTo);
+    const windows = [
+      { label:'0600h.–1159h.', start:6, end:11 },
+      { label:'1200h.–1859h.', start:12, end:18 },
+      { label:'1900h.–2359h.', start:19, end:23 }
+    ];
+    if(!Array.isArray(H.time) || !H.time.length){
+      return `<table class="gr-table"><thead><tr><th>Fecha</th><th>Horario</th><th>Condición</th><th>Fundamento</th></tr></thead><tbody>${dates.flatMap(date=>windows.map(w=>`<tr><td>${fmtDateCompactMDY(date)}</td><td>${w.label}</td><td>Evaluación referencial</td><td>No hay serie horaria suficiente; validar en pantalla principal viento, visibilidad, nubosidad y alertas antes de cada fase operativa.</td></tr>`)).join('')}</tbody></table>`;
+    }
+    function valuesFor(date, start, end, key){
+      const arr = [];
+      H.time.forEach((t,i)=>{
+        const ds = String(t);
+        const d = ds.slice(0,10);
+        const h = Number(ds.slice(11,13));
+        if(d===date && h>=start && h<=end && Array.isArray(H[key])){
+          const val = Number(H[key][i]);
+          if(Number.isFinite(val)) arr.push(val);
+        }
+      });
+      return arr;
+    }
+    function avg(arr){ return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : NaN; }
+    function max(arr){ return arr.length ? Math.max(...arr) : NaN; }
+    function min(arr){ return arr.length ? Math.min(...arr) : NaN; }
+    const rows = [];
+    dates.forEach(date=>{
+      windows.forEach(w=>{
+        const wind = valuesFor(date, w.start, w.end, 'wind_speed_10m');
+        const gust = valuesFor(date, w.start, w.end, 'wind_gusts_10m');
+        const vis = valuesFor(date, w.start, w.end, 'visibility');
+        const precip = valuesFor(date, w.start, w.end, 'precipitation');
+        const cloud = valuesFor(date, w.start, w.end, 'cloud_cover');
+        const ceiling = valuesFor(date, w.start, w.end, 'cloud_base');
+        const windAvg = avg(wind), gustMax = max(gust), visMin = min(vis), precipMax = max(precip), cloudAvg = avg(cloud), ceilingMin = min(ceiling);
+        let score = 0;
+        const motivos = [];
+        if(Number.isFinite(windAvg) && windAvg >= 25) { score += 2; motivos.push(`viento medio ${fmtNum(windAvg,'km/h')}`); }
+        else if(Number.isFinite(windAvg) && windAvg >= 18) { score += 1; motivos.push(`viento medio ${fmtNum(windAvg,'km/h')}`); }
+        if(Number.isFinite(gustMax) && gustMax >= 40) { score += 2; motivos.push(`ráfagas ${fmtNum(gustMax,'km/h')}`); }
+        else if(Number.isFinite(gustMax) && gustMax >= 30) { score += 1; motivos.push(`ráfagas ${fmtNum(gustMax,'km/h')}`); }
+        if(Number.isFinite(visMin) && visMin <= 4000) { score += 2; motivos.push(`visibilidad mínima ${fmtNum(visMin/1000,'km')}`); }
+        else if(Number.isFinite(visMin) && visMin <= 8000) { score += 1; motivos.push(`visibilidad mínima ${fmtNum(visMin/1000,'km')}`); }
+        if(Number.isFinite(precipMax) && precipMax >= 1.5) { score += 2; motivos.push(`precipitación ${fmtNum(precipMax,'mm')}`); }
+        else if(Number.isFinite(precipMax) && precipMax > 0.2) { score += 1; motivos.push(`precipitación ${fmtNum(precipMax,'mm')}`); }
+        if(Number.isFinite(cloudAvg) && cloudAvg >= 85) { score += 1; motivos.push(`nubosidad ${fmtNum(cloudAvg,'%')}`); }
+        if(Number.isFinite(ceilingMin) && ceilingMin <= 600) { score += 2; motivos.push(`techo ${fmtNum(ceilingMin,'m')}`); }
+        else if(Number.isFinite(ceilingMin) && ceilingMin <= 1200) { score += 1; motivos.push(`techo ${fmtNum(ceilingMin,'m')}`); }
+        let estado = 'Favorable';
+        if(score >= 5) estado = 'Desfavorable';
+        else if(score >= 3) estado = 'Marginal';
+        const fundamento = motivos.length ? `Horario evaluado con ${motivos.join(', ')}.` : 'Sin señales restrictivas relevantes en la serie horaria disponible para este horario.';
+        rows.push(`<tr><td>${fmtDateCompactMDY(date)}</td><td>${w.label}</td><td>${estado}</td><td>${fundamento}</td></tr>`);
+      });
+    });
+    return `<table class="gr-table"><thead><tr><th>Fecha</th><th>Horario</th><th>Condición operacional</th><th>Fundamento</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
+  }
+
+  function buildTimeline(cfg){
+    const from = new Date(cfg.dateFrom+'T00:00:00');
+    const to = new Date(cfg.dateTo+'T00:00:00');
+    const out = [];
+    let i = 0;
+    const metrics = collectMetrics();
+    while(from <= to && i < 14){
+      out.push(`<tr><td>${fmtDateCompactMDY(from.toISOString().slice(0,10))}</td><td>${htmlSafe(metrics.current.condicion)}</td><td>Verificar evolución de viento, visibilidad, nubosidad, precipitación y alertas de la zona antes de cada fase operativa relevante.</td></tr>`);
+      from.setDate(from.getDate()+1); i++;
+    }
+    return `<table class="gr-table"><thead><tr><th>Fecha</th><th>Condición prevista</th><th>Observación de control</th></tr></thead><tbody>${out.join('')}</tbody></table>`;
+  }
+
+  function getAeroThresholds(cfg){
+    const presetKey = cfg?.aeroDrone || document.getElementById('rbAeroDrone')?.value || document.getElementById('uavDronePreset')?.value;
+    if(presetKey && window.UAV_PRESETS && UAV_PRESETS[presetKey]){
+      const p = UAV_PRESETS[presetKey];
+      return { wind:Number(p.wind)||38, gusts:Number(p.gusts)||46, precipProb:Number(p.precip)||30, cloud:Number(p.cloud)||90, visKm:Number(p.vis)||3, kp:Number(p.kp)||4 };
+    }
+    return {
+      wind: Number(document.getElementById('threshWind')?.value) || 38,
+      gusts: Number(document.getElementById('threshGusts')?.value) || 46,
+      precipProb: Number(document.getElementById('threshPrecip')?.value) || 30,
+      cloud: Number(document.getElementById('threshCloud')?.value) || 90,
+      visKm: Number(document.getElementById('threshVis')?.value) || 3,
+      kp: Number(document.getElementById('threshKp')?.value) || 4
+    };
+  }
+
+  function fmtHourShort(ts){
+    try{ return String(ts).slice(11,16) + ' h'; }catch(_){ return '--'; }
+  }
+
+  function makeWindowLabel(startHour, endHour){
+    const pad = n => String(n).padStart(2,'0');
+    return `${pad(startHour)}:00–${pad(endHour)}:59 h`;
+  }
+
+  function aeroScoreRow(row, th){
+    let score = 0;
+    let risk = 0;
+    const reasons = [];
+    const pushReason = txt => { if(txt) reasons.push(txt); };
+    if(Number.isFinite(row.wind)){
+      risk += row.wind / Math.max(th.wind || 1, 1);
+      if(row.wind > th.wind){ score += 2; pushReason(`viento medio ${fmtNum(row.wind,'km/h')}`); }
+      else if(row.wind > th.wind * 0.78){ score += 1; pushReason(`viento medio ${fmtNum(row.wind,'km/h')}`); }
+    }
+    if(Number.isFinite(row.gust)){
+      risk += (row.gust / Math.max(th.gusts || 1, 1)) * 1.2;
+      if(row.gust > th.gusts){ score += 2; pushReason(`ráfagas ${fmtNum(row.gust,'km/h')}`); }
+      else if(row.gust > th.gusts * 0.78){ score += 1; pushReason(`ráfagas ${fmtNum(row.gust,'km/h')}`); }
+    }
+    if(Number.isFinite(row.visKm)){
+      risk += Math.max(0, (th.visKm - row.visKm) / Math.max(th.visKm || 1, 1)) * 2;
+      if(row.visKm < th.visKm){ score += 2; pushReason(`visibilidad ${fmtNum(row.visKm,'km')}`); }
+      else if(row.visKm < Math.max(th.visKm * 1.8, 5)){ score += 1; pushReason(`visibilidad ${fmtNum(row.visKm,'km')}`); }
+    }
+    if(Number.isFinite(row.precipProb)){
+      risk += (row.precipProb / Math.max(th.precipProb || 1, 1)) * 0.8;
+      if(row.precipProb > th.precipProb){ score += 2; pushReason(`precipitación ${fmtNum(row.precipProb,'%')}`); }
+      else if(row.precipProb > th.precipProb * 0.6){ score += 1; pushReason(`precipitación ${fmtNum(row.precipProb,'%')}`); }
+    }
+    if(Number.isFinite(row.cloud)){
+      risk += (row.cloud / Math.max(th.cloud || 1, 1)) * 0.25;
+      if(row.cloud > th.cloud){ score += 1; pushReason(`nubosidad ${fmtNum(row.cloud,'%')}`); }
+    }
+    if(Number.isFinite(row.ceiling)){
+      risk += row.ceiling <= 0 ? 2.5 : Math.max(0, (1200 - row.ceiling) / 1200) * 1.8;
+      if(row.ceiling <= 600){ score += 2; pushReason(`techo ${fmtNum(row.ceiling,'m')}`); }
+      else if(row.ceiling <= 1200){ score += 1; pushReason(`techo ${fmtNum(row.ceiling,'m')}`); }
+    }
+    const label = score >= 5 ? 'No aconsejable' : (score >= 3 ? 'Apto con limitaciones' : 'Apto según límites configurados');
+    const obs = reasons.length
+      ? `Atención por ${reasons.join(', ')}.`
+      : 'Sin limitantes meteorológicas relevantes frente a los límites configurados.';
+    return { score, risk: Number.isFinite(risk) ? risk : 0, label, obs };
+  }
+
+  function getAeroRowsForConfig(cfg){
+    const src = getForecastSource();
+    const H = src?.hourly || {};
+    if(!Array.isArray(H.time)) return [];
+    const dates = eachDate(cfg.dateFrom, cfg.dateTo);
+    const singleDay = dates.length === 1;
+    const rows = [];
+    const idxForDate = (date) => H.time.map((t,i)=>String(t).slice(0,10)===date?i:-1).filter(i=>i>=0);
+    const numAt = (key, i) => {
+      const v = Number(H[key]?.[i]);
+      return Number.isFinite(v) ? v : null;
+    };
+    const agg = (indices, key, mode) => {
+      const vals = indices.map(i=>numAt(key,i)).filter(v=>Number.isFinite(v));
+      if(!vals.length) return null;
+      if(mode === 'min') return Math.min(...vals);
+      if(mode === 'mean') return vals.reduce((a,b)=>a+b,0)/vals.length;
+      return Math.max(...vals);
+    };
+
+    const buildWindowRows = (date, windows) => {
+      const indices = idxForDate(date);
+      if(!indices.length) return [];
+      return windows.map(w=>{
+        const idw = indices.filter(i=>{
+          const hh = Number(String(H.time[i]).slice(11,13));
+          return hh >= w.start && hh <= w.end;
+        });
+        if(!idw.length) return null;
+        const row = {
+          type: singleDay ? 'hour-window' : 'day-window',
+          date,
+          windowStart: w.start,
+          windowEnd: w.end,
+          label: makeWindowLabel(w.start, w.end),
+          wind: agg(idw, 'wind_speed_10m', 'mean'),
+          gust: agg(idw, 'wind_gusts_10m', 'max'),
+          visKm: (v=>Number.isFinite(v)?v/1000:null)(agg(idw, 'visibility', 'min')),
+          precipProb: Number.isFinite(agg(idw, 'precipitation_probability', 'max')) ? agg(idw, 'precipitation_probability', 'max') : agg(idw, 'precipitation', 'max'),
+          cloud: agg(idw, 'cloud_cover', 'mean'),
+          ceiling: agg(idw, 'cloud_base', 'min'),
+          temp: agg(idw, 'temperature_2m', 'mean')
+        };
+        return { ...row, ...aeroScoreRow(row, getAeroThresholds(cfg)) };
+      }).filter(Boolean);
+    };
+
+    const baseWindows = [
+      { start:6, end:11 },
+      { start:12, end:17 },
+      { start:18, end:21 }
+    ];
+    if(singleDay){
+      const date = dates[0];
+      rows.push(...buildWindowRows(date, baseWindows));
+    } else {
+      dates.forEach(date=> rows.push(...buildWindowRows(date, baseWindows)));
+    }
+    return rows;
+  }
+
+  function getAeroWindowLegend(cfg){
+    const dates = eachDate(cfg.dateFrom, cfg.dateTo);
+    const singleDay = dates.length === 1;
+    if(singleDay) return '06:00–08:59 h, 09:00–11:59 h, 12:00–14:59 h, 15:00–17:59 h y 18:00–20:59 h';
+    return '06:00–08:59 h, 09:00–11:59 h, 12:00–14:59 h, 15:00–17:59 h y 18:00–20:59 h para cada jornada';
+  }
+
+  function buildAeroWindowTable(cfg){
+    const rows = getAeroRowsForConfig(cfg);
+    if(!rows.length) return '<div class="gr-note">No se dispone de serie horaria suficiente para elaborar el anexo AeroForecast en el periodo solicitado.</div>';
+    const singleDay = eachDate(cfg.dateFrom, cfg.dateTo).length === 1;
+    const headDate = singleDay ? '' : '<th style="width:72px;">Fecha</th>';
+    const compactEval = r => {
+      if(/No aconsejable/i.test(r.label||'')) return 'No aconsejable';
+      if(/limitaciones/i.test(r.label||'')) return 'Con limitaciones';
+      return 'Apto';
+    };
+    const compactObs = r => {
+      if(Number.isFinite(r.gust) && r.gust >= getAeroThresholds(cfg).gusts) return 'Ráfagas altas';
+      if(Number.isFinite(r.wind) && r.wind >= getAeroThresholds(cfg).wind) return 'Viento elevado';
+      if(Number.isFinite(r.precipProb) && r.precipProb >= getAeroThresholds(cfg).precipProb) return 'Riesgo de precip.';
+      if(Number.isFinite(r.visKm) && r.visKm < getAeroThresholds(cfg).visKm) return 'Visibilidad baja';
+      if(Number.isFinite(r.ceiling) && r.ceiling < 800) return 'Techo bajo';
+      return 'Sin limitantes';
+    };
+    return `<table class="gr-table aero-table aero-compact" style="font-size:9.2px; table-layout:fixed; width:100%;"><thead><tr>${headDate}<th style="width:${singleDay ? '78px' : '74px'};">Ventana</th><th style="width:86px;">Viento / ráf.</th><th style="width:86px;">Visib. / techo</th><th style="width:82px;">Nub. / precip.</th><th style="width:78px;">Evaluación</th><th style="width:82px;">Obs.</th></tr></thead><tbody>${rows.map(r=>`<tr>${singleDay ? '' : `<td style="white-space:nowrap;">${htmlSafe(fmtDateCompactMDY(r.date))}</td>`}<td style="white-space:nowrap;font-weight:700;">${htmlSafe(makeWindowLabel(r.windowStart, r.windowEnd))}</td><td>${htmlSafe(fmtNum(r.wind,'km/h'))} / ${htmlSafe(fmtNum(r.gust,'km/h'))}</td><td>${htmlSafe(Number.isFinite(r.visKm)?fmtNum(r.visKm,'km'):'N/D')} / ${htmlSafe(Number.isFinite(r.ceiling)?fmtNum(r.ceiling,'m'):'N/D')}</td><td>${htmlSafe(Number.isFinite(r.cloud)?fmtNum(r.cloud,'%'):'N/D')} / ${htmlSafe(Number.isFinite(r.precipProb)?fmtNum(r.precipProb,'%'):'N/D')}</td><td>${htmlSafe(compactEval(r))}</td><td>${htmlSafe(compactObs(r))}</td></tr>`).join('')}</tbody></table>`;
+  }
+
+  function aeroMetricRange(rows, key){
+    const values = rows.map(r=>r[key]).filter(v=>Number.isFinite(v));
+    if(!values.length) return null;
+    const min = Math.min(...values), max = Math.max(...values);
+    return { min, max, span: max - min };
+  }
+
+  function aeroWindowAnalysis(rows, cfg){
+    if(!rows.length) return { best:null, worst:null, activeKeys:[], ranges:{} };
+    const keys = ['wind','gust','visKm','precipProb','cloud','ceiling'];
+    const ranges = Object.fromEntries(keys.map(k=>[k, aeroMetricRange(rows, k)]));
+    const activeKeys = keys.filter(k=> ranges[k] && ranges[k].span > 0.0001);
+    const dynamicScore = row => {
+      let val = 0;
+      activeKeys.forEach(k=>{
+        const range = ranges[k];
+        const v = row[k];
+        if(!Number.isFinite(v) || !range || range.span <= 0) return;
+        let norm = (k === 'visKm' || k === 'ceiling') ? ((range.max - v) / range.span) : ((v - range.min) / range.span);
+        const weight = k === 'gust' ? 1.35 : k === 'wind' ? 1.1 : k === 'precipProb' ? 1.05 : k === 'visKm' ? 1.0 : k === 'ceiling' ? 0.9 : 0.55;
+        val += norm * weight;
+      });
+      val += (row.score || 0) * 0.9;
+      val += (row.risk || 0) * 0.08;
+      return val;
+    };
+    rows.forEach(r=>{ r._dynamicAeroScore = dynamicScore(r); });
+    const sortedBest = [...rows].sort((a,b)=>(a._dynamicAeroScore - b._dynamicAeroScore) || ((a.score||0)-(b.score||0)) || ((a.risk||0)-(b.risk||0)) || String(a.date||'').localeCompare(String(b.date||'')) || (a.windowStart-b.windowStart));
+    const sortedWorst = [...rows].sort((a,b)=>(b._dynamicAeroScore - a._dynamicAeroScore) || ((b.score||0)-(a.score||0)) || ((b.risk||0)-(a.risk||0)) || String(b.date||'').localeCompare(String(a.date||'')) || (b.windowStart-a.windowStart));
+    const best = sortedBest[0] || null;
+    let worst = sortedWorst[0] || null;
+    if(best && worst === best) worst = sortedWorst.find(r=>r!==best) || worst;
+    return { best, worst, activeKeys, ranges };
+  }
+
+  function aeroDiffReasons(row, analysis, kind){
+    if(!row || !analysis) return [];
+    const labels = { wind:'viento medio', gust:'ráfagas', visKm:'visibilidad', precipProb:'prob. de precipitación', cloud:'nubosidad', ceiling:'techo' };
+    const units = { wind:'km/h', gust:'km/h', visKm:'km', precipProb:'%', cloud:'%', ceiling:'m' };
+    const out = [];
+    (analysis.activeKeys || []).forEach(k=>{
+      const range = analysis.ranges?.[k];
+      const v = row[k];
+      if(!Number.isFinite(v) || !range || range.span <= 0) return;
+      const nearLow = v <= (range.min + range.span * 0.25);
+      const nearHigh = v >= (range.max - range.span * 0.25);
+      if(kind === 'best'){
+        if((k === 'visKm' || k === 'ceiling') ? nearHigh : nearLow) out.push(`${labels[k]} ${fmtNum(v, units[k])}`);
+      } else {
+        if((k === 'visKm' || k === 'ceiling') ? nearLow : nearHigh) out.push(`${labels[k]} ${fmtNum(v, units[k])}`);
+      }
+    });
+    return out;
+  }
+
+  function buildAeroRecommendations(cfg){
+    const rows = getAeroRowsForConfig(cfg);
+    if(!rows.length) return ['Mantener verificación local inmediata antes de la operación RPAS, ya que no se cuenta con una serie horaria suficiente para respaldar una recomendación específica del tramo solicitado.'];
+    const analysis = aeroWindowAnalysis(rows, cfg);
+    const best = analysis.best, worst = analysis.worst;
+    const recs = [];
+    const singleDay = eachDate(cfg.dateFrom, cfg.dateTo).length === 1;
+    const bestLabel = best ? (singleDay ? `${makeWindowLabel(best.windowStart, best.windowEnd)}` : `${fmtDateCompactMDY(best.date)} ${makeWindowLabel(best.windowStart, best.windowEnd)}`) : 'N/D';
+    const worstLabel = worst ? (singleDay ? `${makeWindowLabel(worst.windowStart, worst.windowEnd)}` : `${fmtDateCompactMDY(worst.date)} ${makeWindowLabel(worst.windowStart, worst.windowEnd)}`) : 'N/D';
+    if(best){
+      const reasons = aeroDiffReasons(best, analysis, 'best');
+      recs.push(`Se recomienda privilegiar la ventana ${bestLabel}, al concentrar la combinación comparativamente más estable del periodo${reasons.length ? `, con ${reasons.join(', ')}` : ''}.`);
+    }
+    if(worst){
+      const reasons = aeroDiffReasons(worst, analysis, 'worst');
+      recs.push(`Conviene extremar la verificación operacional en ${worstLabel}, por reunir la señal meteorológica más exigente del tramo${reasons.length ? `, destacando ${reasons.join(', ')}` : ''}.`);
+    }
+    const highWind = rows.filter(r=>Number.isFinite(r.gust) && r.gust >= getAeroThresholds(cfg).gusts * 0.78).length;
+    if(highWind){
+      recs.push('Se sugiere aplicar márgenes conservadores durante despegue, estacionario y aproximación, debido a la presencia de intervalos con ráfagas cercanas o superiores al límite de referencia configurado para la aeronave.');
+    }
+    const lowCeiling = rows.filter(r=>Number.isFinite(r.ceiling) && r.ceiling > 0 && r.ceiling <= 1200).length;
+    if(lowCeiling){
+      recs.push('En ventanas con techo reducido resulta prudente revisar altura de operación, referencias visuales y maniobra vertical disponible antes de autorizar el vuelo.');
+    }
+    const lowVis = rows.filter(r=>Number.isFinite(r.visKm) && r.visKm < Math.max(getAeroThresholds(cfg).visKm * 1.8, 5)).length;
+    if(lowVis){
+      recs.push('Corresponde verificar visibilidad efectiva sobre la zona de interés y sobre la trayectoria prevista, especialmente si la misión depende de referencias visuales constantes o seguimiento detallado del terreno.');
+    }
+    if(recs.length < 5){
+      recs.push('La evaluación meteorológica debe complementarse con verificación en sitio, autonomía disponible, restricciones locales, obstáculos, altura prevista de trabajo y criterio operacional del operador responsable.');
+    }
+    return recs.slice(0,5);
+  }
+
+  function describeAeroWindow(row, cfg, kind, analysis){
+    if(!row) return 'N/D';
+    const singleDay = eachDate(cfg.dateFrom, cfg.dateTo).length === 1;
+    const parts = [];
+    if(row.date && !singleDay) parts.push(fmtDateCompactMDY(row.date));
+    parts.push(makeWindowLabel(row.windowStart, row.windowEnd));
+    parts.push(row.label || 'N/D');
+    const reasons = aeroDiffReasons(row, analysis, kind);
+    const all = [];
+    if(Number.isFinite(row.wind)) all.push(`viento medio ${fmtNum(row.wind,'km/h')}`);
+    if(Number.isFinite(row.gust)) all.push(`ráfagas hasta ${fmtNum(row.gust,'km/h')}`);
+    if(Number.isFinite(row.visKm)) all.push(`visibilidad ${fmtNum(row.visKm,'km')}`);
+    if(Number.isFinite(row.ceiling) && row.ceiling > 0) all.push(`techo ${fmtNum(row.ceiling,'m')}`);
+    if(Number.isFinite(row.cloud)) all.push(`nubosidad ${fmtNum(row.cloud,'%')}`);
+    if(Number.isFinite(row.precipProb)) all.push(`prob. de precipitación ${fmtNum(row.precipProb,'%')}`);
+    const why = kind === 'best'
+      ? 'Se considera la franja más conveniente del periodo por presentar la combinación comparativamente más estable entre las ventanas evaluadas'
+      : 'Se considera la franja más restrictiva del periodo por concentrar la combinación comparativamente más exigente entre las ventanas evaluadas';
+    const focus = reasons.length ? `, destacando ${reasons.join(', ')}` : '';
+    return `${parts.join(' · ')}. ${why}${focus}. Parámetros de respaldo: ${all.join(', ')}.`;
+  }
+
+  function buildAeroSection(cfg, metrics){
+    const rows = getAeroRowsForConfig(cfg);
+    const analysis = aeroWindowAnalysis(rows, cfg);
+    const best = analysis.best;
+    const worst = analysis.worst;
+    const singleDay = eachDate(cfg.dateFrom, cfg.dateTo).length === 1;
+    const intro = best
+      ? (singleDay
+          ? `El anexo RPAS para la zona evaluada se estructuró en ventanas horarias del día solicitado, utilizando los límites cargados en la plataforma para comparar viento medio, ráfagas, visibilidad, precipitación, nubosidad y techo.`
+          : `El anexo RPAS para la zona evaluada se organizó en ventanas horarias por cada jornada del periodo solicitado, con el fin de identificar tramos comparables y apoyar la programación diaria de vuelos en el punto analizado.`)
+      : 'El análisis RPAS se elabora para el punto seleccionado, utilizando la serie horaria disponible para el periodo solicitado.';
+    const tramo = singleDay ? `${fmtDateCompactMDY(cfg.dateFrom)}` : `${fmtDateCompactMDY(cfg.dateFrom)} a ${fmtDateCompactMDY(cfg.dateTo)}`;
+    return `
+      <div class="gr-section">
+        <h3>Anexo 2 – AeroForecast / RPAS</h3>
+        <div class="gr-note" style="margin:4px 0 4px 0;"><strong>Periodo analizado:</strong> ${htmlSafe(tramo)}</div>
+                <p>${htmlSafe(intro)}</p>
+        ${buildAeroWindowTable(cfg)}
+        <div class="gr-two" style="margin-top:12px; align-items:start;">
+          <div>
+            <div class="gr-note"><strong>Ventana más conveniente:</strong> ${best ? htmlSafe(describeAeroWindow(best, cfg, 'best', analysis)) : 'N/D'}</div>
+            <div class="gr-note" style="margin-top:8px;"><strong>Ventana más restrictiva:</strong> ${worst ? htmlSafe(describeAeroWindow(worst, cfg, 'worst', analysis)) : 'N/D'}</div>
+            <div class="gr-note" style="margin-top:8px;"><strong>Criterio de evaluación:</strong> Límites configurados para ${htmlSafe((document.querySelector('#rbAeroDrone option:checked')?.textContent)|| (document.querySelector('#uavDronePreset option:checked')?.textContent)|| 'perfil seleccionado')}.</div>
+            <div class="gr-note" style="margin-top:8px;"><strong>Fuente y modelo:</strong> ${htmlSafe(getReportSourceModel().source)} / ${htmlSafe(getReportSourceModel().model)}</div>
+          </div>
+          <div>
+            <div class="gr-note"><strong>Recomendaciones RPAS:</strong></div>
+            <ol style="margin:8px 0 0 18px; padding:0;">${buildAeroRecommendations(cfg).map(r=>`<li style="margin-bottom:6px;">${htmlSafe(r)}</li>`).join('')}</ol>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function getForecastSource(){
+    return window.__temp7dForecast || window.__forecastJson || window.__meteoData || null;
+  }
+
+  function eachDate(from, to){
+    const out = [];
+    const d = new Date(from+'T00:00:00');
+    const end = new Date(to+'T00:00:00');
+    const localYmd = (dt) => {
+      const y = dt.getFullYear();
+      const m = String(dt.getMonth()+1).padStart(2,'0');
+      const day = String(dt.getDate()).padStart(2,'0');
+      return `${y}-${m}-${day}`;
+    };
+    while(d <= end && out.length < 16){
+      out.push(localYmd(d));
+      d.setDate(d.getDate()+1);
+    }
+    return out;
+  }
+
+  function variableSpec(key){
+    const map = {
+      temp: { title:'Temperatura', hourly:'temperature_2m', daily:'temperature_2m_max', unit:'°C' },
+      sensacion: { title:'Sensación térmica', hourly:'apparent_temperature', daily:'apparent_temperature_max', unit:'°C' },
+      humedad: { title:'Humedad relativa', hourly:'relative_humidity_2m', dailyHourlyMean:'relative_humidity_2m', unit:'%' },
+      viento: { title:'Viento', hourly:'wind_speed_10m', daily:'wind_speed_10m_max', unit:'km/h' },
+      rafagas: { title:'Ráfagas', hourly:'wind_gusts_10m', dailyHourlyMax:'wind_gusts_10m', unit:'km/h' },
+      precipitacion: { title:'Precipitación', hourly:'precipitation', daily:'precipitation_sum', unit:'mm' },
+      nubosidad: { title:'Nubosidad', hourly:'cloud_cover', dailyHourlyMean:'cloud_cover', unit:'%' },
+      visibilidad: { title:'Visibilidad', hourly:'visibility', dailyHourlyMean:'visibility', unit:'m' },
+      presion: { title:'Presión', hourly:'pressure_msl', dailyHourlyMean:'pressure_msl', unit:'hPa' },
+      uv: { title:'Índice UV', hourly:'uv_index', daily:'uv_index_max', unit:'' }
+    };
+    return map[key] || null;
+  }
+
+  function dailyAggregate(hourlyTimes, hourlyArr, op){
+    if(!Array.isArray(hourlyTimes) || !Array.isArray(hourlyArr)) return {};
+    const buckets = {};
+    hourlyTimes.forEach((t,i)=>{
+      const d = String(t).slice(0,10);
+      const v = Number(hourlyArr[i]);
+      if(!Number.isFinite(v)) return;
+      (buckets[d] ||= []).push(v);
+    });
+    const out = {};
+    Object.entries(buckets).forEach(([d, arr])=>{
+      if(op==='mean') out[d] = arr.reduce((a,b)=>a+b,0)/arr.length;
+      else out[d] = Math.max(...arr);
+    });
+    return out;
+  }
+
+  function buildReportChartConfigs(cfg){
+    const src = getForecastSource();
+    if(!src) return [];
+    const H = src.hourly || {};
+    const D = src.daily || {};
+    const configs = [];
+    const dates = eachDate(cfg.dateFrom, cfg.dateTo);
+    const singleDay = dates.length === 1;
+    for(const key of (cfg.variables || [])){
+      const spec = variableSpec(key);
+      if(!spec) continue;
+      let labels = [], values = [];
+      if(singleDay){
+        const date = dates[0];
+        if(Array.isArray(H.time) && Array.isArray(H[spec.hourly])){
+          H.time.forEach((t,i)=>{
+            if(String(t).slice(0,10)===date){
+              labels.push(fmtDateTimeMilitary(String(t)));
+              values.push(Number(H[spec.hourly][i]));
+            }
+          });
+        }
+      }else{
+        if(spec.daily && Array.isArray(D.time) && Array.isArray(D[spec.daily])){
+          const idxMap = Object.fromEntries(D.time.map((d,i)=>[String(d).slice(0,10), i]));
+          dates.forEach(d=>{
+            const idx = idxMap[d];
+            if(idx!=null){
+              labels.push(fmtDateCompactMDY(d));
+              values.push(Number(D[spec.daily][idx]));
+            }
+          });
+        }else if(spec.dailyHourlyMean && Array.isArray(H.time) && Array.isArray(H[spec.dailyHourlyMean])){
+          const agg = dailyAggregate(H.time, H[spec.dailyHourlyMean], 'mean');
+          dates.forEach(d=>{ if(d in agg){ labels.push(fmtDateCompactMDY(d)); values.push(agg[d]); } });
+        }else if(spec.dailyHourlyMax && Array.isArray(H.time) && Array.isArray(H[spec.dailyHourlyMax])){
+          const agg = dailyAggregate(H.time, H[spec.dailyHourlyMax], 'max');
+          dates.forEach(d=>{ if(d in agg){ labels.push(fmtDateCompactMDY(d)); values.push(agg[d]); } });
+        }
+      }
+      values = values.filter(v=>Number.isFinite(v));
+      if(labels.length && values.length){
+        configs.push({
+          id: 'grChart_'+key,
+          title: singleDay ? `${spec.title} por hora (${fmtDateCompactMDY(dates[0])})` : `${spec.title} por día (${fmtDateCompactMDY(cfg.dateFrom)} a ${fmtDateCompactMDY(cfg.dateTo)})`,
+          labels, values, unit: spec.unit
+        });
+      }
+    }
+    return configs;
+  }
+
+  function chartsAnnexHtml(cfg){
+    const charts = buildReportChartConfigs(cfg);
+    if(!charts.length) return '';
+    return `<div class="gr-section">
+      <h3>Anexo 1 – Gráficos</h3>
+      <p class="gr-small">Se incorporan la mayor cantidad posible de gráficos separados por variable para la ubicación seleccionada en el mapa. En informes de un día se muestra el comportamiento horario; en informes de varios días se presenta la evolución diaria del periodo solicitado, con una gráfica por variable.</p>
+      <div class="gr-annex-grid">
+        ${charts.map(c=>`<div class="gr-chart-card"><div class="gr-chart-title">${htmlSafe(c.title)}</div><canvas id="${c.id}" height="180"></canvas></div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  function renderReportAnnexCharts(cfg){
+    const charts = buildReportChartConfigs(cfg);
+    charts.forEach(c=>{
+      const el = document.getElementById(c.id);
+      if(!el || typeof Chart === 'undefined') return;
+      try{
+        new Chart(el, {
+          type: 'line',
+          data: {
+            labels: c.labels,
+            datasets: [{
+              label: c.title,
+              data: c.values,
+              borderWidth: 2,
+              tension: 0.25,
+              fill: false
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { ticks: { maxRotation: 0, autoSkip: true } },
+              y: { title: { display: !!c.unit, text: c.unit } }
+            }
+          }
+        });
+      }catch(err){ console.warn('No se pudo renderizar gráfico de informe', err); }
+    });
+  }
+
+
+  function buildLetterhead(cfg){
+    if(!cfg.includeLetterhead) return '';
+    const left1 = htmlSafe(cfg.letterheadLeft1 || '');
+    const left2 = htmlSafe(cfg.letterheadLeft2 || '');
+    const left3 = htmlSafe(cfg.letterheadLeft3 || '');
+    const right = htmlSafe(cfg.letterheadRight || '');
+    const placeDate = htmlSafe(cfg.letterheadPlaceDate || '');
+    return `
+      <div class="gr-letterhead">
+        <div class="gr-letterhead-row">
+          <div class="gr-letterhead-left">
+            <div class="gr-letterhead-line gr-letterhead-line-1">${left1 || '&nbsp;'}</div>
+            <div class="gr-letterhead-line gr-letterhead-line-2">${left2 || '&nbsp;'}</div>
+            <div class="gr-letterhead-line gr-letterhead-line-3">${left3 || '&nbsp;'}</div>
+          </div>
+          <div class="gr-letterhead-right">${right || '&nbsp;'}</div>
+        </div>
+        <div class="gr-letterhead-date">${placeDate || '&nbsp;'}</div>
+      </div>
+    `;
+  }
+
+
+  function buildSignatureDistributionBlock(cfg){
+    const includeSig = !!cfg.includeSignature;
+    const includeDist = !!cfg.includeDistribution;
+    if(!includeSig && !includeDist) return '';
+    const sigName = htmlSafe(cfg.signatureName || '&nbsp;');
+    const sigRank = htmlSafe(cfg.signatureRank || '&nbsp;');
+    const sigRole = htmlSafe(cfg.signatureRole || '&nbsp;');
+    const d1 = htmlSafe(cfg.distribution1 || '&nbsp;');
+    const d2 = htmlSafe(cfg.distribution2 || '&nbsp;');
+    const d3 = htmlSafe(cfg.distribution3 || '&nbsp;');
+    const d4 = htmlSafe(cfg.distribution4 || '&nbsp;');
+    return `
+      <div class="gr-sign-dist-wrap">
+        ${includeSig ? `
+        <div class="gr-signature-block">
+          <div class="gr-signature-name">${sigName}</div>
+          <div class="gr-signature-rank">${sigRank}</div>
+          <div class="gr-signature-role">${sigRole}</div>
+        </div>` : ''}
+        ${includeDist ? `
+        <div class="gr-distribution-block">
+          <div class="gr-distribution-title">DISTRIBUCIÓN:</div>
+          <div class="gr-distribution-line">${d1}</div>
+          <div class="gr-distribution-line">${d2}</div>
+          <div class="gr-distribution-line gr-distribution-indent">${d3}</div>
+          <div class="gr-distribution-line gr-distribution-indent">${d4}</div>
+        </div>` : ''}
+      </div>`;
+  }
+
+  window.generateOperationalReport = function(){
+    const cfg = readReportConfig();
+    if(cfg.saveConfig) saveReportConfig(cfg);
+    const metrics = collectMetrics();
+    const point = getCurrentPoint();
+    const astroPlan = getAstronomicalPlanningTimes(cfg.dateFrom, point.lat, point.lon);
+    const sem = classifySemaforo(metrics);
+    const recs = buildRecommendations(metrics, cfg);
+    const conclusion = buildConclusion(metrics, cfg);
+    const report = qs('generatedReport');
+    const wrap = qs('generatedReportWrap');
+
+    const html = `
+      ${buildLetterhead(cfg)}
+      <div class="gr-header">
+        <h1 class="gr-title">${htmlSafe(cfg.title)}</h1>
+        <div class="gr-header-meta">
+          <div class="gr-header-left">
+            <p class="gr-subtitle"><strong>Ubicación:</strong> ${htmlSafe(cfg.locationLabel)}</p>
+            <p class="gr-subtitle"><strong>Periodo evaluado:</strong> ${htmlSafe(cfg.dateFrom===cfg.dateTo ? fmtDateCompactMDY(cfg.dateFrom) : `${fmtDateCompactMDY(cfg.dateFrom)} a ${fmtDateCompactMDY(cfg.dateTo)}`)}</p>
+            <p class="gr-subtitle"><strong>Fuente y modelo:</strong> ${htmlSafe(getReportSourceModel().source)} / ${htmlSafe(getReportSourceModel().model)}</p>
+          </div>
+          <div class="gr-header-right">
+            ${cfg.includeSemaforo ? `<div class="gr-semaforo ${sem.cls}" style="margin-left:auto;">${sem.label}</div>` : ''}
+            <div class="gr-small" style="margin-top:10px;"><strong>Responsable:</strong> ${htmlSafe(cfg.responsible)}</div>
+          </div>
+        </div>
+      </div>
+      ${cfg.includeMap ? `<div class="gr-note" style="margin:10px 0 16px 0; text-align:justify;"><strong>Referencia geográfica:</strong> Punto analizado en ${htmlSafe(cfg.locationLabel)}.</div>` : ''}
+
+      <div class="gr-section">
+        <h3>I. Resumen</h3>
+        <p>El presente boletín se emite para la ZG en coordenadas <strong>${htmlSafe(cfg.locationLabel)}</strong>. Para ese sector, la condición meteorológica observada/proyectada indica <strong>${htmlSafe(metrics.current.condicion)}</strong>, temperatura de <strong>${htmlSafe(metrics.current.temp)}</strong>, humedad de <strong>${htmlSafe(metrics.current.humedad)}</strong>, viento de <strong>${htmlSafe(metrics.current.viento)}</strong>, ráfagas de <strong>${htmlSafe(metrics.current.rafagas)}</strong>, visibilidad de <strong>${htmlSafe(metrics.current.visibilidad)}</strong>, precipitación de referencia de <strong>${htmlSafe(metrics.current.precip)}</strong> y techo estimado de nubes en <strong>${htmlSafe(metrics.current.cloudBase)}</strong>.</p>
+        <p>${htmlSafe(metrics.current.conclusion)}</p>
+        ${cfg.notes ? `<p><strong>Contexto adicional:</strong> ${htmlSafe(cfg.notes)}</p>`:''}
+      </div>
+
+      <div class="gr-section">
+        <h3>II. ${(cfg.dateFrom === cfg.dateTo) ? 'Síntesis meteorológica de la jornada' : 'Síntesis meteorológica del periodo'}</h3>
+        ${buildIndicators(metrics, cfg)}
+      </div>
+
+      <div class="gr-section">
+        <h3>III. Situación meteorológica general</h3>
+        <div>
+          <p>El escenario para el punto seleccionado se encuentra dominado por <strong>${htmlSafe(metrics.current.condicion)}</strong>, con sensación térmica de <strong>${htmlSafe(metrics.current.sensacion)}</strong>, techo estimado de nubes en <strong>${htmlSafe(metrics.current.cloudBase)}</strong>, precipitación de referencia de <strong>${htmlSafe(metrics.current.precip)}</strong>, presión atmosférica de <strong>${htmlSafe(metrics.current.pressure)}</strong> y visibilidad de <strong>${htmlSafe(metrics.current.visibilidad)}</strong>.</p>
+          <p>Los horarios astronómicos relevantes para planificación son <strong>CCCM ${htmlSafe(astroPlan.cccm)}</strong> y <strong>TCCV ${htmlSafe(astroPlan.tccv)}</strong>. La lectura operacional debe apoyarse en la evolución horaria o diaria del periodo solicitado, según corresponda.</p>
+        </div>
+      </div>
+
+      ${cfg.includeTables ? `<div class="gr-section"><h3>IV. ${cfg.dateFrom === cfg.dateTo ? 'Variables meteorológicas por hora' : 'Variables meteorológicas por día'}</h3>${buildVariablePeriodTable(cfg)}</div><div class="gr-section"><h3>V. Análisis por variables meteorológicas</h3><table class="gr-table"><thead><tr><th>Variable</th><th>Síntesis del comportamiento</th><th>Incidencias relevantes</th></tr></thead><tbody>${variableRows(metrics, cfg.variables, cfg)}</tbody></table></div>`:''}
+      ${cfg.includeTimeline ? `<div class="gr-section"><h3>VI. Ventanas operacionales</h3><p class="gr-small">La calificación se entrega por horario para facilitar la interpretación operacional del tramo. Cada ventana se estima a partir de viento, ráfagas, visibilidad, precipitación, nubosidad y techo, clasificando el horario como favorable, marginal o desfavorable.</p>${buildOperationalWindows(cfg, metrics)}</div><div class="gr-section"><h3>VII. Resumen por día</h3>${buildTimeline(cfg)}</div>`:''}
+      ${cfg.includeAlerts ? `<div class="gr-section"><h3>VIII. Alertas oficiales de la zona de interés</h3>${getAlertsSummaryForPoint()}</div>`:''}
+      ${cfg.includeRecs ? `<div class="gr-section"><h3>IX. Recomendaciones</h3><ol>${recs.map(r=>`<li>${htmlSafe(r)}</li>`).join('')}</ol></div>`:''}
+      ${cfg.includeConclusions ? `<div class="gr-section"><h3>X. Conclusiones</h3><p>${htmlSafe(conclusion)}</p><p style="margin-top:10px;">${htmlSafe(inferSynopticAnalysis(metrics, cfg))}</p></div>`:''}
+      ${cfg.includeCharts ? `<div class="gr-page-break-before">${chartsAnnexHtml(cfg)}</div>` : ''}
+      ${cfg.includeAero ? `<div class="gr-page-break-before">${buildAeroSection(cfg, metrics)}</div>` : ''}
+      ${buildSignatureDistributionBlock(cfg)}
+    `;
+
+    if(report) report.innerHTML = html;
+    if(wrap) wrap.classList.add('show');
+    closeReportBuilder();
+    setTimeout(()=>renderReportAnnexCharts(cfg), 60);
+    wrap?.scrollIntoView({behavior:'smooth',block:'start'});
+  };
+
+  window.safeGenerateOperationalReport = function(ev){
+    try{ if(ev && ev.preventDefault) ev.preventDefault(); if(ev && ev.stopPropagation) ev.stopPropagation();
+      if(typeof window.generateOperationalReport === 'function') return window.generateOperationalReport();
+      throw new Error('generateOperationalReport no disponible');
+    }catch(err){
+      console.error('Error al construir informe:', err);
+      alert('No se pudo construir el informe. Verifique que existan datos cargados y vuelva a intentarlo.');
+      return false;
+    }
+  };
+
+  document.addEventListener('DOMContentLoaded', ()=>{
+    const buildBtn = document.getElementById('buildReportBtn');
+    if(buildBtn && !buildBtn.dataset.boundReport){
+      buildBtn.dataset.boundReport = '1';
+      buildBtn.addEventListener('click', window.safeGenerateOperationalReport);
+    }
+    const launch = document.getElementById('reportLaunchBtn');
+    if(launch && !launch.dataset.bound){
+      launch.addEventListener('click', (e)=>{ e.preventDefault(); window.openReportBuilder && window.openReportBuilder(); });
+      launch.dataset.bound = '1';
+    }
+    const modal = qs('reportBuilderModal');
+    if(modal && !modal.dataset.bound){
+      modal.addEventListener('click', (e)=>{ if(e.target === modal) closeReportBuilder(); });
+      modal.dataset.bound = '1';
+    }
+  });
+
+  function syncPrintRepeatTopRight(){
+    const wrap = document.getElementById('generatedReportWrap');
+    if(!wrap) return;
+    let node = document.getElementById('printRepeatTopRight');
+    if(!node){
+      node = document.createElement('div');
+      node.id = 'printRepeatTopRight';
+      wrap.appendChild(node);
+    }
+    const source = wrap.querySelector('.generated-report .gr-letterhead-right');
+    node.innerHTML = source ? source.innerHTML : '';
+  }
+
+  window.printGeneratedReport = function(){
+    syncPrintRepeatTopRight();
+    document.body.classList.add('print-generated-report');
+    window.print();
+    setTimeout(()=>document.body.classList.remove('print-generated-report'), 700);
+  };
+
+  window.addEventListener('beforeprint', syncPrintRepeatTopRight);
+})();
+</script>
     <script src="https://unpkg.com/suncalc@1.9.0/suncalc.js"></script>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -209,7 +1602,7 @@ body {
         .print-chart-wrapper { border: 1px solid var(--panel); padding: 5px; height: 150px; background: #fff; }
 
         @media print {
-            @page { size: landscape; margin: 5mm; }
+            @page { size: auto; margin-top:2.2cm; margin-right:1cm; margin-bottom:1.7cm; margin-left:1cm; }
             body { background-color: var(--text) !important; color: var(--panel) !important; font-family: 'Arial Narrow', sans-serif !important; padding: 0 !important; -webkit-print-color-adjust: exact; }
 
             #splashScreen, .control-bar, .source-btn, .dmc-btn, #volcanoStatus, #alertContainer, .map-box, .extras-container, .day-card.past { display: none !important; }
@@ -676,6 +2069,164 @@ input, select {
   .chart-menu-bottom select, .chart-menu-bottom input { padding: 5px !important; font-size: 9px !important; }
   .print-chart-row { grid-template-columns: 1fr !important; }
 }
+
+
+        /* REPORT BUILDER */
+        .report-launch-btn{background:var(--panel2);color:var(--text);border:1px solid var(--border);padding:5px 8px;font-weight:700;font-size:12px;letter-spacing:.3px;line-height:1;cursor:pointer;white-space:nowrap;flex:0 0 auto;}
+        .report-launch-btn:hover{filter:brightness(.98);}
+        .report-modal{position:fixed;inset:0;background:rgba(0,0,0,.52);display:none;align-items:center;justify-content:center;z-index:10050;padding:12px;}
+        .report-modal.show{display:flex;}
+        .report-dialog{width:min(1280px,97vw);max-height:94vh;overflow:auto;background:var(--bg);border:1px solid var(--border);box-shadow:0 24px 60px rgba(0,0,0,.24);}
+        .report-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding:10px 12px;border-bottom:1px solid var(--border);background:var(--panel);position:sticky;top:0;z-index:3;}
+        .report-head h2{margin:0;font-size:13px;letter-spacing:1.2px;line-height:1.1;}
+        .report-head .report-sub{margin-top:2px;font-size:9px;color:var(--muted);letter-spacing:.5px;}
+        .report-close{border:1px solid var(--border);background:var(--bg);color:var(--text);padding:5px 8px;cursor:pointer;font-weight:700;font-size:11px;line-height:1;white-space:nowrap;}
+        .report-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:8px;padding:10px;align-items:start;}
+        .report-box{border:1px solid var(--border);background:var(--panel);padding:9px 10px;min-width:0;}
+        .report-grid>.report-box:nth-child(1){grid-column:span 4;}
+        .report-grid>.report-box:nth-child(2){grid-column:span 5;}
+        .report-grid>.report-box:nth-child(3){grid-column:span 12;}
+        .report-grid>.report-box:nth-child(4){grid-column:span 3;}
+        .report-box h3{margin:0 0 8px 0;font-size:11px;letter-spacing:1px;line-height:1.1;}
+        .report-box label{display:block;font-size:9px;margin:5px 0 3px;color:var(--muted);letter-spacing:.4px;}
+        .report-box input,.report-box select,.report-box textarea{width:100%;box-sizing:border-box;background:var(--bg);color:var(--text);border:1px solid var(--border);padding:6px 8px;font-family:Consolas,monospace;font-size:11px;line-height:1.2;text-transform:none;min-height:32px;}
+        .report-box textarea{min-height:72px;resize:vertical;}
+        .report-inline-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+        .report-checks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px 10px;}
+        .report-check{display:flex;gap:6px;align-items:flex-start;font-size:10px;line-height:1.2;min-width:0;}
+        .report-check input{width:auto;min-height:0;margin-top:1px;}
+        .report-mini-toggle{margin:6px 0 4px;}
+        .report-actions{display:flex;justify-content:flex-end;gap:8px;padding:0 10px 10px;}
+        .report-actions button{border:1px solid var(--border);background:var(--panel2);color:var(--text);padding:7px 10px;cursor:pointer;font-weight:700;font-size:11px;line-height:1;}
+        @media (max-width:1100px){
+          .report-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+          .report-grid>.report-box:nth-child(1),.report-grid>.report-box:nth-child(2),.report-grid>.report-box:nth-child(4){grid-column:span 1;}
+          .report-grid>.report-box:nth-child(3){grid-column:1 / -1;}
+          .report-checks{grid-template-columns:repeat(2,minmax(0,1fr));}
+        }
+        @media (max-width:760px){
+          .report-grid{grid-template-columns:1fr;padding:8px;}
+          .report-grid>.report-box{grid-column:1 / -1 !important;}
+          .report-inline-grid,.report-checks{grid-template-columns:1fr;}
+          .report-head{padding:9px 10px;}
+        }
+        .generated-report-wrap{display:none;margin-top:10px;border:1px solid var(--border);background:#fff;color:#111;}
+        .generated-report-wrap.show{display:block;}
+        .generated-toolbar{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px 12px;background:var(--panel);border-bottom:1px solid var(--border);}
+        .generated-toolbar button{border:1px solid var(--border);background:#fff;padding:8px 10px;cursor:pointer;font-weight:700;}
+        .generated-report{padding:18px;line-height:1.45;font-family:Arial,Helvetica,sans-serif;text-transform:none;}
+        .generated-report p,.generated-report td,.generated-report li,.generated-report .gr-note,.generated-report .gr-small{ text-align:justify; }
+        .gr-list-formal{margin:0;padding-left:30px;}
+        .gr-list-formal.level-1{list-style-type:upper-roman;}
+        .gr-list-formal.level-2{list-style-type:upper-alpha;}
+        .gr-list-formal.level-3{list-style-type:decimal;}
+        .gr-list-formal.level-4{list-style-type:lower-alpha;}
+        .gr-list-formal li{margin:0 0 6px 0;}
+
+        .generated-report p,.generated-report td,.generated-report li,.generated-report .gr-note,.generated-report .gr-small{ text-align:justify; }
+        .gr-list-formal{margin:0;padding-left:30px;}
+        .gr-list-formal.level-1{list-style-type:upper-roman;}
+        .gr-list-formal.level-2{list-style-type:upper-alpha;}
+        .gr-list-formal.level-3{list-style-type:decimal;}
+        .gr-list-formal.level-4{list-style-type:lower-alpha;}
+        .gr-list-formal li{margin:0 0 6px 0;}
+
+        .generated-report *{text-transform:none;}
+        .gr-header{border-bottom:2px solid #222;padding-bottom:16px;margin-bottom:26px;}
+        .gr-header{padding-top:2px;}
+        .gr-title{font-size:26px;font-weight:800;letter-spacing:.8px;margin:-2px 0 10px 0;text-align:center;}
+        .gr-header-meta{display:flex;justify-content:space-between;gap:24px;align-items:flex-start;margin-top:14px;}
+        .gr-header-left{flex:1 1 auto;}
+        .gr-header-right{min-width:180px;text-align:right;}
+        .gr-subtitle{font-size:13px;color:#444;margin:0;}
+        .gr-badge{display:inline-block;padding:6px 10px;border-radius:999px;border:1px solid #333;font-size:11px;font-weight:700;margin-bottom:8px;}
+        .gr-section{margin:24px 0;}
+        .gr-section h3{font-size:16px;margin:0 0 12px 0;border-bottom:1px solid #ddd;padding-bottom:6px;}
+        .gr-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;}
+        .gr-kpi{border:1px solid #d5d5d5;padding:12px;background:#fafafa;border-radius:6px;}
+        .gr-kpi .k{font-size:11px;color:#666;text-transform:uppercase;letter-spacing:.8px;}
+        .gr-kpi .v{font-size:20px;font-weight:800;margin-top:6px;}
+        .gr-two{display:grid;grid-template-columns:1.2fr .8fr;gap:14px;}
+        .gr-table{width:100%;border-collapse:collapse;font-size:12px;}
+        .gr-table th,.gr-table td{border:1px solid #d5d5d5;padding:7px 8px;text-align:left;vertical-align:top;}
+        .generated-report, .generated-report p, .generated-report li, .generated-report td, .generated-report th, .generated-report .gr-note, .generated-report .gr-small { text-align: justify; }
+        .generated-report h1, .generated-report h2, .generated-report h3, .generated-report .gr-chart-title, .generated-report .gr-semaforo { text-align: left; }
+        .generated-report .gr-header .gr-title { text-align: center; }
+        .generated-report .gr-header .gr-subtitle { text-align: left; }
+        .generated-report ol{margin:8px 0 8px 26px;padding-left:18px;}
+        .generated-report ol[type="I"]{list-style-type: upper-roman;}
+        .generated-report ol[type="A"]{list-style-type: upper-alpha;}
+        .generated-report ol[type="1"]{list-style-type: decimal;}
+        .generated-report ol[type="a"]{list-style-type: lower-alpha;}
+        .gr-table th{background:#f2f2f2;}
+        .gr-note{font-size:12px;color:#444;}
+        .gr-list{margin:0;padding-left:18px;}
+        .gr-list li{margin:5px 0;}
+        .gr-semaforo{font-weight:800;padding:10px 12px;border-radius:8px;display:inline-block;min-width:170px;text-align:center;}
+        .gr-semaforo.favorable{background:#dff3e4;color:#166534;border:1px solid #166534;}
+        .gr-semaforo.marginal{background:#fff3cd;color:#92400e;border:1px solid #92400e;}
+        .gr-semaforo.afecta{background:#fee2e2;color:#991b1b;border:1px solid #991b1b;}
+        .gr-chart img{max-width:100%;border:1px solid #ddd;background:#fff;}
+        .gr-small{font-size:11px;color:#666;}
+        @media (max-width: 900px){
+          .report-grid,.gr-kpis,.gr-two{grid-template-columns:1fr;}
+          .report-checks{grid-template-columns:1fr;}
+          .generated-toolbar{flex-direction:column;align-items:stretch;}
+        }
+        @media print{
+          body.print-generated-report > *:not(#generatedReportWrap){display:none !important;}
+          body.print-generated-report #generatedReportWrap{display:block !important;border:none !important;margin:0 !important;}
+          body.print-generated-report #generatedReportWrap .generated-toolbar{display:none !important;}
+          body.print-generated-report #generatedReportWrap .generated-report{padding:0 0 0 3cm !important;}
+        }
+
+
+.gr-annex-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;margin-top:10px;}
+.gr-chart-card{border:1px solid var(--border);background:var(--panel);padding:10px;border-radius:10px;min-height:250px;}
+.gr-chart-card canvas{width:100% !important;height:190px !important;display:block;}
+.gr-chart-title{font-size:12px;font-weight:700;margin-bottom:8px;color:var(--text);}
+
+/* v9 compact modal two-column layout */
+.report-dialog{max-width:1180px!important;width:min(1180px,96vw)!important;max-height:94vh!important;}
+.report-head{padding:10px 12px!important;}
+.report-head h2{font-size:12px!important;letter-spacing:1.1px!important;}
+.report-sub{font-size:9px!important;margin-top:1px!important;}
+.report-close{padding:3px 10px!important;min-height:24px!important;height:24px!important;font-size:10px!important;}
+.report-grid{display:grid!important;grid-template-columns:minmax(0,2.1fr) minmax(0,1fr)!important;gap:10px!important;padding:8px 10px!important;align-items:start!important;}
+.report-col{display:flex!important;flex-direction:column!important;gap:8px!important;min-width:0!important;}
+.report-box{padding:8px!important;margin:0!important;}
+.report-box h3{margin:0 0 6px 0!important;font-size:10px!important;}
+.report-form-grid{display:grid!important;gap:6px!important;}
+.report-form-grid-2{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+.report-field{min-width:0!important;}
+.report-field-span-2{grid-column:1 / -1!important;}
+.report-box label{font-size:8.5px!important;margin:0 0 2px!important;}
+.report-box input,.report-box select,.report-box textarea{padding:4px 6px!important;font-size:10px!important;min-height:27px!important;height:27px!important;}
+.report-box textarea{min-height:58px!important;height:58px!important;}
+.report-mini-toggle{margin:6px 0 4px!important;}
+.report-letterhead-grid{margin-top:2px!important;}
+.report-checks{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:4px 10px!important;}
+#rbOptionsBox .report-checks{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+.report-check{display:flex!important;align-items:center!important;gap:6px!important;font-size:9.5px!important;line-height:1.15!important;padding:0!important;min-height:20px!important;}
+.report-check input{width:13px!important;height:13px!important;min-height:13px!important;}
+.report-actions{padding:8px 10px 10px!important;gap:8px!important;}
+.report-actions button{padding:5px 10px!important;min-height:28px!important;height:28px!important;font-size:10px!important;}
+@media (max-width: 960px){
+  .report-grid{grid-template-columns:1fr!important;}
+  .report-checks,#rbOptionsBox .report-checks{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+}
+@media (max-width: 640px){
+  .report-form-grid-2,.report-checks,#rbOptionsBox .report-checks{grid-template-columns:1fr!important;}
+}
+
+
+  .aero-compact th, .aero-compact td{ padding:3px 4px; vertical-align:top; word-break:break-word; }
+  .aero-compact th{ font-size:9px; }
+  .aero-compact td{ line-height:1.15; }
+  @media print{
+    .aero-compact th, .aero-compact td{ padding:3px 4px; font-size:8.8px; }
+  }
+
 </style>
 <style>
 
@@ -899,7 +2450,342 @@ input, select {
   }
 }
 
+
+
+        /* REPORT BUILDER */
+        .report-launch-btn{background:var(--panel2);color:var(--text);border:1px solid var(--border);padding:5px 8px;font-weight:700;font-size:12px;letter-spacing:.3px;line-height:1;cursor:pointer;white-space:nowrap;flex:0 0 auto;}
+        .report-launch-btn:hover{filter:brightness(.98);}
+        .report-modal{position:fixed;inset:0;background:rgba(0,0,0,.52);display:none;align-items:center;justify-content:center;z-index:10050;padding:12px;}
+        .report-modal.show{display:flex;}
+        .report-dialog{width:min(1280px,97vw);max-height:94vh;overflow:auto;background:var(--bg);border:1px solid var(--border);box-shadow:0 24px 60px rgba(0,0,0,.24);}
+        .report-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding:10px 12px;border-bottom:1px solid var(--border);background:var(--panel);position:sticky;top:0;z-index:3;}
+        .report-head h2{margin:0;font-size:13px;letter-spacing:1.2px;line-height:1.1;}
+        .report-head .report-sub{margin-top:2px;font-size:9px;color:var(--muted);letter-spacing:.5px;}
+        .report-close{border:1px solid var(--border);background:var(--bg);color:var(--text);padding:5px 8px;cursor:pointer;font-weight:700;font-size:11px;line-height:1;white-space:nowrap;}
+        .report-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:8px;padding:10px;align-items:start;}
+        .report-box{border:1px solid var(--border);background:var(--panel);padding:9px 10px;min-width:0;}
+        .report-grid>.report-box:nth-child(1){grid-column:span 4;}
+        .report-grid>.report-box:nth-child(2){grid-column:span 5;}
+        .report-grid>.report-box:nth-child(3){grid-column:span 12;}
+        .report-grid>.report-box:nth-child(4){grid-column:span 3;}
+        .report-box h3{margin:0 0 8px 0;font-size:11px;letter-spacing:1px;line-height:1.1;}
+        .report-box label{display:block;font-size:9px;margin:5px 0 3px;color:var(--muted);letter-spacing:.4px;}
+        .report-box input,.report-box select,.report-box textarea{width:100%;box-sizing:border-box;background:var(--bg);color:var(--text);border:1px solid var(--border);padding:6px 8px;font-family:Consolas,monospace;font-size:11px;line-height:1.2;text-transform:none;min-height:32px;}
+        .report-box textarea{min-height:72px;resize:vertical;}
+        .report-inline-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+        .report-checks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px 10px;}
+        .report-check{display:flex;gap:6px;align-items:flex-start;font-size:10px;line-height:1.2;min-width:0;}
+        .report-check input{width:auto;min-height:0;margin-top:1px;}
+        .report-mini-toggle{margin:6px 0 4px;}
+        .report-actions{display:flex;justify-content:flex-end;gap:8px;padding:0 10px 10px;}
+        .report-actions button{border:1px solid var(--border);background:var(--panel2);color:var(--text);padding:7px 10px;cursor:pointer;font-weight:700;font-size:11px;line-height:1;}
+        @media (max-width:1100px){
+          .report-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+          .report-grid>.report-box:nth-child(1),.report-grid>.report-box:nth-child(2),.report-grid>.report-box:nth-child(4){grid-column:span 1;}
+          .report-grid>.report-box:nth-child(3){grid-column:1 / -1;}
+          .report-checks{grid-template-columns:repeat(2,minmax(0,1fr));}
+        }
+        @media (max-width:760px){
+          .report-grid{grid-template-columns:1fr;padding:8px;}
+          .report-grid>.report-box{grid-column:1 / -1 !important;}
+          .report-inline-grid,.report-checks{grid-template-columns:1fr;}
+          .report-head{padding:9px 10px;}
+        }
+        .generated-report-wrap{display:none;margin-top:10px;border:1px solid var(--border);background:#fff;color:#111;}
+        .generated-report-wrap.show{display:block;}
+        .generated-toolbar{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px 12px;background:var(--panel);border-bottom:1px solid var(--border);}
+        .generated-toolbar button{border:1px solid var(--border);background:#fff;padding:8px 10px;cursor:pointer;font-weight:700;}
+        .generated-report{padding:18px;line-height:1.45;font-family:Arial,Helvetica,sans-serif;text-transform:none;}
+        .generated-report *{text-transform:none;}
+        .gr-header{border-bottom:2px solid #222;padding-bottom:16px;margin-bottom:26px;}
+        .gr-header{padding-top:2px;}
+        .gr-title{font-size:26px;font-weight:800;letter-spacing:.8px;margin:-2px 0 10px 0;text-align:center;}
+        .gr-header-meta{display:flex;justify-content:space-between;gap:24px;align-items:flex-start;margin-top:14px;}
+        .gr-header-left{flex:1 1 auto;}
+        .gr-header-right{min-width:180px;text-align:right;}
+        .gr-subtitle{font-size:13px;color:#444;margin:0;}
+        .gr-badge{display:inline-block;padding:6px 10px;border-radius:999px;border:1px solid #333;font-size:11px;font-weight:700;margin-bottom:8px;}
+        .gr-section{margin:24px 0;}
+        .gr-section h3{font-size:16px;margin:0 0 12px 0;border-bottom:1px solid #ddd;padding-bottom:6px;}
+        .gr-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;}
+        .gr-kpi{border:1px solid #d5d5d5;padding:12px;background:#fafafa;border-radius:6px;}
+        .gr-kpi .k{font-size:11px;color:#666;text-transform:uppercase;letter-spacing:.8px;}
+        .gr-kpi .v{font-size:20px;font-weight:800;margin-top:6px;}
+        .gr-two{display:grid;grid-template-columns:1.2fr .8fr;gap:14px;}
+        .gr-table{width:100%;border-collapse:collapse;font-size:12px;}
+        .gr-table th,.gr-table td{border:1px solid #d5d5d5;padding:7px 8px;text-align:left;vertical-align:top;}
+        .generated-report, .generated-report p, .generated-report li, .generated-report td, .generated-report th, .generated-report .gr-note, .generated-report .gr-small { text-align: justify; }
+        .generated-report h1, .generated-report h2, .generated-report h3, .generated-report .gr-chart-title, .generated-report .gr-semaforo { text-align: left; }
+        .generated-report .gr-header .gr-title { text-align: center; }
+        .generated-report .gr-header .gr-subtitle { text-align: left; }
+        .generated-report ol{margin:8px 0 8px 26px;padding-left:18px;}
+        .generated-report ol[type="I"]{list-style-type: upper-roman;}
+        .generated-report ol[type="A"]{list-style-type: upper-alpha;}
+        .generated-report ol[type="1"]{list-style-type: decimal;}
+        .generated-report ol[type="a"]{list-style-type: lower-alpha;}
+        .gr-table th{background:#f2f2f2;}
+        .gr-note{font-size:12px;color:#444;}
+        .gr-list{margin:0;padding-left:18px;}
+        .gr-list li{margin:5px 0;}
+        .gr-semaforo{font-weight:800;padding:10px 12px;border-radius:8px;display:inline-block;min-width:170px;text-align:center;}
+        .gr-semaforo.favorable{background:#dff3e4;color:#166534;border:1px solid #166534;}
+        .gr-semaforo.marginal{background:#fff3cd;color:#92400e;border:1px solid #92400e;}
+        .gr-semaforo.afecta{background:#fee2e2;color:#991b1b;border:1px solid #991b1b;}
+        .gr-chart img{max-width:100%;border:1px solid #ddd;background:#fff;}
+        .gr-small{font-size:11px;color:#666;}
+        @media (max-width: 900px){
+          .report-grid,.gr-kpis,.gr-two{grid-template-columns:1fr;}
+          .report-checks{grid-template-columns:1fr;}
+          .generated-toolbar{flex-direction:column;align-items:stretch;}
+        }
+        @media print{
+          body.print-generated-report > *:not(#generatedReportWrap){display:none !important;}
+          body.print-generated-report #generatedReportWrap{display:block !important;border:none !important;margin:0 !important;}
+          body.print-generated-report #generatedReportWrap .generated-toolbar{display:none !important;}
+          body.print-generated-report #generatedReportWrap .generated-report{padding:0 0 0 3cm !important;}
+        }
+
 </style>
+
+<style>
+.control-bar{flex-wrap:nowrap !important; gap:6px !important; align-items:center !important;}
+.control-bar > div{flex:0 0 auto !important;}
+#cityInput{width:120px !important;}
+#latDms,#lonDms{width:132px !important;}
+#sourceSelect,#modelSelect{width:138px !important;}
+#themeMode{width:82px !important;}
+.control-bar button,.control-bar select,.control-bar input{height:30px !important; font-size:10px !important; padding:0 6px !important;}
+.control-bar button{min-width:102px !important;}
+.report-launch-btn{padding:4px 6px !important; font-size:10px !important; min-width:98px !important;}
+@media (max-width:1100px){
+  .control-bar{flex-wrap:wrap !important;}
+}
+</style>
+
+
+<style id="report-v6-tweaks">
+.control-bar{flex-wrap:nowrap !important; gap:5px !important; align-items:center !important;}
+.control-bar > div{flex:0 0 auto !important;}
+#cityInput{width:112px !important;}
+#latDms,#lonDms{width:124px !important;}
+#sourceSelect,#modelSelect{width:128px !important;}
+#themeMode{width:78px !important;}
+.control-bar button,.control-bar select,.control-bar input{height:28px !important; font-size:10px !important; padding:0 6px !important;}
+.control-bar button{min-width:96px !important;}
+.report-launch-btn{padding:3px 6px !important;font-size:10px !important;min-width:78px !important;height:28px !important;}
+.report-dialog{width:min(980px,94vw) !important;border-radius:8px !important;}
+.report-head{padding:10px 12px !important;}
+.report-head h2{font-size:15px !important; letter-spacing:.5px !important; margin:0 0 2px 0 !important;}
+.report-grid{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:8px !important;padding:10px 12px !important;}
+.report-box{padding:10px !important;border-radius:6px !important;background:var(--panel) !important;}
+.report-box h3{margin:0 0 8px 0 !important;font-size:11px !important;letter-spacing:.8px !important;}
+.report-box label{font-size:10px !important;margin:5px 0 3px !important;}
+.report-box input,.report-box select,.report-box textarea{padding:6px 8px !important;font-size:11px !important;min-height:30px !important;border-radius:4px !important;}
+.report-box textarea{min-height:76px !important;resize:vertical;}
+.report-checks{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:4px 10px !important;}
+.report-check{gap:6px !important;font-size:11px !important;padding:2px 0 !important;}
+.report-actions{padding:10px 12px 12px !important;gap:8px !important;}
+.report-actions button{padding:8px 10px !important;font-size:11px !important;}
+.gr-kpis{grid-template-columns:repeat(4,minmax(0,1fr)) !important;gap:6px !important;}
+.gr-kpi{padding:8px 9px !important;border:1px solid #d9d9d9 !important;background:#fff !important;border-radius:2px !important;box-shadow:none !important;}
+.gr-kpi .k{font-size:10px !important;letter-spacing:.5px !important;color:#666 !important;}
+.gr-kpi .v{font-size:15px !important;font-weight:700 !important;line-height:1.2 !important;margin-top:4px !important;}
+.gr-letterhead{position:relative;left:-78px;width:calc(100% + 78px);margin:-20px 0 18px 0;padding-top:0;overflow:visible;}
+.gr-letterhead-row{display:grid;grid-template-columns:minmax(520px,1fr) 1fr;align-items:start;column-gap:18px;min-height:82px;}
+.gr-letterhead-left{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;text-align:center;padding-left:0;margin-left:-18px;transform:none;overflow:visible;}
+.gr-letterhead-right{display:flex;align-items:flex-start;justify-content:center;text-align:center;padding-right:18px;font-family:"Times New Roman",serif;font-size:20px;line-height:1.05;min-height:28px;}
+.gr-letterhead-line{font-family:"Times New Roman",serif;font-size:20px;line-height:1.05;min-height:22px;display:block;}
+.gr-letterhead-line-1{width:330px;transform:none;text-align:center;}
+.gr-letterhead-line-2{width:430px;transform:none;text-align:center;}
+.gr-letterhead-line-3{width:330px;transform:none;text-align:center;}
+.gr-letterhead-date{width:50%;margin-left:50%;text-align:center;margin-top:16px;font-family:"Times New Roman",serif;font-size:18px;line-height:1.15;min-height:22px;}
+.generated-report .gr-letterhead + .gr-header{margin-top:10px;}
+@media print{
+  body.print-generated-report #generatedReportWrap .generated-report .gr-letterhead{left:-72px !important;width:calc(100% + 72px) !important;margin:-4px 0 16px 0 !important;overflow:visible !important;}
+  body.print-generated-report #generatedReportWrap .generated-report .gr-letterhead-row{min-height:74px !important;grid-template-columns:minmax(450px,1fr) 1fr !important;column-gap:16px !important;}
+  body.print-generated-report #generatedReportWrap .generated-report .gr-letterhead-left{margin-left:-12px !important;transform:none !important;overflow:visible !important;}
+  body.print-generated-report #generatedReportWrap .generated-report .gr-letterhead-right,
+  body.print-generated-report #generatedReportWrap .generated-report .gr-letterhead-line{font-size:16px !important;line-height:1.02 !important;}
+  body.print-generated-report #generatedReportWrap .generated-report .gr-letterhead-line-1{width:265px !important;transform:none !important;}
+  body.print-generated-report #generatedReportWrap .generated-report .gr-letterhead-line-2{width:365px !important;transform:none !important;}
+  body.print-generated-report #generatedReportWrap .generated-report .gr-letterhead-line-3{width:265px !important;transform:none !important;}
+  body.print-generated-report #generatedReportWrap .generated-report .gr-letterhead-date{font-size:15px !important;margin-top:12px !important;}
+}
+.gr-letterhead-left div,.gr-letterhead-right,.gr-letterhead-date{min-height:18px;}
+
+.gr-sign-dist-wrap{margin:34px 0 8px 0;min-height:170px;position:relative;page-break-inside:avoid;break-inside:avoid;}
+.gr-signature-block{width:42%;margin:102px 0 0 auto;text-align:center;font-family:"Times New Roman",serif;font-size:16px;line-height:1.25;min-height:86px;}
+.gr-signature-name{font-size:16px;text-transform:uppercase;}
+.gr-signature-rank,.gr-signature-role{font-size:16px;}
+.gr-distribution-block{margin-top:18px;margin-left:0;margin-right:auto;width:28%;font-family:"Times New Roman",serif;font-size:16px;line-height:1.3;text-align:left;position:relative;left:0;}
+.gr-distribution-title{margin-bottom:2px;}
+.gr-distribution-line{white-space:pre-wrap;}
+.gr-distribution-indent{padding-left:18px;}
+.report-sign-grid{margin-top:6px!important;}
+.report-mini-toggle-dual{display:flex;gap:18px;flex-wrap:wrap;margin-top:8px!important;}
+@media print{
+  .gr-sign-dist-wrap{margin:36px 0 0 0 !important;min-height:165px !important;}
+  .gr-signature-block{width:42% !important;margin-top:92px !important;font-size:15px !important;line-height:1.2 !important;}
+  .gr-signature-name,.gr-signature-rank,.gr-signature-role{font-size:15px !important;}
+  .gr-distribution-block{margin-top:18px !important;margin-left:0 !important;margin-right:auto !important;width:29% !important;font-size:15px !important;line-height:1.22 !important;position:relative !important;left:0 !important;}
+}
+@media (max-width:1100px){
+  .control-bar{flex-wrap:wrap !important;}
+}
+@media (max-width:820px){
+  .report-grid,.report-checks,.gr-kpis{grid-template-columns:1fr !important;}
+}
+</style>
+
+<style id="report-print-fine-tune">
+.generated-report .gr-table,
+.generated-report .gr-table tr,
+.generated-report .gr-chart-card,
+.generated-report .gr-note{break-inside:avoid;page-break-inside:avoid;}
+.generated-report .gr-section{break-inside:auto;page-break-inside:auto;}
+.generated-report .gr-page-break-before{break-before:page;page-break-before:always;}
+.generated-report .gr-annex-grid{align-items:start;}
+.generated-report .gr-period-table td,
+.generated-report .gr-period-table th{white-space:nowrap;}
+@media print{
+  @page{size:auto;margin-top:2.2cm;margin-right:1cm;margin-bottom:1.7cm;margin-left:1cm;}
+  body.print-generated-report #generatedReportWrap .generated-report{padding:0 0 0 3cm !important;font-size:11px;line-height:1.28;}
+  body.print-generated-report #generatedReportWrap .generated-report .gr-title{font-size:20px;}
+  body.print-generated-report #generatedReportWrap .generated-report .gr-header{margin-bottom:10px !important;}
+  body.print-generated-report #generatedReportWrap .generated-report .gr-section{margin:12px 0;}
+  body.print-generated-report #generatedReportWrap .generated-report .gr-section h3{margin-bottom:5px;padding-bottom:3px;}
+  body.print-generated-report #generatedReportWrap .generated-report .gr-table{font-size:10.2px;}
+  body.print-generated-report #generatedReportWrap .generated-report .gr-table th,
+  body.print-generated-report #generatedReportWrap .generated-report .gr-table td{padding:5px 6px !important;vertical-align:top;}
+  body.print-generated-report #generatedReportWrap .generated-report .gr-annex-grid{grid-template-columns:1fr 1fr !important;gap:8px !important;}
+  body.print-generated-report #generatedReportWrap .generated-report .gr-chart-card{padding:7px !important;min-height:auto !important;border-radius:0 !important;}
+  body.print-generated-report #generatedReportWrap .generated-report .gr-chart-card canvas{height:148px !important;max-height:148px !important;}
+  body.print-generated-report #generatedReportWrap .generated-report p{margin:0 0 8px 0;}
+  body.print-generated-report #generatedReportWrap .generated-report .gr-section,
+  body.print-generated-report #generatedReportWrap .generated-report .gr-table,
+  body.print-generated-report #generatedReportWrap .generated-report .gr-chart-card{break-inside:avoid-page;page-break-inside:avoid;}
+}
+</style>
+
+<style>
+/* v51: stacked vertical modal with professional bottom actions */
+#reportBuilderModal .report-dialog{display:block !important;max-height:94vh !important;overflow:auto !important;}
+#reportBuilderModal .report-grid{overflow:visible !important;max-height:none !important;padding-bottom:8px !important;}
+#reportBuilderModal .report-actions{position:sticky !important;bottom:0 !important;z-index:5 !important;background:var(--bg) !important;border-top:1px solid var(--border) !important;padding:10px 12px 12px !important;justify-content:flex-end !important;display:flex !important;gap:8px !important;}
+#reportBuilderModal .report-actions button{min-height:32px !important;height:32px !important;padding:7px 12px !important;}
+</style>
+
+<style id="membrete-fix-final">
+@media print {
+
+  /* Los contenedores no cortan nada */
+  #generatedReportWrap,
+  #generatedReportWrap .generated-report {
+    overflow: visible !important;
+  }
+
+  /* El membrete ocupa desde el borde físico izquierdo de la hoja */
+  /* Cancela los 3cm de padding del contenedor y se expande */
+  #generatedReportWrap .generated-report .gr-letterhead {
+    margin-left:  -3cm !important;
+    width:        calc(100% + 3cm) !important;
+    overflow:     visible !important;
+    position:     relative !important;
+    left:         0 !important;
+    margin-top:   0 !important;
+    margin-bottom: 18px !important;
+    padding-left: 0 !important;
+  }
+
+  /* La fila interna también sin recortes */
+  #generatedReportWrap .generated-report .gr-letterhead-row {
+    overflow:    visible !important;
+    column-gap:  18px !important;
+  }
+
+  /* Columna izquierda del membrete: texto alineado a la IZQUIERDA */
+  #generatedReportWrap .generated-report .gr-letterhead-left {
+    margin-left:  0 !important;
+    padding-left: 0 !important;
+    transform:    none !important;
+    overflow:     visible !important;
+    text-align:   left !important;
+    align-items:  flex-start !important;
+  }
+
+  /* Las líneas de texto: alineadas a la izquierda, sin centrado */
+  #generatedReportWrap .generated-report .gr-letterhead-line {
+    text-align: left !important;
+    width:      auto !important;
+    transform:  none !important;
+  }
+}
+</style>
+
+
+<style id="lineas-1-3-centradas">
+@media print {
+  #generatedReportWrap .generated-report .gr-letterhead-left {
+    display:        flex !important;
+    flex-direction: column !important;
+    align-items:    flex-start !important;
+  }
+  /* Línea 2: no se mueve */
+  #generatedReportWrap .generated-report .gr-letterhead-line-2 {
+    margin-left: 0 !important;
+    text-align:  left !important;
+    width:       auto !important;
+  }
+  /* Líneas 1 y 3: centradas respecto al ancho de línea 2 usando margin auto */
+  #generatedReportWrap .generated-report .gr-letterhead-line-1,
+  #generatedReportWrap .generated-report .gr-letterhead-line-3 {
+    width:        365px !important;
+    text-align:   center !important;
+    margin-left:  0 !important;
+    margin-right: 0 !important;
+  }
+}
+</style>
+
+
+<style id="letterhead-align-fix">
+#generatedReportWrap .generated-report .gr-letterhead-left,
+#generatedReportWrap .generated-report .gr-letterhead-right {
+  line-height: 1.0 !important;
+  font-size: 12pt !important;
+}
+#generatedReportWrap .generated-report .gr-letterhead-line-1 {
+  padding-top: 0 !important;
+  margin-top: 0 !important;
+}
+</style>
+
+
+<style id="print-repeat-top-right-fix">
+@media print {
+  body.print-generated-report #generatedReportWrap #printRepeatTopRight{
+    display:block !important;
+    position:fixed !important;
+    top:-0.090cm !important;
+    right:1.00cm !important;
+    width:6.8cm !important;
+    text-align:center !important;
+    font-family:"Times New Roman",serif !important;
+    font-size:16px !important;
+    line-height:1.02 !important;
+    z-index:9999 !important;
+    background:transparent !important;
+    pointer-events:none !important;
+  }
+  body.print-generated-report #generatedReportWrap .generated-report .gr-letterhead-right{
+    visibility:hidden !important;
+  }
+}
+@media screen {
+  #printRepeatTopRight{display:none !important;}
+}
+</style>
+
 </head>
 <body>
 
@@ -961,14 +2847,16 @@ input, select {
             <div style="display:flex; gap:6px; align-items:center; flex-wrap:nowrap;">
                 <label style="display:flex; gap:6px; align-items:center;">
                     <input type="checkbox" id="useManualCoords" style="width:auto;" checked>
-                    <span>COORD. MANUALES (GMS)</span>
+                    <span>COORDENADAS</span>
                 </label>
 
-                <input type="text" id="latDms" value="20°12\'50&quot;S" placeholder='LAT (EJ: 20°12\'30"S)' style="width: 220px;">
-                <input type="text" id="lonDms" value="70°09\'07&quot;W" placeholder='LON (EJ: 70°08\'15"W)' style="width: 220px;">
+                <input type="text" id="latDms" value="20°12\'50&quot;S" placeholder='LAT (EJ: 20°12\'30"S)' style="width: 132px;">
+                <input type="text" id="lonDms" value="70°09\'07&quot;W" placeholder='LON (EJ: 70°08\'15"W)' style="width: 132px;">
             </div>
 
             <button onclick="executeSearch()">ACTUALIZAR DATOS</button>
+
+            <button type="button" id="reportLaunchBtn" class="report-launch-btn" onclick="openReportBuilder()">INFORME</button>
 
             <div style="margin-left: auto; display: flex; gap: 10px; align-items: center; flex-wrap:nowrap;">
 
@@ -979,11 +2867,12 @@ input, select {
                 </select>
 
                                 <span>FUENTE:</span>
-                <select id="sourceSelect" onchange="executeSearch()">
+                <select id="sourceSelect" onchange="syncSourceModelSelection(); executeSearch()">
                     <option value="auto" selected>AUTO</option>
                     <option value="openmeteo">OPEN-METEO</option>
                     <option value="meteoblue">METEOBLUE</option>
                     <option value="pirate">PIRATE WEATHER</option>
+                    <option value="dmc">DMC</option>
                 </select>
 
                                 <span>MODELO:</span>
@@ -991,6 +2880,7 @@ input, select {
                     <option value="ecmwf_ifs04">ECMWF (EUROPA - RECOMENDADO)</option>
                     <option value="best_match" selected>AUTO (OPTIMIZADO)</option>
                     <option value="gfs_seamless">GFS (NOAA - USA)</option>
+                    <option value="wrf_dmc">WRF DMC</option>
                 </select>
             </div>
         </div>
@@ -1072,6 +2962,9 @@ input, select {
                     <a onclick="window.open('https://www.sernageomin.cl/')" class="source-btn">SERNAGEOMIN</a>
                     <a onclick="window.open('https://www.windy.com/')" class="source-btn">WINDY</a>
                     <a class="source-btn" onclick="abrirMetarTaf()">METAR / TAF (AVIACIÓN)</a>
+                </div>
+                <div style="margin-top:10px;padding:8px 10px;border:1px dashed var(--border);background:var(--panel2);font-size:10px;line-height:1.45;color:var(--muted);">
+                    <strong style="color:var(--text)">Estrategia de integración:</strong> Fuente oficial objetivo para Chile: <strong>DMC / WRF DMC</strong>. Fuente comercial de respaldo: <strong>AccuWeather</strong>. Fuente abierta de continuidad operativa: <strong>Open‑Meteo</strong>.
                 </div>
                 <div id="volcanoStatus" style="font-size: 10px; margin-top:10px; text-align: center; color:#666;">SCANNEANDO RED SERNAGEOMIN...</div>
             </div>
@@ -1168,7 +3061,8 @@ input, select {
     <div style="font-weight:700;">ANEXO 2 – <span id="forecastVarTitle">Evolución térmica</span></div>
     <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
   <select id="forecastSource" style="font-size:12px; padding:2px 6px;">
-    <option value="openmeteo" selected>Open‑Meteo (Forecast)</option>
+    <option value="openmeteo">Open‑Meteo (Forecast)</option>
+    <option value="dmc" selected>DMC</option>
     <option value="accuweather">AccuWeather (Core)</option>
   </select>
 
@@ -1194,7 +3088,10 @@ input, select {
   </select>
 
   <div id="forecastSourceLabel" style="font-size:12px; color:var(--muted); white-space:nowrap;">
-    Fuente: Open‑Meteo (forecast)
+    Fuente oficial objetivo: Dirección Meteorológica de Chile (DMC)
+  </div>
+  <div id="forecastOfficialBadge" style="font-size:11px; color:#0f5f50; background:#e9fff8; border:1px solid #9adbc9; border-radius:999px; padding:3px 8px; white-space:nowrap; display:none;">
+    DMC · Dirección Meteorológica de Chile · WRF DMC
   </div>
 </div>
   </div>
@@ -1215,6 +3112,7 @@ input, select {
       <select id="uavSource" onchange="loadUAVForecast()" style="font-size:11px;padding:2px 6px;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:3px;">
         <option value="openmeteo">🌐 Open-Meteo</option>
         <option value="accuweather">🎯 AccuWeather</option>
+        
       </select>
       <span style="font-size:10px;color:var(--muted);white-space:nowrap;" id="uavLastUpdate">Sin datos</span>
       <button onclick="loadUAVForecast()" style="font-size:11px;padding:2px 7px;border:1px solid var(--border);background:var(--panel);color:var(--text);cursor:pointer;border-radius:3px;">↻</button>
@@ -1273,7 +3171,7 @@ input, select {
       <div style="font-size:16px;font-weight:700;" id="uavTemp">--°C</div>
     </div>
   </div>
-  <div id="uavSourceNote" style="text-align:center;padding:3px 8px;font-size:9px;color:var(--muted);border-top:1px solid var(--border);">📡 Sin TFRs ni NFZs · Fuente: Open-Meteo + NOAA Kp</div>
+  <div id="uavSourceNote" style="text-align:center;padding:3px 8px;font-size:9px;color:var(--muted);border-top:1px solid var(--border);">📡 Sin TFRs ni NFZs · Capa técnica: Open-Meteo + NOAA Kp · Pronóstico oficial general: DMC / WRF DMC</div>
   <div style="border-top:2px solid var(--border);padding:8px 10px;background:var(--panel);">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;margin-bottom:6px;">
       <div style="font-weight:700;font-size:11px;letter-spacing:.8px;">⚙️ UMBRAL DE VUELO</div>
@@ -1422,6 +3320,230 @@ input, select {
             </div>
         </div>
     </div>
+
+    
+
+<div id="reportBuilderModal" class="report-modal" aria-hidden="true">
+  <div class="report-dialog">
+    <div class="report-head">
+      <div>
+        <h2>GENERADOR DE INFORME / BOLETÍN</h2>
+        <div class="report-sub">CONFIGURA EL BOLETÍN ANTES DE CONSTRUIR EL DOCUMENTO FINAL.</div>
+      </div>
+      <div class="report-head-actions">
+        <button type="button" class="report-mini-btn" onclick="loadLastReportConfig()">CARGAR ÚLTIMA CONFIGURACIÓN</button>
+        <button type="button" class="report-mini-btn" id="buildReportBtn" onclick="safeGenerateOperationalReport(event)">CONSTRUIR INFORME</button>
+        <button class="report-close" type="button" onclick="closeReportBuilder()">CERRAR ✕</button>
+      </div>
+    </div>
+    <div class="report-grid report-grid-stacked">
+      <div class="report-box report-box-general">
+        <h3>CONFIGURACIÓN GENERAL</h3>
+        <div class="report-form-grid report-form-grid-2">
+          <div class="report-field report-field-span-2">
+            <label for="rbTitle">Título del informe</label>
+            <input id="rbTitle" type="text" value="Boletín Meteorológico">
+          </div>
+          <div class="report-field">
+            <label for="rbType">Tipo de informe</label>
+            <select id="rbType">
+              <option>Informe diario</option>
+              <option>Informe por rango de fechas</option>
+              <option selected>Boletín operacional</option>
+              <option>Boletín ejecutivo</option>
+              <option>Informe técnico completo</option>
+              <option>Informe aeronáutico / RPAS</option>
+              <option>Resumen comparativo</option>
+              <option>Resumen semanal</option>
+            </select>
+          </div>
+          <div class="report-field">
+            <label for="rbFocus">Enfoque</label>
+            <select id="rbFocus">
+              <option>General</option>
+              <option selected>Operacional</option>
+              <option>Minero</option>
+              <option>Logístico</option>
+              <option>RPAS / drones</option>
+              <option>Seguridad</option>
+              <option>Aeronáutico</option>
+              <option>Patrullaje / terreno</option>
+            </select>
+          </div>
+          <div class="report-field">
+            <label for="rbAudience">Destinatario</label>
+            <select id="rbAudience">
+              <option>Mando / jefatura</option>
+              <option selected>Personal operativo</option>
+              <option>Sección análisis</option>
+              <option>Uso externo</option>
+              <option>Equipo técnico</option>
+            </select>
+          </div>
+          <div class="report-field">
+            <label for="rbTone">Estilo de redacción</label>
+            <select id="rbTone">
+              <option>Ejecutivo</option>
+              <option selected>Técnico formal</option>
+              <option>Operacional</option>
+              <option>Institucional</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="report-box report-box-period">
+        <h3>PERÍODO Y SALIDA</h3>
+        <div class="report-form-grid report-form-grid-2">
+          <div class="report-field report-field-span-2">
+            <label for="rbRangePreset">Período</label>
+            <select id="rbRangePreset">
+              <option value="today" selected>Hoy</option>
+              <option value="tomorrow">Mañana</option>
+              <option value="3d">Próximos 3 días</option>
+              <option value="7d">Próximos 7 días</option>
+              <option value="custom">Rango personalizado</option>
+            </select>
+          </div>
+          <div class="report-field">
+            <label for="rbDateFrom">Desde</label>
+            <input id="rbDateFrom" type="date">
+          </div>
+          <div class="report-field">
+            <label for="rbDateTo">Hasta</label>
+            <input id="rbDateTo" type="date">
+          </div>
+          <div class="report-field report-field-span-2">
+            <label for="rbResponsible">Responsable / firmante</label>
+            <input id="rbResponsible" type="text" placeholder="Ej: Oficina Meteo / Analista de turno">
+          </div>
+          <div class="report-field report-field-span-2">
+            <label for="rbLocationLabel">Ubicación / proyecto</label>
+            <input id="rbLocationLabel" type="text" placeholder="Se completará con la ubicación actual">
+          </div>
+          <div class="report-field report-field-span-2">
+            <label for="rbNotes">Observaciones adicionales</label>
+            <textarea id="rbNotes" rows="3" placeholder="Notas opcionales, contexto de misión, restricciones, etc."></textarea>
+          </div>
+        </div>
+        <div class="report-mini-toggle report-mini-toggle-compact">
+          <label class="report-check"><input id="rbIncludeLetterhead" type="checkbox" checked> Incluir membrete</label>
+        </div>
+        <div class="report-form-grid report-form-grid-2 report-letterhead-grid">
+          <div class="report-field">
+            <label for="rbLetterheadLeft1">Membrete línea 1</label>
+            <input id="rbLetterheadLeft1" type="text" value="" placeholder="">
+          </div>
+          <div class="report-field">
+            <label for="rbLetterheadLeft2">Membrete línea 2</label>
+            <input id="rbLetterheadLeft2" type="text" value="" placeholder="">
+          </div>
+          <div class="report-field">
+            <label for="rbLetterheadLeft3">Membrete línea 3</label>
+            <input id="rbLetterheadLeft3" type="text" value="" placeholder="">
+          </div>
+          <div class="report-field">
+            <label for="rbLetterheadRight">Texto superior derecho</label>
+            <input id="rbLetterheadRight" type="text" value="" placeholder="">
+          </div>
+          <div class="report-field report-field-span-2">
+            <label for="rbLetterheadPlaceDate">Ciudad y fecha de encabezado</label>
+            <input id="rbLetterheadPlaceDate" type="text" value="" placeholder="">
+          </div>
+        </div>
+ 
+        </div>
+        <div class="report-mini-toggle report-mini-toggle-compact report-mini-toggle-dual">
+          <label class="report-check"><input id="rbIncludeSignature" type="checkbox"> Incluir pie de firma</label>
+          <label class="report-check"><input id="rbIncludeDistribution" type="checkbox"> Incluir distribución</label>
+        </div>
+        <div class="report-form-grid report-form-grid-2 report-sign-grid">
+          <div class="report-field">
+            <label for="rbSignatureName">Nombre firma</label>
+            <input id="rbSignatureName" type="text" value="" placeholder="">
+          </div>
+          <div class="report-field">
+            <label for="rbSignatureRank">Grado / cargo</label>
+            <input id="rbSignatureRank" type="text" value="" placeholder="">
+          </div>
+          <div class="report-field report-field-span-2">
+            <label for="rbSignatureRole">Línea de cargo / mando</label>
+            <input id="rbSignatureRole" type="text" value="" placeholder="">
+          </div>
+          <div class="report-field">
+            <label for="rbDistribution1">Distribución línea 1</label>
+            <input id="rbDistribution1" type="text" value="" placeholder="">
+          </div>
+          <div class="report-field">
+            <label for="rbDistribution2">Distribución línea 2</label>
+            <input id="rbDistribution2" type="text" value="" placeholder="">
+          </div>
+          <div class="report-field">
+            <label for="rbDistribution3">Distribución línea 3</label>
+            <input id="rbDistribution3" type="text" value="" placeholder="">
+          </div>
+          <div class="report-field">
+            <label for="rbDistribution4">Distribución línea 4</label>
+            <input id="rbDistribution4" type="text" value="" placeholder="">
+          </div>
+        </div>
+      </div>
+
+      <div class="report-box" id="rbVariablesBox">
+        <h3>VARIABLES A INCLUIR</h3>
+        <div class="report-checks">
+          <label class="report-check"><input type="checkbox" value="temperatura" checked> Temperatura</label>
+          <label class="report-check"><input type="checkbox" value="sensacion" checked> Sensación térmica</label>
+          <label class="report-check"><input type="checkbox" value="humedad" checked> Humedad</label>
+          <label class="report-check"><input type="checkbox" value="viento" checked> Viento</label>
+          <label class="report-check"><input type="checkbox" value="rafagas" checked> Ráfagas</label>
+          <label class="report-check"><input type="checkbox" value="direccion"> Dirección del viento</label>
+          <label class="report-check"><input type="checkbox" value="precipitacion" checked> Precipitación</label>
+          <label class="report-check"><input type="checkbox" value="nubosidad" checked> Nubosidad</label>
+          <label class="report-check"><input type="checkbox" value="visibilidad" checked> Visibilidad</label>
+          <label class="report-check"><input type="checkbox" value="presion"> Presión</label>
+          <label class="report-check"><input type="checkbox" value="uv" checked> Índice UV</label>
+          <label class="report-check"><input type="checkbox" value="techo" checked> Techo de nubes</label>
+          <label class="report-check"><input type="checkbox" value="astronomicos" checked> Horarios astronómicos</label>
+          <label class="report-check"><input type="checkbox" value="alertas" checked> Alertas oficiales</label>
+          <label class="report-check"><input type="checkbox" value="estado" checked> Estado operacional</label>
+        </div>
+      </div>
+
+      <div class="report-box" id="rbOptionsBox">
+        <h3>OPCIONES DEL INFORME</h3>
+        <div class="report-checks">
+          <label class="report-check"><input id="rbIncludeCharts" type="checkbox" checked> Incluir gráficos</label>
+          <label class="report-check"><input id="rbIncludeTables" type="checkbox" checked> Incluir tablas resumen</label>
+          <label class="report-check"><input id="rbIncludeTimeline" type="checkbox" checked> Incluir línea de tiempo</label>
+          <label class="report-check"><input id="rbIncludeAlerts" type="checkbox" checked> Incluir alertas SENAPRED</label>
+          <label class="report-check"><input id="rbIncludeRecs" type="checkbox" checked> Incluir recomendaciones</label>
+          <label class="report-check"><input id="rbIncludeConclusions" type="checkbox" checked> Incluir conclusiones</label>
+          <label class="report-check"><input id="rbIncludeMap" type="checkbox"> Incluir mapa / referencia geográfica</label>
+          <label class="report-check"><input id="rbIncludeSemaforo" type="checkbox" checked> Incluir semáforo operacional</label>
+          <label class="report-check"><input id="rbIncludeAero" type="checkbox"> Incluir AeroForecast / Anexo 3</label>
+          <label class="report-check"><input id="rbUseLastConfig" type="checkbox"> Reutilizar última configuración</label>
+          <label class="report-check"><input id="rbSaveConfig" type="checkbox" checked> Guardar configuración actual</label>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="generatedReportWrap" class="generated-report-wrap">
+  <div class="generated-toolbar">
+    <div>
+      <strong>INFORME GENERADO</strong>
+      <div style="font-size:11px;color:var(--muted);">LISTO PARA REVISAR, IMPRIMIR O EXPORTAR A PDF.</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button type="button" onclick="window.printGeneratedReport && window.printGeneratedReport()">IMPRIMIR / PDF</button>
+      <button type="button" onclick="document.getElementById('generatedReportWrap').classList.remove('show');window.scrollTo({top:0,behavior:'smooth'});">OCULTAR</button>
+    </div>
+  </div>
+  <div id="generatedReport" class="generated-report"></div>
+</div>
+
 
     <script>
         let globalData = null;
@@ -2351,6 +4473,84 @@ try {
         __uav._pmReady = true;
     }
 
+
+
+// ===================== DMC / ESTACIONES OFICIALES =====================
+try {
+    const __dmc = window.__dmcMapLayers || (window.__dmcMapLayers = {});
+    __dmc.map = __pickMap;
+    __dmc.stationLayer = __dmc.stationLayer || L.geoJSON(null, {
+        pointToLayer: (feature, latlng) => L.circleMarker(latlng, {
+            radius: 6,
+            color: '#0f766e',
+            weight: 2,
+            fillColor: '#14b8a6',
+            fillOpacity: 0.9
+        }),
+        onEachFeature: (feature, layer) => {
+            const p = feature?.properties || {};
+            const baseHtml = `
+              <div style="min-width:220px; font-family:Consolas,monospace;">
+                <div style="font-weight:800; margin-bottom:4px; color:#0f766e;">DMC · ESTACIÓN / LOCALIDAD OFICIAL</div>
+                <div><b>${String(p.ciudad || p.name || '').toUpperCase()}</b></div>
+                <div style="font-size:11px; color:#475569; margin-top:2px;">Región: ${String(p.region_name || p.region_code || '-')}</div>
+                <div style="font-size:11px; color:#475569;">Modelo: WRF DMC</div>
+                <div style="font-size:11px; color:#475569;">Fuente: Dirección Meteorológica de Chile</div>
+                <div id="dmcPopup_${String(p.indice || '').replace(/[^a-z0-9_-]/gi,'_')}" style="margin-top:6px; font-size:11px; color:#334155;">Cargando datos oficiales…</div>
+              </div>`;
+            layer.bindPopup(baseHtml);
+            layer.on('popupopen', async () => {
+                try {
+                    const base = (typeof WORKER_BASE_URL === 'string' ? WORKER_BASE_URL : '').replace(/\/$/, '');
+                    if (!base) return;
+                    const targetId = `dmcPopup_${String(p.indice || '').replace(/[^a-z0-9_-]/gi,'_')}`;
+                    const el = document.getElementById(targetId);
+                    if (!el) return;
+                    const r = await fetch(`${base}/dmc/current?indice=${encodeURIComponent(p.indice || '')}`, { cache: 'no-store' });
+                    if (!r.ok) throw new Error('DMC current failed');
+                    const js = await r.json();
+                    const c = js?.current || {};
+                    const t = js?.today || {};
+                    const lines = [];
+                    if (Number.isFinite(c.temperature_2m)) lines.push(`Temp actual: <b>${Math.round(c.temperature_2m)}°C</b>`);
+                    if (Number.isFinite(c.relative_humidity_2m)) lines.push(`HR aprox.: <b>${Math.round(c.relative_humidity_2m)}%</b>`);
+                    if (Number.isFinite(c.wind_speed_10m)) lines.push(`Viento: <b>${Math.round(c.wind_speed_10m)} km/h</b>`);
+                    if (Number.isFinite(t.tmin) || Number.isFinite(t.tmax)) lines.push(`Hoy Tmin/Tmax: <b>${Number.isFinite(t.tmin)?Math.round(t.tmin):'--'}° / ${Number.isFinite(t.tmax)?Math.round(t.tmax):'--'}°</b>`);
+                    if (Number.isFinite(t.precip_mm)) lines.push(`Precipitación: <b>${t.precip_mm} mm</b>`);
+                    if (Number.isFinite(t.wind_max_kmh)) lines.push(`Viento máx.: <b>${Math.round(t.wind_max_kmh)} km/h</b>`);
+                    lines.push(`<span style="color:#64748b;">Horizonte oficial: ${js?.horizon_days || '--'} días</span>`);
+                    el.innerHTML = lines.join('<br>');
+                } catch (err) {
+                    const el = document.getElementById(`dmcPopup_${String(p.indice || '').replace(/[^a-z0-9_-]/gi,'_')}`);
+                    if (el) el.innerHTML = '<span style="color:#64748b;">Estación oficial DMC cargada. El detalle dinámico requiere Worker activo.</span>';
+                }
+            });
+        }
+    });
+
+    if (!__dmc._added) {
+        __dmc.stationLayer.addTo(__pickMap);
+        if (__uav?.layersCtl) {
+            __uav.layersCtl.addOverlay(__dmc.stationLayer, 'DMC · ESTACIONES OFICIALES');
+        }
+        __dmc._added = true;
+    }
+
+    if (!__dmc._loaded) {
+        const base = (typeof WORKER_BASE_URL === 'string' ? WORKER_BASE_URL : '').replace(/\/$/, '');
+        if (base) {
+            fetch(`${base}/dmc/stations?format=geojson`, { cache: 'no-store' })
+                .then(r => r.ok ? r.json() : null)
+                .then(fc => {
+                    if (fc?.features) __dmc.stationLayer.addData(fc);
+                    __dmc._loaded = true;
+                })
+                .catch(() => {});
+        }
+    }
+} catch (e) { /* ignora capa DMC */ }
+// =================== /DMC / ESTACIONES OFICIALES ===================
+
 } catch (e) { /* ignora */ }
 // =================== /UAV / GEOZONAS (MVP CHILE) ===================
 
@@ -3132,7 +5332,7 @@ window.onload = async function() {
                         name = "IQUIQUE";
                         country = "CHILE";
                     } else {
-                        name = "COORDENADAS MANUALES";
+                        name = "COORDENADAS";
                         country = "—";
                     }
                 } else {
@@ -3165,10 +5365,14 @@ window.onload = async function() {
                 let res, usedModel, usedSource, usedUrl;
 
                 usedModel = document.getElementById('modelSelect').options[document.getElementById('modelSelect').selectedIndex].text;
+                if (sourceSel === 'dmc' && document.getElementById('modelSelect')) {
+                    document.getElementById('modelSelect').value = 'wrf_dmc';
+                    usedModel = 'WRF DMC';
+                }
 
                 if (sourceSel === "openmeteo") {
                     usedSource = "OPEN-METEO (DIRECTO)";
-                    usedUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,dew_point_2m,apparent_temperature,precipitation,visibility,wind_speed_10m,wind_gusts_10m,uv_index,cloud_cover,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,wind_speed_10m_max,uv_index_max,weather_code,snowfall_sum&hourly=temperature_2m,precipitation,cloud_cover,cloud_cover_mid,wind_speed_10m,wind_gusts_10m,pressure_msl,relative_humidity_2m,snowfall&past_days=7&forecast_days=11&timezone=auto&models=${model}`;
+                    usedUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,dew_point_2m,apparent_temperature,precipitation,visibility,wind_speed_10m,wind_gusts_10m,uv_index,cloud_cover,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,wind_speed_10m_max,uv_index_max,weather_code,snowfall_sum&hourly=temperature_2m,precipitation,precipitation_probability,cloud_cover,cloud_cover_mid,cloud_base,visibility,wind_speed_10m,wind_gusts_10m,pressure_msl,relative_humidity_2m,snowfall&past_days=7&forecast_days=11&timezone=auto&models=${model}`;
                     res = await fetch(usedUrl);
 
                     // Fallback a best_match si el modelo no existe en la ubicación
@@ -3178,8 +5382,8 @@ window.onload = async function() {
                         usedModel = "AUTO (RESPALDO)";
                     }
                 } else {
-                    // Worker (AUTO/Meteoblue/Pirate)
-                    usedSource = (sourceSel === "auto") ? "AUTO (WORKER)" : sourceSel.toUpperCase() + " (WORKER)";
+                    // Worker (AUTO/Meteoblue/Pirate/DMC preparado)
+                    usedSource = (sourceSel === "auto") ? "AUTO (WORKER)" : (sourceSel === "dmc" ? "DMC / WRF DMC (WEB OFICIAL)" : sourceSel.toUpperCase() + " (WORKER)");
                     usedUrl = buildWorkerUrl({
                         lat: latitude,
                         lon: longitude,
@@ -3197,7 +5401,7 @@ window.onload = async function() {
                     }catch(e){
                         // Fallback robusto: Open-Meteo directo (para que la UI no quede sin datos)
                         usedSource = "OPEN-METEO (FALLBACK)";
-                        usedUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,dew_point_2m,apparent_temperature,precipitation,visibility,wind_speed_10m,wind_gusts_10m,uv_index,cloud_cover,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,wind_speed_10m_max,uv_index_max,weather_code,snowfall_sum&hourly=temperature_2m,precipitation,cloud_cover,cloud_cover_mid,wind_speed_10m,wind_gusts_10m,pressure_msl,relative_humidity_2m,snowfall&past_days=7&forecast_days=11&timezone=auto&models=${model}`;
+                        usedUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,dew_point_2m,apparent_temperature,precipitation,visibility,wind_speed_10m,wind_gusts_10m,uv_index,cloud_cover,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,wind_speed_10m_max,uv_index_max,weather_code,snowfall_sum&hourly=temperature_2m,precipitation,precipitation_probability,cloud_cover,cloud_cover_mid,cloud_base,visibility,wind_speed_10m,wind_gusts_10m,pressure_msl,relative_humidity_2m,snowfall&past_days=7&forecast_days=11&timezone=auto&models=${model}`;
                         res = await fetch(usedUrl);
                         if (!res.ok) {
                             usedUrl = usedUrl.replace(`models=${model}`, `models=best_match`);
@@ -3211,6 +5415,8 @@ window.onload = async function() {
 
                 const data = await res.json();
 globalData = data;
+                window.__lastSourceLabel = data?.__source_label || usedSource;
+                if (data?.__model_label) usedModel = data.__model_label;
 
                 renderHeader(name, country, usedModel, latitude, longitude);
                 renderCurrent(data, latitude, longitude);
@@ -5288,21 +7494,36 @@ async function updateAnnex2Accu() {
 }
 
 function updateAnnex2UI() {
-  const src = document.getElementById("forecastSource")?.value || "openmeteo";
+  const src = document.getElementById("forecastSource")?.value || "dmc";
   const rangeSel = document.getElementById("forecastRange");
   const accuMode = document.getElementById("accuMode");
   const label = document.getElementById("forecastSourceLabel");
+  const badge = document.getElementById("forecastOfficialBadge");
 
   if (src === "accuweather") {
     if (rangeSel) rangeSel.style.display = "none";
     if (accuMode) accuMode.style.display = "inline-block";
     if (label) label.textContent = "Fuente: AccuWeather (Core)";
+    if (badge) badge.style.display = "none";
     // render en base a modo
     updateAnnex2Accu();
+  } else if (src === "dmc") {
+    if (rangeSel) rangeSel.style.display = "inline-block";
+    if (accuMode) accuMode.style.display = "none";
+    if (label) label.textContent = "Fuente: Dirección Meteorológica de Chile · Modelo: WRF DMC";
+    if (badge) badge.style.display = "inline-flex";
+    renderAnnex2Status("DMC / WRF DMC activo vía pronóstico oficial web. El horizonte y las variables visibles se leen desde la publicación oficial; las variables técnicas no publicadas por DMC se mantienen con respaldo complementario.");
+    renderAnnex2Vars([
+      'Pronóstico oficial activo para Chile',
+      'Modelo de referencia: WRF DMC',
+      'Respaldo complementario: AccuWeather / Open‑Meteo'
+    ]);
+    if (window.__temp7dForecast) renderTemp7dChart(window.__temp7dForecast);
   } else {
     if (rangeSel) rangeSel.style.display = "inline-block";
     if (accuMode) accuMode.style.display = "none";
-    if (label) label.textContent = "Fuente: Open‑Meteo (forecast)";
+    if (label) label.textContent = "Fuente oficial objetivo: Dirección Meteorológica de Chile (DMC)";
+    if (badge) badge.style.display = "none";
     renderAnnex2Vars([]);
 
     // re-render con el forecast actual cacheado
@@ -5509,7 +7730,7 @@ function renderUAV15Days(){
   wrap.innerHTML=html||'<div style="font-size:10px;color:var(--muted);padding:6px;">Sin datos.</div>';
 }
 async function _u15fetchOM(lat,lon){
-  const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lon+'&daily=weather_code,temperature_2m_max,temperature_2m_min,wind_speed_10m_max,wind_gusts_10m_max,precipitation_probability_max&hourly=wind_speed_10m,wind_gusts_10m,precipitation_probability&wind_speed_unit=kmh&timezone=auto&forecast_days=16');
+  const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lon+'&daily=weather_code,temperature_2m_max,temperature_2m_min,wind_speed_10m_max,wind_gusts_10m_max,precipitation_probability_max&hourly=wind_speed_10m,wind_gusts_10m,precipitation_probability,visibility,cloud_cover,cloud_base&wind_speed_unit=kmh&timezone=auto&forecast_days=16');
   if(!r.ok)throw new Error('Open-Meteo '+r.status);
   const d=await r.json();
   return{type:'openmeteo',daily:d.daily,hourly:d.hourly};
@@ -5817,7 +8038,7 @@ async function abrirMetarTaf(){
   }
 
   function labelState(sev){
-    return sev===2 ? '🔴 AFECTA' : (sev===1 ? '🟡 MARGINAL' : '🟢 FAVORECE');
+    return sev===2 ? '🔴 AFECTA' : (sev===1 ? '🟡 MARGINAL' : '🟢 FAVORABLE');
   }
 
   function setState(elId, sev){
@@ -5826,6 +8047,15 @@ async function abrirMetarTaf(){
     el.classList.remove('green','yellow','red');
     el.classList.add(sevColorClass(sev));
     el.textContent = labelState(sev);
+  }
+
+  function syncSourceModelSelection(){
+    const srcSel = document.getElementById('sourceSelect');
+    const modelSel = document.getElementById('modelSelect');
+    if(!srcSel || !modelSel) return;
+    if(srcSel.value === 'dmc') {
+      modelSel.value = 'wrf_dmc';
+    }
   }
 
   function updateMobileHeaderAndNow(){
@@ -5850,6 +8080,12 @@ async function abrirMetarTaf(){
     document.getElementById('mCccm').textContent = txt('valCccm') || '--';
     document.getElementById('mTccv').textContent = txt('valTccv') || '--';
   }
+
+  document.addEventListener('DOMContentLoaded', ()=>{
+    const srcSel = document.getElementById('sourceSelect');
+    if(srcSel) srcSel.addEventListener('change', syncSourceModelSelection);
+    syncSourceModelSelection();
+  });
 
   function renderOpsSemaphore(){
     const th = getThresholds();
@@ -5989,7 +8225,7 @@ async function abrirMetarTaf(){
       // Use existing UAV status bar if present
       const status = txt('uavStatus');
       const w = status ? status.toUpperCase() : 'SIN DATOS';
-      document.getElementById('mUavState').textContent = w.includes('NO') ? '🔴 AFECTA' : (w.includes('LIMIT') ? '🟡 MARGINAL' : '🟢 FAVORECE');
+      document.getElementById('mUavState').textContent = w.includes('NO') ? '🔴 AFECTA' : (w.includes('LIMIT') ? '🟡 MARGINAL' : '🟢 FAVORABLE');
       document.getElementById('mUavWindow').textContent = 'VENTANA: SEGÚN AeroForecast (TRAMOS)';
       document.getElementById('mUavWhy').textContent = 'SIN SERIES HORARIAS DISPONIBLES PARA BUSCAR BLOQUES CONTINUOS.';
       return;
@@ -6246,6 +8482,78 @@ async function abrirMetarTaf(){
   }
 })();
 </script>
+
+
+<style id="report-v8-compact-pro">
+.report-dialog{width:min(1120px,92vw)!important;max-height:92vh!important;border-radius:0!important;}
+.report-head{padding:8px 12px!important;align-items:center!important;}
+.report-head h2{font-size:12px!important;letter-spacing:1px!important;margin:0!important;}
+.report-head .report-sub{font-size:8px!important;margin-top:1px!important;letter-spacing:.7px!important;}
+.report-close{padding:4px 8px!important;font-size:10px!important;height:30px!important;}
+.report-grid{display:grid!important;grid-template-columns:7fr 5fr!important;gap:8px!important;padding:8px!important;align-items:start!important;grid-auto-flow:row dense!important;}
+.report-grid>.report-box:nth-child(1),.report-grid>.report-box:nth-child(2),.report-grid>.report-box:nth-child(3),.report-grid>.report-box:nth-child(4){grid-column:auto!important;}
+.report-box{padding:8px!important;border-radius:0!important;border:1px solid var(--border)!important;box-shadow:none!important;min-width:0!important;}
+.report-box h3{margin:0 0 6px 0!important;font-size:10px!important;letter-spacing:1.1px!important;}
+.report-form-grid{display:grid;gap:6px 10px;align-items:end;}
+.report-form-grid-2{grid-template-columns:repeat(2,minmax(0,1fr));}
+.report-field{min-width:0;}
+.report-field-span-2{grid-column:1 / -1;}
+.report-box label{font-size:8.5px!important;margin:0 0 2px!important;letter-spacing:.7px!important;line-height:1.15!important;}
+.report-box input,.report-box select,.report-box textarea{padding:4px 7px!important;font-size:10px!important;min-height:28px!important;height:28px!important;border-radius:0!important;line-height:1.1!important;}
+.report-box textarea{min-height:58px!important;height:58px!important;}
+.report-inline-grid{gap:6px!important;}
+.report-mini-toggle{margin:6px 0 4px!important;}
+.report-mini-toggle-compact .report-check{font-size:10px!important;}
+.report-checks{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:2px 12px!important;align-items:start!important;}
+.report-check{font-size:10px!important;line-height:1.1!important;gap:5px!important;padding:1px 0!important;min-height:auto!important;}
+.report-check input{transform:scale(.9);margin-top:0!important;}
+.report-box-period .report-letterhead-grid{margin-top:2px;}
+.report-actions{padding:0 8px 8px!important;gap:6px!important;}
+.report-actions button{padding:6px 9px!important;font-size:10px!important;height:30px!important;border-radius:0!important;}
+.report-box-general{align-self:start!important;}
+.report-box-period{align-self:start!important;}
+.report-grid>.report-box:nth-child(3){margin-top:0!important;}
+.report-grid>.report-box:nth-child(4){margin-top:0!important;}
+@media (max-width:980px){
+  .report-grid{grid-template-columns:1fr!important;}
+  .report-form-grid-2,.report-checks{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+}
+@media (max-width:700px){
+  .report-form-grid-2,.report-checks{grid-template-columns:1fr!important;}
+}
+</style>
+
+
+<style id="report-v10-stacked-order">
+.report-dialog{width:min(1080px,94vw)!important;max-height:94vh!important;border-radius:0!important;}
+.report-head{padding:8px 12px!important;align-items:center!important;}
+.report-head h2{font-size:12px!important;letter-spacing:1px!important;margin:0!important;}
+.report-head .report-sub{font-size:8px!important;margin-top:1px!important;letter-spacing:.7px!important;}
+.report-close{padding:4px 8px!important;font-size:10px!important;height:30px!important;border-radius:0!important;}
+.report-grid.report-grid-stacked{display:grid!important;grid-template-columns:1fr!important;gap:8px!important;padding:8px!important;align-items:start!important;}
+.report-box{padding:8px!important;border-radius:0!important;border:1px solid var(--border)!important;box-shadow:none!important;min-width:0!important;}
+.report-box h3{margin:0 0 6px 0!important;font-size:10px!important;letter-spacing:1.1px!important;}
+.report-form-grid{display:grid!important;gap:6px 10px!important;align-items:end!important;}
+.report-form-grid-2{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+.report-field{min-width:0!important;}
+.report-field-span-2{grid-column:1 / -1!important;}
+.report-box label{font-size:8.5px!important;margin:0 0 2px!important;letter-spacing:.7px!important;line-height:1.15!important;}
+.report-box input,.report-box select,.report-box textarea{padding:4px 7px!important;font-size:10px!important;min-height:28px!important;height:28px!important;border-radius:0!important;line-height:1.1!important;}
+.report-box textarea{min-height:64px!important;height:64px!important;}
+.report-mini-toggle{margin:6px 0 4px!important;}
+.report-mini-toggle-compact .report-check{font-size:10px!important;}
+.report-checks{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:4px 12px!important;align-items:start!important;}
+.report-check{font-size:10px!important;line-height:1.1!important;gap:5px!important;padding:1px 0!important;min-height:auto!important;}
+.report-check input{transform:scale(.9);margin-top:0!important;}
+.report-actions{padding:0 8px 8px!important;gap:6px!important;}
+.report-actions button{padding:6px 9px!important;font-size:10px!important;height:30px!important;border-radius:0!important;}
+@media (max-width:860px){
+  .report-form-grid-2,.report-checks{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+}
+@media (max-width:620px){
+  .report-form-grid-2,.report-checks{grid-template-columns:1fr!important;}
+}
+</style>
 
 </body>
 </html>
