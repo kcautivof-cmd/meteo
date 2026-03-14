@@ -4549,8 +4549,17 @@ try {
                     const t = js?.today || {};
                     const preview = Array.isArray(js?.forecast_preview) ? js.forecast_preview : [];
                     const lines = [];
-                    lines.push(`<div><b>Origen real:</b> ${js?.source_actual || js?.source || 'DMC'}</div>`);
-                    if (js?.parse_status && js.parse_status !== 'ok') lines.push(`<div style="color:#92400e;">Modo: ${js.parse_status}</div>`);
+                    const srcActual = String(js?.source_actual || js?.source || 'DMC');
+                    const parseStatus = String(js?.parse_status || 'ok');
+                    lines.push(`<div><b>Fuente oficial:</b> DMC / Dirección Meteorológica de Chile</div>`);
+                    if (/accuweather/i.test(srcActual) || /fallback_accu/i.test(parseStatus)) {
+                        lines.push(`<div><b>Respaldo activo:</b> AccuWeather</div>`);
+                    } else if (/open-meteo|openmeteo/i.test(srcActual) || /fallback_openmeteo/i.test(parseStatus)) {
+                        lines.push(`<div><b>Respaldo secundario:</b> Open‑Meteo</div>`);
+                    } else {
+                        lines.push(`<div><b>Origen operativo:</b> DMC</div>`);
+                    }
+                    if (parseStatus && parseStatus !== 'ok') lines.push(`<div style="color:#92400e;">Modo: ${parseStatus}</div>`);
                     lines.push(`<div>Temp actual: <b>${__dmcFmt(c.temperature_2m,'°C')}</b></div>`);
                     lines.push(`<div>HR: <b>${__dmcFmt(c.relative_humidity_2m,'%')}</b></div>`);
                     lines.push(`<div>Viento: <b>${__dmcFmt(c.wind_speed_10m,' km/h')}</b></div>`);
@@ -4584,7 +4593,7 @@ try {
         try{
             __dmc.alertLayer = __dmc.alertLayer || L.layerGroup();
             if (!__dmc._alertsAdded && __uav?.layersCtl) {
-                __uav.layersCtl.addOverlay(__dmc.alertLayer, 'ALERTAS OPERATIVAS');
+                __uav.layersCtl.addOverlay(__dmc.alertLayer, 'ALERTAS DMC / OPERATIVAS');
                 __dmc._alertsAdded = true;
             }
         }catch(_e){}
