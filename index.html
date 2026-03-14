@@ -2964,7 +2964,6 @@ input, select {
                     <a class="source-btn" onclick="abrirMetarTaf()">METAR / TAF (AVIACIÓN)</a>
                 </div>
                 <div style="margin-top:10px;padding:8px 10px;border:1px dashed var(--border);background:var(--panel2);font-size:10px;line-height:1.45;color:var(--muted);">
-                    <strong style="color:var(--text)">Estrategia de integración:</strong> Fuente oficial objetivo para Chile: <strong>DMC / WRF DMC</strong>. Fuente comercial de respaldo: <strong>AccuWeather</strong>. Fuente abierta de continuidad operativa: <strong>Open‑Meteo</strong>.
                 </div>
                 <div id="volcanoStatus" style="font-size: 10px; margin-top:10px; text-align: center; color:#666;">SCANNEANDO RED SERNAGEOMIN...</div>
             </div>
@@ -3088,7 +3087,6 @@ input, select {
   </select>
 
   <div id="forecastSourceLabel" style="font-size:12px; color:var(--muted); white-space:nowrap;">
-    Fuente oficial objetivo: Dirección Meteorológica de Chile (DMC)
   </div>
   <div id="forecastOfficialBadge" style="font-size:11px; color:#0f5f50; background:#e9fff8; border:1px solid #9adbc9; border-radius:999px; padding:3px 8px; white-space:nowrap; display:none;">
     DMC · Dirección Meteorológica de Chile · WRF DMC
@@ -4552,14 +4550,13 @@ try {
                     const srcActual = String(js?.source_actual || js?.source || 'DMC');
                     const parseStatus = String(js?.parse_status || 'ok');
                     lines.push(`<div><b>Fuente oficial:</b> DMC / Dirección Meteorológica de Chile</div>`);
-                    if (/accuweather/i.test(srcActual) || /fallback_accu/i.test(parseStatus)) {
-                        lines.push(`<div><b>Respaldo activo:</b> AccuWeather</div>`);
-                    } else if (/open-meteo|openmeteo/i.test(srcActual) || /fallback_openmeteo/i.test(parseStatus)) {
-                        lines.push(`<div><b>Respaldo secundario:</b> Open‑Meteo</div>`);
+                    lines.push(`<div><b>Modelo oficial:</b> WRF DMC</div>`);
+                    if (/accuweather/i.test(srcActual) || /fallback_accu/i.test(parseStatus) || /fallback_accuweather/i.test(parseStatus)) {
+                        lines.push(`<div><b>Detalle complementario:</b> AccuWeather</div>`);
                     } else {
                         lines.push(`<div><b>Origen operativo:</b> DMC</div>`);
                     }
-                    if (parseStatus && parseStatus !== 'ok') lines.push(`<div style="color:#92400e;">Modo: ${parseStatus}</div>`);
+                    if (parseStatus && parseStatus !== 'ok' && !/openmeteo/i.test(parseStatus)) lines.push(`<div style="color:#92400e;">Modo: ${parseStatus}</div>`);
                     lines.push(`<div>Temp actual: <b>${__dmcFmt(c.temperature_2m,'°C')}</b></div>`);
                     lines.push(`<div>HR: <b>${__dmcFmt(c.relative_humidity_2m,'%')}</b></div>`);
                     lines.push(`<div>Viento: <b>${__dmcFmt(c.wind_speed_10m,' km/h')}</b></div>`);
@@ -4589,63 +4586,293 @@ try {
         }
     });
 
+
+    function __dmcNormalizeRegionName(name){
+        let s = String(name || '').trim().toUpperCase();
+        s = s.normalize('NFD').replace(/[̀-ͯ]/g, '');
+        s = s.replace(/^REGION\s+DE\s+/, '');
+        s = s.replace(/^REGION\s+DEL\s+/, '');
+        s = s.replace(/^REGION\s+DE\s+LA\s+/, '');
+        s = s.replace(/^REGION\s+DE\s+LOS\s+/, 'LOS ');
+        s = s.replace(/^DEL\s+/, '');
+        s = s.replace(/^DE\s+LA\s+/, '');
+        s = s.replace(/^DE\s+LOS\s+/, 'LOS ');
+        s = s.replace(/^DE\s+/, '');
+        s = s.replace(/\s+/g, ' ').trim();
+        const map = {
+            'ARICA Y PARINACOTA':'ARICA Y PARINACOTA',
+            'ARICA-PARINACOTA':'ARICA Y PARINACOTA',
+            'TARAPACA':'TARAPACA',
+            'ANTOFAGASTA':'ANTOFAGASTA',
+            'ATACAMA':'ATACAMA',
+            'COQUIMBO':'COQUIMBO',
+            'VALPARAISO':'VALPARAISO',
+            'METROPOLITANA':'METROPOLITANA',
+            'METROPOLITANA DE SANTIAGO':'METROPOLITANA',
+            "O'HIGGINS":"OHIGGINS",
+            'OHIGGINS':'OHIGGINS',
+            'LIBERTADOR BERNARDO O HIGGINS':'OHIGGINS',
+            'MAULE':'MAULE',
+            'NUBLE':'NUBLE',
+            'BIOBIO':'BIOBIO',
+            'LA ARAUCANIA':'ARAUCANIA',
+            'ARAUCANIA':'ARAUCANIA',
+            'LOS RIOS':'LOS RIOS',
+            'LOS LAGOS':'LOS LAGOS',
+            'AYSEN':'AYSEN',
+            'AYSEN DEL GENERAL CARLOS IBANEZ DEL CAMPO':'AYSEN',
+            'MAGALLANES':'MAGALLANES',
+            'MAGALLANES Y DE LA ANTARTICA CHILENA':'MAGALLANES'
+        };
+        return map[s] || s;
+    }
+    function __dmcMonotoneHull(points){
+        const pts = (points || []).filter(p => Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1]))
+          .map(p => [Number(p[0]), Number(p[1])])
+          .sort((a,b)=> a[0]===b[0] ? a[1]-b[1] : a[0]-b[0]);
+        if (pts.length <= 2) return pts;
+        const cross = (o,a,b)=> (a[0]-o[0])*(b[1]-o[1]) - (a[1]-o[1])*(b[0]-o[0]);
+        const lower = [];
+        for (const p of pts){
+            while(lower.length >= 2 && cross(lower[lower.length-2], lower[lower.length-1], p) <= 0) lower.pop();
+            lower.push(p);
+        }
+        const upper = [];
+        for (const p of pts.slice().reverse()){
+            while(upper.length >= 2 && cross(upper[upper.length-2], upper[upper.length-1], p) <= 0) upper.pop();
+            upper.push(p);
+        }
+        upper.pop(); lower.pop();
+        return lower.concat(upper);
+    }
+    function __dmcBufferedHullLatLngs(regionKey){
+        const feats = __dmc._fc?.features || [];
+        const pts = feats.filter(f => __dmcNormalizeRegionName(f?.properties?.region_name || f?.properties?.region_code) === regionKey)
+          .map(f => [Number(f?.geometry?.coordinates?.[0]), Number(f?.geometry?.coordinates?.[1])])
+          .filter(p => Number.isFinite(p[0]) && Number.isFinite(p[1]));
+        if (!pts.length) return null;
+        if (pts.length < 3){
+            const lat = pts.reduce((a,p)=>a+p[1],0)/pts.length;
+            const lon = pts.reduce((a,p)=>a+p[0],0)/pts.length;
+            return { kind:'circle', center:[lat,lon], radius: 85000 };
+        }
+        const hull = __dmcMonotoneHull(pts);
+        if (!hull.length) return null;
+        const lonC = hull.reduce((a,p)=>a+p[0],0)/hull.length;
+        const latC = hull.reduce((a,p)=>a+p[1],0)/hull.length;
+        const expanded = hull.map(([lon,lat])=>{
+            const dLon = lon - lonC, dLat = lat - latC;
+            return [latC + dLat * 1.35, lonC + dLon * 1.22];
+        });
+        return { kind:'polygon', latlngs: expanded };
+    }
+
+
     function __dmcEnsureAlertsOverlay(){
         try{
             __dmc.alertLayer = __dmc.alertLayer || L.layerGroup();
             if (!__dmc._alertsAdded && __uav?.layersCtl) {
-                __uav.layersCtl.addOverlay(__dmc.alertLayer, 'ALERTAS DMC / OPERATIVAS');
+                __uav.layersCtl.addOverlay(__dmc.alertLayer, 'ALERTAS DMC OFICIALES');
                 __dmc._alertsAdded = true;
             }
         }catch(_e){}
     }
-    function __dmcRegionCentroids(){
-        const out = {};
-        const feats = __dmc._fc?.features || [];
-        feats.forEach(f=>{
-            const p = f?.properties || {};
-            const reg = String((p.region_name || p.region_code || 'NACIONAL')).toUpperCase();
-            const lat = Number(f?.geometry?.coordinates?.[1]);
-            const lon = Number(f?.geometry?.coordinates?.[0]);
-            if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
-            out[reg] = out[reg] || { n:0, lat:0, lon:0 };
-            out[reg].n++; out[reg].lat += lat; out[reg].lon += lon;
+
+    const __DMC_AAA_BASE = 'https://archivos.meteochile.gob.cl/portaldmc/AAA/';
+    const __DMC_AAA_SCRIPTS = [
+        __DMC_AAA_BASE + 'sistemaAAA_coordenadas_zonas_2024_region_11_antigua.js',
+        __DMC_AAA_BASE + 'sistemaAAA_coordenadas_zonas_2024.js',
+        __DMC_AAA_BASE + 'sistemaAAA_coordenadas_regiones_2024.js',
+        __DMC_AAA_BASE + 'datos_AAA.js'
+    ];
+    let __dmcOfficialAlertsPromise = null;
+
+    function __dmcLoadScript(src){
+        return new Promise((resolve,reject)=>{
+            const exists = Array.from(document.scripts).find(s => (s.src || '').split('?')[0] === src.split('?')[0]);
+            if(exists) return resolve(src);
+            const s = document.createElement('script');
+            s.src = src + (src.includes('?') ? '' : ('?v=' + Date.now()));
+            s.async = true;
+            s.onload = ()=> resolve(src);
+            s.onerror = ()=> reject(new Error('NO_SE_PUDO_CARGAR_' + src));
+            document.head.appendChild(s);
         });
-        Object.keys(out).forEach(k=>{ out[k].lat /= out[k].n; out[k].lon /= out[k].n; });
+    }
+
+    async function __dmcEnsureOfficialAlertsLoaded(){
+        if(__dmcOfficialAlertsPromise) return __dmcOfficialAlertsPromise;
+        __dmcOfficialAlertsPromise = (async ()=>{
+            for(const src of __DMC_AAA_SCRIPTS){
+                await __dmcLoadScript(src);
+            }
+            return {
+                AAA: Array.isArray(window.AAA) ? window.AAA : [],
+                Avisos: Number(window.Avisos || 0),
+                Alertas: Number(window.Alertas || 0),
+                Alarmas: Number(window.Alarmas || 0)
+            };
+        })();
+        return __dmcOfficialAlertsPromise;
+    }
+
+    function __dmcGetOfficialCoord(name, tipo){
+        try{
+            if(tipo === 'regiones'){
+                const k = 'myCoordinates_' + name;
+                return typeof window[k] !== 'undefined' ? window[k] : null;
+            }
+            if(tipo === 'zonas'){
+                const k = 'coordenadas_' + name;
+                return typeof window[k] !== 'undefined' ? window[k] : null;
+            }
+        }catch(_e){}
+        return null;
+    }
+
+    function __dmcExpandOfficialZones(raw){
+        const parts = String(raw || '').split(',').map(x=>x.trim()).filter(Boolean);
+        const out = [];
+        parts.forEach(p=>{
+            switch(p){
+                case '02_Cordillera': out.push('02_Cordillera1','02_Cordillera2'); break;
+                case '02_Pampa': out.push('02_Pampa1','02_Pampa2'); break;
+                case '03_Pampa': out.push('03_Pampa1','03_Pampa2'); break;
+                case '08b_Cordillera': out.push('08b_Cordillera1','08b_Cordillera2','08b_Cordillera3','08b_Cordillera4'); break;
+                case '08b_Cordillera_Costa': out.push('08b_Cordillera_Costa1','08b_Cordillera_Costa2'); break;
+                case '08b_Precordillera': out.push('08b_Precordillera1','08b_Precordillera2'); break;
+                case '09_Cordillera': out.push('09_Cordillera1','09_Cordillera2','09_Cordillera3','09_Cordillera4','09_Cordillera5','09_Cordillera6','09_Cordillera7'); break;
+                case '09_Cordillera_Costa': out.push('09_Cordillera_Costa1','09_Cordillera_Costa2'); break;
+                case '09_Precordillera': out.push('09_Precordillera1','09_Precordillera2'); break;
+                case '09_Valle_Longitudinal': out.push('09_Valle_Longitudinal1','09_Valle_Longitudinal2'); break;
+                case '10a_Cordillera': out.push('10a_Cordillera1','10a_Cordillera2'); break;
+                case '10b_Chiloe': out.push('10b_Chiloe1','10b_Chiloe2','10b_Chiloe3','10b_Chiloe4','10b_Chiloe5','10b_Chiloe6','10b_Chiloe7'); break;
+                case '10b_Cordillera': out.push('10b_Cordillera1','10b_Cordillera2','10b_Cordillera3','10b_Cordillera4','10b_Cordillera5'); break;
+                case '10b_Cordillera_Austral': out.push('10b_Cordillera_Austral1','10b_Cordillera_Austral2','10b_Cordillera_Austral3'); break;
+                case '10b_Litoral': out.push('10b_Litoral1','10b_Litoral2'); break;
+                case '10b_Litoral_Interior': out.push('10b_Litoral_Interior1','10b_Litoral_Interior2','10b_Litoral_Interior3','10b_Litoral_Interior4','10b_Litoral_Interior5','10b_Litoral_Interior6','10b_Litoral_Interior7'); break;
+                case '11_Cordillera_Austral': out.push('11_Cordillera_Austral1','11_Cordillera_Austral2','11_Cordillera_Austral3','11_Cordillera_Austral4','11_Cordillera_Austral5','11_Cordillera_Austral6','11_Cordillera_Austral7','11_Cordillera_Austral8'); break;
+                case '11_Insular': out.push('11_Insular1','11_Insular10','11_Insular11','11_Insular12','11_Insular13','11_Insular14','11_Insular15','11_Insular16','11_Insular17','11_Insular18','11_Insular19','11_Insular2','11_Insular20','11_Insular3','11_Insular4','11_Insular5','11_Insular6','11_Insular7','11_Insular8','11_Insular9'); break;
+                case '11_Litoral_Interior': out.push('11_Litoral_Interior1','11_Litoral_Interior2','11_Litoral_Interior3','11_Litoral_Interior4','11_Litoral_Interior5','11_Litoral_Interior6'); break;
+                case '11_Patagonia_Subandina': out.push('11_Patagonia_Subandina1','11_Patagonia_Subandina2','11_Patagonia_Subandina3','11_Patagonia_Subandina4','11_Patagonia_Subandina5'); break;
+                case '11_Insular_Norte': out.push('11_Insular_Norte1','11_Insular_Norte2','11_Insular_Norte3','11_Insular_Norte4','11_Insular_Norte5','11_Insular_Norte6','11_Insular_Norte7','11_Insular_Norte8','11_Insular_Norte9','11_Insular_Norte10','11_Insular_Norte11','11_Insular_Norte12','11_Insular_Norte13','11_Insular_Norte14','11_Insular_Norte15','11_Insular_Norte16','11_Insular_Norte17','11_Insular_Norte18'); break;
+                case '11_Insular_Sur': out.push('11_Insular_Sur1','11_Insular_Sur2'); break;
+                case '11_Cordillera_Austral_Norte': out.push('11_Cordillera_Austral_Norte1','11_Cordillera_Austral_Norte2','11_Cordillera_Austral_Norte3','11_Cordillera_Austral_Norte4'); break;
+                case '11_Cordillera_Austral_Sur': out.push('11_Cordillera_Austral_Sur1','11_Cordillera_Austral_Sur2','11_Cordillera_Austral_Sur3','11_Cordillera_Austral_Sur4','11_Cordillera_Austral_Sur5'); break;
+                case '11_Litoral_Interior_Norte': out.push('11_Litoral_Interior_Norte1','11_Litoral_Interior_Norte2','11_Litoral_Interior_Norte3','11_Litoral_Interior_Norte4','11_Litoral_Interior_Norte5','11_Litoral_Interior_Norte6'); break;
+                case '11_Patagonia_Subandina_Norte': out.push('11_Patagonia_Subandina_Norte1','11_Patagonia_Subandina_Norte2','11_Patagonia_Subandina_Norte3','11_Patagonia_Subandina_Norte4'); break;
+                case '11_Patagonia_Subandina_Sur': out.push('11_Patagonia_Subandina_Sur1','11_Patagonia_Subandina_Sur2'); break;
+                case '12_Cordillera_Austral_Norte': out.push('12_Cordillera_Austral_Norte1','12_Cordillera_Austral_Norte2'); break;
+                case '12_Cordillera_Austral_Sur': out.push('12_Cordillera_Austral_Sur1','12_Cordillera_Austral_Sur2','12_Cordillera_Austral_Sur3','12_Cordillera_Austral_Sur4','12_Cordillera_Austral_Sur5'); break;
+                case '12_Insular_Central': out.push('12_Insular_Central1','12_Insular_Central2'); break;
+                case '12_Insular_Norte': out.push('12_Insular_Norte1','12_Insular_Norte10','12_Insular_Norte2','12_Insular_Norte3','12_Insular_Norte4','12_Insular_Norte5','12_Insular_Norte6','12_Insular_Norte7','12_Insular_Norte8','12_Insular_Norte9'); break;
+                case '12_Insular_Sur': out.push('12_Insular_Sur1','12_Insular_Sur2','12_Insular_Sur3','12_Insular_Sur4','12_Insular_Sur5','12_Insular_Sur6','12_Insular_Sur7','12_Insular_Sur8'); break;
+                case '12_Pampa_Patagonica_Sur': out.push('12_Pampa_Patagonica_Sur1','12_Pampa_Patagonica_Sur2','12_Pampa_Patagonica_Sur3'); break;
+                default: out.push(p); break;
+            }
+        });
         return out;
     }
-    function __dmcAlertStyle(it){
-        const x = ((it?.riesgo||it?.nivel||it?.color||'')+' '+(it?.titulo||'')).toLowerCase();
-        if (x.includes('roja') || x.includes('alto')) return { color:'#b91c1c', fillColor:'#ef4444' };
-        if (x.includes('naranja') || x.includes('moder')) return { color:'#c2410c', fillColor:'#fb923c' };
-        if (x.includes('amarilla') || x.includes('bajo')) return { color:'#a16207', fillColor:'#facc15' };
-        return { color:'#1d4ed8', fillColor:'#60a5fa' };
+
+    function __dmcOfficialStyle(tipo){
+        const t = String(tipo || '').toLowerCase();
+        if(t.includes('alarma')) return { color:'#b91c1c', fillColor:'#ef4444', fillOpacity:0.38, weight:1 };
+        if(t.includes('alerta')) return { color:'#c2410c', fillColor:'#fb923c', fillOpacity:0.38, weight:1 };
+        return { color:'#a16207', fillColor:'#facc15', fillOpacity:0.38, weight:1 };
     }
-    function __dmcRefreshAlertsLayer(){
+
+    function __dmcOfficialPopup(it){
+        const tipo = clean(it.tipo || '');
+        const titulo = clean(it.titulo || '');
+        const codigo = clean(it.codigoMeteo || '');
+        const desde = clean(it.desde || '');
+        const hasta = clean(it.hasta || '');
+        const zona = clean(it.textoZonaAfecta || '');
+        const emision = clean(it.emision || '');
+        const cond = clean(it.condicionSinoptica || '');
+        return `<div style="min-width:280px;font-family:Consolas,monospace;">
+            <div style="font-weight:800;margin-bottom:6px;">DMC · ${tipo.toUpperCase()}</div>
+            <div style="font-weight:700;">${titulo}</div>
+            ${codigo ? `<div style="margin-top:6px;font-size:11px;">Código: ${codigo}</div>` : ``}
+            ${cond ? `<div style="margin-top:4px;font-size:11px;">Condición: ${cond}</div>` : ``}
+            ${(desde || hasta) ? `<div style="margin-top:4px;font-size:11px;">Desde: ${desde || 'N/D'}<br>Hasta: ${hasta || 'N/D'}</div>` : ``}
+            ${emision ? `<div style="margin-top:4px;font-size:11px;">Emisión: ${emision}</div>` : ``}
+            ${zona ? `<div style="margin-top:6px;font-size:11px;">Zona: ${zona}</div>` : ``}
+        </div>`;
+    }
+
+    function __dmcOfficialNormalizeItems(pack){
+        const arr = Array.isArray(pack?.AAA) ? pack.AAA : [];
+        return arr.map(it => ({
+            ...it,
+            id: it.id,
+            tipo: it.tipo,
+            titulo: it.titulo,
+            severity: it.tipo,
+            riesgo: it.tipo,
+            type: it.tipo,
+            url: __DMC_AAA_BASE + 'aaa_mapa.php',
+            source: 'DMC',
+            official: true
+        }));
+    }
+
+    async function __dmcRefreshAlertsLayer(){
         try{
             __dmcEnsureAlertsOverlay();
             if (!__dmc.alertLayer) return;
             __dmc.alertLayer.clearLayers();
-            const items = Array.isArray(window.__alertsState?.items) ? window.__alertsState.items : [];
-            if (!items.length) return;
-            const centers = __dmcRegionCentroids();
-            items.forEach(it=>{
-                const regs = (typeof __alertsExtractRegions === 'function' ? __alertsExtractRegions(it) : ['NACIONAL']).map(x=>String(x||'').toUpperCase());
-                const sty = __dmcAlertStyle(it);
-                regs.forEach(reg=>{
-                    const c = centers[reg] || centers['NACIONAL'] || null;
-                    if (!c) return;
-                    const m = L.circleMarker([c.lat, c.lon], { radius: 9, weight: 2, color: sty.color, fillColor: sty.fillColor, fillOpacity: 0.65 });
-                    const title = clean(it.titulo || it.title || 'ALERTA');
-                    const body = clean(it.contenido || it.descripcion || it.summary || '');
-                    const when = clean(it.fechaHora || it.fecha_hora || it.date || it.fecha || '');
-                    const src = clean(it.urlAccess || it.url_access || it.url || '');
-                    m.bindPopup(`<div style="min-width:240px;font-family:Consolas,monospace;"><div style="font-weight:800;margin-bottom:4px;">ALERTA OPERATIVA</div><div><b>${title}</b></div><div style="font-size:11px;color:#475569;">Región: ${reg}</div><div style="font-size:11px;color:#475569;">Fecha: ${when || 'N/D'}</div><div style="margin-top:6px;font-size:11px;">${body || 'Sin detalle adicional.'}</div>${src ? `<div style="margin-top:6px;font-size:11px;"><a href="${src}" target="_blank" rel="noopener">Ver fuente</a></div>` : ''}</div>`);
-                    m.addTo(__dmc.alertLayer);
-                });
-            });
-        }catch(_e){}
-    }
 
+            const pack = await __dmcEnsureOfficialAlertsLoaded();
+            const items = __dmcOfficialNormalizeItems(pack);
+            if(!items.length) return;
+
+            window.__alertsState = window.__alertsState || {};
+            window.__alertsState.items = items;
+
+            items.forEach(it=>{
+                const sty = __dmcOfficialStyle(it.tipo);
+                const popup = __dmcOfficialPopup(it);
+
+                if(String(it.tipoZonaAfecta || '').toLowerCase() === 'area'){
+                    const pairs = String(it.dataZonaAfecta || '').split('|').map(s => s.split(',').map(Number)).filter(a => a.length===2 && Number.isFinite(a[0]) && Number.isFinite(a[1]));
+                    if(pairs.length >= 3){
+                        L.polygon(pairs, sty).bindPopup(popup).addTo(__dmc.alertLayer);
+                    }
+                    return;
+                }
+
+                if(String(it.tipoZonaAfecta || '').toLowerCase() === 'regiones'){
+                    const regs = String(it.dataZonaAfecta || '').split(',').map(s => s.trim()).filter(Boolean);
+                    regs.forEach(reg=>{
+                        if(reg === 'ip' || reg === 'jf' || reg === 'an'){
+                            const center = window['myCoordinates_' + reg];
+                            const radius = window['myCoordinates_' + reg + '_radius'] || 90000;
+                            if(center) L.circle(center, { ...sty, radius }).bindPopup(popup).addTo(__dmc.alertLayer);
+                            return;
+                        }
+                        const coords = __dmcGetOfficialCoord(reg, 'regiones');
+                        if(Array.isArray(coords) && coords.length){
+                            L.polygon(coords, sty).bindPopup(popup).addTo(__dmc.alertLayer);
+                        }
+                    });
+                    return;
+                }
+
+                if(String(it.tipoZonaAfecta || '').toLowerCase() === 'zonas'){
+                    const zones = __dmcExpandOfficialZones(it.dataZonaAfecta || '');
+                    zones.forEach(z=>{
+                        const coords = __dmcGetOfficialCoord(z, 'zonas');
+                        if(Array.isArray(coords) && coords.length){
+                            L.polygon(coords, sty).bindPopup(popup).addTo(__dmc.alertLayer);
+                        }
+                    });
+                }
+            });
+        }catch(e){
+            console.error('DMC official alerts layer error', e);
+        }
+    }
     if (!__dmc._added) {
         __dmc.stationLayer.addTo(__pickMap);
         if (__uav?.layersCtl) {
