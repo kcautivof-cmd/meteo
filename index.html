@@ -5987,6 +5987,12 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
         }
 
         function safeVal(v) { return (v !== undefined && v !== null) ? Math.round(v) : '-'; }
+        function escHtml(v){ return String(v ?? '').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+        function timelineSourceLabel(daily, i){
+            const src = Array.isArray(daily.__source_day) ? daily.__source_day[i] : null;
+            if (!src) return 'DATO NO IDENTIFICADO';
+            return String(src).toUpperCase();
+        }
 
         function renderTimeline(data, lat, lon) {
             const container = document.getElementById('timelineBox');
@@ -6011,6 +6017,7 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
                 const astroDay = getAstroDataFromCoords(t, lat, lon);
                 const stats = hourlyStatsForDate(hourly, t);
                 const { maxIccm, maxIccmTime, maxTccv, maxTccvTime, minWind, humMin, humMax, cloudAvg } = stats;
+                const sourceLabel = timelineSourceLabel(daily, i);
 
                 let weatherText = '';
                 if(offset === 0) {
@@ -6044,6 +6051,7 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
 
                     <div class="card-row"><span>FASE:</span> <span style="font-size:0.8em">${moon.phase}</span></div>
                     <div class="card-row"><span>ILUMINACIÓN:</span> <span>${moon.illum}%</span></div>
+                    <div class="card-row"><span>FUENTE:</span> <span style="font-size:0.84em">${escHtml(sourceLabel)}</span></div>
 
                     <div class="op-status">${statusText}</div>
                 `;
