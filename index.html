@@ -3908,6 +3908,7 @@ async function fetchAlerts(){
         }
 
         __alertsState.items = items;
+        try{ window.__dmcMapLayers && window.__dmcMapLayers.refreshAlerts && window.__dmcMapLayers.refreshAlerts(); }catch(e){}
 
         // filtros
         __alertsPopulateRegionFilter(items);
@@ -4479,6 +4480,35 @@ try {
 try {
     const __dmc = window.__dmcMapLayers || (window.__dmcMapLayers = {});
     __dmc.map = __pickMap;
+
+    function __dmcFmt(v, suffix=''){
+        return Number.isFinite(v) ? `${Math.round(v)}${suffix}` : '--';
+    }
+    function __dmcCodeLabel(code){
+        const map = {0:'Despejado',1:'Mayormente despejado',2:'Parcialmente nublado',3:'Nublado',45:'Niebla',48:'Niebla escarchada',51:'Llovizna débil',53:'Llovizna',55:'Llovizna intensa',61:'Lluvia débil',63:'Lluvia',65:'Lluvia intensa',71:'Nieve débil',73:'Nieve',75:'Nieve intensa',80:'Chubascos',81:'Chubascos',82:'Chubascos fuertes',95:'Tormenta'};
+        return map[code] || String(code ?? '--');
+    }
+    async function __dmcFetchCurrent(indice){
+        const base = (typeof WORKER_BASE_URL === 'string' ? WORKER_BASE_URL : '').replace(/\/$/, '');
+        if (!base) return null;
+        const r = await fetch(`${base}/dmc/current?indice=${encodeURIComponent(indice || '')}`, { cache: 'no-store' });
+        if (!r.ok) throw new Error('DMC current failed');
+        return await r.json();
+    }
+    function __dmcApplyStationToSearch(props, geom){
+        try{
+            const lat = geom?.coordinates?.[1];
+            const lon = geom?.coordinates?.[0];
+            if (typeof lat !== 'number' || typeof lon !== 'number') return;
+            const srcSel = document.getElementById('sourceSelect');
+            const mdlSel = document.getElementById('modelSelect');
+            if (srcSel) srcSel.value = 'dmc';
+            if (typeof syncSourceModelSelection === 'function') syncSourceModelSelection();
+            if (mdlSel) mdlSel.value = 'wrf_dmc';
+            if (typeof __pickApplyLatLng === 'function') __pickApplyLatLng(lat, lon, L.latLng(lat, lon));
+        }catch(_e){}
+    }
+
     __dmc.stationLayer = __dmc.stationLayer || L.geoJSON(null, {
         pointToLayer: (feature, latlng) => L.circleMarker(latlng, {
             radius: 6,
@@ -4489,50 +4519,130 @@ try {
         }),
         onEachFeature: (feature, layer) => {
             const p = feature?.properties || {};
+            const popupId = `dmcPopup_${String(p.indice || '').replace(/[^a-z0-9_-]/gi,'_')}`;
+            const btnId = `dmcBtn_${String(p.indice || '').replace(/[^a-z0-9_-]/gi,'_')}`;
             const baseHtml = `
-              <div style="min-width:220px; font-family:Consolas,monospace;">
+              <div style="min-width:260px; font-family:Consolas,monospace;">
                 <div style="font-weight:800; margin-bottom:4px; color:#0f766e;">DMC · ESTACIÓN / LOCALIDAD OFICIAL</div>
                 <div><b>${String(p.ciudad || p.name || '').toUpperCase()}</b></div>
                 <div style="font-size:11px; color:#475569; margin-top:2px;">Región: ${String(p.region_name || p.region_code || '-')}</div>
                 <div style="font-size:11px; color:#475569;">Modelo: WRF DMC</div>
                 <div style="font-size:11px; color:#475569;">Fuente: Dirección Meteorológica de Chile</div>
-                <div id="dmcPopup_${String(p.indice || '').replace(/[^a-z0-9_-]/gi,'_')}" style="margin-top:6px; font-size:11px; color:#334155;">Cargando datos oficiales…</div>
+                <div style="font-size:11px; color:#475569;">Coords: ${(feature?.geometry?.coordinates?.[1] ?? '').toString()}, ${(feature?.geometry?.coordinates?.[0] ?? '').toString()}</div>
+                <div id="${popupId}" style="margin-top:6px; font-size:11px; color:#334155;">Cargando datos oficiales…</div>
+                <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
+                  <button id="${btnId}" type="button" style="border:1px solid #0f766e; background:#fff; color:#0f766e; padding:4px 6px; font:inherit; cursor:pointer;">USAR EN PANEL</button>
+                </div>
               </div>`;
             layer.bindPopup(baseHtml);
             layer.on('popupopen', async () => {
                 try {
-                    const base = (typeof WORKER_BASE_URL === 'string' ? WORKER_BASE_URL : '').replace(/\/$/, '');
-                    if (!base) return;
-                    const targetId = `dmcPopup_${String(p.indice || '').replace(/[^a-z0-9_-]/gi,'_')}`;
-                    const el = document.getElementById(targetId);
+                    const el = document.getElementById(popupId);
+                    const btn = document.getElementById(btnId);
+                    if (btn && !btn.__bound) {
+                        btn.addEventListener('click', () => __dmcApplyStationToSearch(p, feature?.geometry));
+                        btn.__bound = true;
+                    }
                     if (!el) return;
-                    const r = await fetch(`${base}/dmc/current?indice=${encodeURIComponent(p.indice || '')}`, { cache: 'no-store' });
-                    if (!r.ok) throw new Error('DMC current failed');
-                    const js = await r.json();
+                    const js = await __dmcFetchCurrent(p.indice || '');
                     const c = js?.current || {};
                     const t = js?.today || {};
+                    const preview = Array.isArray(js?.forecast_preview) ? js.forecast_preview : [];
                     const lines = [];
-                    if (Number.isFinite(c.temperature_2m)) lines.push(`Temp actual: <b>${Math.round(c.temperature_2m)}°C</b>`);
-                    if (Number.isFinite(c.relative_humidity_2m)) lines.push(`HR aprox.: <b>${Math.round(c.relative_humidity_2m)}%</b>`);
-                    if (Number.isFinite(c.wind_speed_10m)) lines.push(`Viento: <b>${Math.round(c.wind_speed_10m)} km/h</b>`);
-                    if (Number.isFinite(t.tmin) || Number.isFinite(t.tmax)) lines.push(`Hoy Tmin/Tmax: <b>${Number.isFinite(t.tmin)?Math.round(t.tmin):'--'}° / ${Number.isFinite(t.tmax)?Math.round(t.tmax):'--'}°</b>`);
-                    if (Number.isFinite(t.precip_mm)) lines.push(`Precipitación: <b>${t.precip_mm} mm</b>`);
-                    if (Number.isFinite(t.wind_max_kmh)) lines.push(`Viento máx.: <b>${Math.round(t.wind_max_kmh)} km/h</b>`);
-                    lines.push(`<span style="color:#64748b;">Horizonte oficial: ${js?.horizon_days || '--'} días</span>`);
-                    el.innerHTML = lines.join('<br>');
+                    lines.push(`<div><b>Origen real:</b> ${js?.source_actual || js?.source || 'DMC'}</div>`);
+                    if (js?.parse_status && js.parse_status !== 'ok') lines.push(`<div style="color:#92400e;">Modo: ${js.parse_status}</div>`);
+                    lines.push(`<div>Temp actual: <b>${__dmcFmt(c.temperature_2m,'°C')}</b></div>`);
+                    lines.push(`<div>HR: <b>${__dmcFmt(c.relative_humidity_2m,'%')}</b></div>`);
+                    lines.push(`<div>Viento: <b>${__dmcFmt(c.wind_speed_10m,' km/h')}</b></div>`);
+                    lines.push(`<div>Ráfagas: <b>${__dmcFmt(c.wind_gusts_10m,' km/h')}</b></div>`);
+                    lines.push(`<div>Visibilidad: <b>${Number.isFinite(c.visibility)?Math.round(c.visibility/1000)+' km':'--'}</b></div>`);
+                    lines.push(`<div>Nubosidad: <b>${__dmcFmt(c.cloud_cover,'%')}</b></div>`);
+                    lines.push(`<div>Hoy Tmin/Tmax: <b>${__dmcFmt(t.tmin,'°')} / ${__dmcFmt(t.tmax,'°')}</b></div>`);
+                    lines.push(`<div>Precipitación: <b>${Number.isFinite(t.precip_mm)?t.precip_mm+' mm':'--'}</b></div>`);
+                    lines.push(`<div>Viento máx.: <b>${__dmcFmt(t.wind_max_kmh,' km/h')}</b></div>`);
+                    lines.push(`<div>Tiempo: <b>${__dmcCodeLabel(t.weather_code)}</b></div>`);
+                    lines.push(`<div>Horizonte: <b>${js?.horizon_days || '--'} días</b></div>`);
+                    if (preview.length) {
+                        lines.push('<div style="margin-top:6px; font-weight:700; color:#0f766e;">PREVIEW PRONÓSTICO</div>');
+                        preview.slice(0,3).forEach(it => {
+                            const d = String(it.date || '').slice(5);
+                            lines.push(`<div>${d}: <b>${__dmcFmt(it.tmin,'°')} / ${__dmcFmt(it.tmax,'°')}</b> · ${__dmcFmt(it.wind_max_kmh,' km/h')} · ${Number.isFinite(it.precip_mm)?it.precip_mm+' mm':'--'}</div>`);
+                        });
+                    }
+                    const av = Array.isArray(js?.available_variables) ? js.available_variables : [];
+                    if (av.length) lines.push(`<div style="margin-top:6px;color:#64748b;">Variables: ${av.join(', ')}</div>`);
+                    el.innerHTML = lines.join('');
                 } catch (err) {
-                    const el = document.getElementById(`dmcPopup_${String(p.indice || '').replace(/[^a-z0-9_-]/gi,'_')}`);
-                    if (el) el.innerHTML = '<span style="color:#64748b;">Estación oficial DMC cargada. El detalle dinámico requiere Worker activo.</span>';
+                    const el = document.getElementById(popupId);
+                    if (el) el.innerHTML = '<span style="color:#64748b;">Estación oficial DMC cargada. Sin detalle adicional disponible en este momento.</span>';
                 }
             });
         }
     });
+
+    function __dmcEnsureAlertsOverlay(){
+        try{
+            __dmc.alertLayer = __dmc.alertLayer || L.layerGroup();
+            if (!__dmc._alertsAdded && __uav?.layersCtl) {
+                __uav.layersCtl.addOverlay(__dmc.alertLayer, 'ALERTAS OPERATIVAS');
+                __dmc._alertsAdded = true;
+            }
+        }catch(_e){}
+    }
+    function __dmcRegionCentroids(){
+        const out = {};
+        const feats = __dmc._fc?.features || [];
+        feats.forEach(f=>{
+            const p = f?.properties || {};
+            const reg = String((p.region_name || p.region_code || 'NACIONAL')).toUpperCase();
+            const lat = Number(f?.geometry?.coordinates?.[1]);
+            const lon = Number(f?.geometry?.coordinates?.[0]);
+            if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+            out[reg] = out[reg] || { n:0, lat:0, lon:0 };
+            out[reg].n++; out[reg].lat += lat; out[reg].lon += lon;
+        });
+        Object.keys(out).forEach(k=>{ out[k].lat /= out[k].n; out[k].lon /= out[k].n; });
+        return out;
+    }
+    function __dmcAlertStyle(it){
+        const x = ((it?.riesgo||it?.nivel||it?.color||'')+' '+(it?.titulo||'')).toLowerCase();
+        if (x.includes('roja') || x.includes('alto')) return { color:'#b91c1c', fillColor:'#ef4444' };
+        if (x.includes('naranja') || x.includes('moder')) return { color:'#c2410c', fillColor:'#fb923c' };
+        if (x.includes('amarilla') || x.includes('bajo')) return { color:'#a16207', fillColor:'#facc15' };
+        return { color:'#1d4ed8', fillColor:'#60a5fa' };
+    }
+    function __dmcRefreshAlertsLayer(){
+        try{
+            __dmcEnsureAlertsOverlay();
+            if (!__dmc.alertLayer) return;
+            __dmc.alertLayer.clearLayers();
+            const items = Array.isArray(window.__alertsState?.items) ? window.__alertsState.items : [];
+            if (!items.length) return;
+            const centers = __dmcRegionCentroids();
+            items.forEach(it=>{
+                const regs = (typeof __alertsExtractRegions === 'function' ? __alertsExtractRegions(it) : ['NACIONAL']).map(x=>String(x||'').toUpperCase());
+                const sty = __dmcAlertStyle(it);
+                regs.forEach(reg=>{
+                    const c = centers[reg] || centers['NACIONAL'] || null;
+                    if (!c) return;
+                    const m = L.circleMarker([c.lat, c.lon], { radius: 9, weight: 2, color: sty.color, fillColor: sty.fillColor, fillOpacity: 0.65 });
+                    const title = clean(it.titulo || it.title || 'ALERTA');
+                    const body = clean(it.contenido || it.descripcion || it.summary || '');
+                    const when = clean(it.fechaHora || it.fecha_hora || it.date || it.fecha || '');
+                    const src = clean(it.urlAccess || it.url_access || it.url || '');
+                    m.bindPopup(`<div style="min-width:240px;font-family:Consolas,monospace;"><div style="font-weight:800;margin-bottom:4px;">ALERTA OPERATIVA</div><div><b>${title}</b></div><div style="font-size:11px;color:#475569;">Región: ${reg}</div><div style="font-size:11px;color:#475569;">Fecha: ${when || 'N/D'}</div><div style="margin-top:6px;font-size:11px;">${body || 'Sin detalle adicional.'}</div>${src ? `<div style="margin-top:6px;font-size:11px;"><a href="${src}" target="_blank" rel="noopener">Ver fuente</a></div>` : ''}</div>`);
+                    m.addTo(__dmc.alertLayer);
+                });
+            });
+        }catch(_e){}
+    }
 
     if (!__dmc._added) {
         __dmc.stationLayer.addTo(__pickMap);
         if (__uav?.layersCtl) {
             __uav.layersCtl.addOverlay(__dmc.stationLayer, 'DMC · ESTACIONES OFICIALES');
         }
+        __dmcEnsureAlertsOverlay();
         __dmc._added = true;
     }
 
@@ -4542,13 +4652,19 @@ try {
             fetch(`${base}/dmc/stations?format=geojson`, { cache: 'no-store' })
                 .then(r => r.ok ? r.json() : null)
                 .then(fc => {
-                    if (fc?.features) __dmc.stationLayer.addData(fc);
+                    if (fc?.features) {
+                        __dmc._fc = fc;
+                        __dmc.stationLayer.addData(fc);
+                        __dmcRefreshAlertsLayer();
+                    }
                     __dmc._loaded = true;
                 })
                 .catch(() => {});
         }
     }
 } catch (e) { /* ignora capa DMC */ }
+window.__dmcMapLayers = window.__dmcMapLayers || {};
+window.__dmcMapLayers.refreshAlerts = __dmcRefreshAlertsLayer;
 // =================== /DMC / ESTACIONES OFICIALES ===================
 
 } catch (e) { /* ignora */ }
