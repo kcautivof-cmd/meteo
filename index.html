@@ -4676,7 +4676,7 @@ try {
         try{
             __dmc.alertLayer = __dmc.alertLayer || L.layerGroup();
             if (!__dmc._alertsAdded && __uav?.layersCtl) {
-                __uav.layersCtl.addOverlay(__dmc.alertLayer, 'ALERTAS DMC OFICIALES');
+                __uav.layersCtl.addOverlay(__dmc.alertLayer, 'DMC · ALERTAS OFICIALES');
                 __dmc._alertsAdded = true;
             }
         }catch(_e){}
@@ -4912,11 +4912,16 @@ function hideInteractiveMapAlertsMenu(){
     if(!mapRoot) return;
     const candidates = Array.from(mapRoot.querySelectorAll('div, section, aside'));
     candidates.forEach(el => {
+        if(el.closest('.leaflet-control-layers')) return;
         const txt = (el.textContent || '').replace(/\s+/g,' ').trim().toUpperCase();
         if(!txt) return;
-        const looksLikeMenu = txt.includes('AVISOS') && txt.includes('ALERTAS') && txt.includes('ALARMAS')
-            || txt.includes('SELECCIONAR EVENTO');
-        if(looksLikeMenu) el.classList.add('dmc-alert-menu-hidden');
+        const hasSelect = !!el.querySelector('select');
+        const hasAlertButtons = Array.from(el.querySelectorAll('button, a, input[type="button"], input[type="submit"]')).some(btn => {
+            const t = (btn.textContent || btn.value || '').toUpperCase();
+            return t.includes('AVISOS') || t.includes('ALERTAS') || t.includes('ALARMAS') || t.includes('IR');
+        });
+        const looksLikeStandaloneMenu = (txt.includes('SELECCIONAR EVENTO') || (txt.includes('AVISOS') && txt.includes('ALERTAS') && txt.includes('ALARMAS'))) && (hasSelect || hasAlertButtons);
+        if(looksLikeStandaloneMenu) el.classList.add('dmc-alert-menu-hidden');
     });
 }
 
