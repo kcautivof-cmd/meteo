@@ -57,7 +57,7 @@
     const modelSel = qs('modelSelect');
     const sourceVal = srcSel?.value || 'auto';
     const modelVal = modelSel?.value || 'best_match';
-    let source = 'Dirección Meteorológica de Chile';
+    let source = 'Open-Meteo';
     if(sourceVal === 'meteoblue') source = 'Meteoblue';
     else if(sourceVal === 'pirate') source = 'Pirate Weather';
     else if(sourceVal === 'accuweather') source = 'AccuWeather';
@@ -67,7 +67,7 @@
       const uavSource = qs('uavSource')?.value;
       if(forecastSource === 'accuweather' || uavSource === 'accuweather') source = 'AccuWeather';
       else if(forecastSource === 'dmc' || uavSource === 'dmc') source = 'Dirección Meteorológica de Chile';
-      else source = 'Dirección Meteorológica de Chile';
+      else source = 'Open-Meteo';
     }
     let model = '';
     if(source === 'AccuWeather'){
@@ -1766,6 +1766,10 @@ a { color: var(--text) !important; }
 /* Cajas de títulos (gris suave) */
 .panel-title{ background: var(--panel2) !important; }
 
+
+/* Oculta el submenú flotante de alertas dentro del mapa interactivo */
+.dmc-alert-menu-hidden, .leaflet-control.dmc-alert-menu-hidden { display:none !important; }
+
 /* Leaflet control estilo sobrio */
 .leaflet-control, .leaflet-control * { color: var(--text) !important; font-family: 'Consolas', monospace !important; text-transform: uppercase; }
 .leaflet-control { background: rgba(255,255,255,0.95) !important; border: 1px solid var(--border) !important; box-shadow: none !important; }
@@ -2868,11 +2872,11 @@ input, select {
 
                                 <span>FUENTE:</span>
                 <select id="sourceSelect" onchange="syncSourceModelSelection(); executeSearch()">
-                    <option value="dmc" selected>DMC</option>
-                    <option value="accuweather">ACCUWEATHER</option>
-                    <option value="auto">AUTO</option>
+                    <option value="auto" selected>AUTO</option>
+                    <option value="openmeteo">OPEN-METEO</option>
                     <option value="meteoblue">METEOBLUE</option>
                     <option value="pirate">PIRATE WEATHER</option>
+                    <option value="dmc">DMC</option>
                 </select>
 
                                 <span>MODELO:</span>
@@ -2886,7 +2890,7 @@ input, select {
         </div>
 
         <div id="alertContainer" class="panel">
-            <span class="panel-title">ALERTAS OFICIALES DMC</span>
+            <span class="panel-title">ALERTAS OFICIALES (SENAPRED)</span>
             <div id="alertsMeta" style="font-size:10px; color:var(--muted); margin-bottom:6px;">
                 CARGANDO ALERTAS... | ÚLTIMA ACTUALIZACIÓN: <span id="lastUpdateUTC">--:-- UTC</span>
             </div>
@@ -2957,7 +2961,7 @@ input, select {
                     <a onclick="window.open('https://www.cr2.cl/')" class="source-btn">CR2 (CLIMA/RESILIENCIA)</a>
                     <a onclick="window.open('https://servimet.armada.mil.cl/')" class="source-btn">ARMADA (SERVIMET)</a>
                     <a onclick="window.open('http://www.shoa.cl/')" class="source-btn">SHOA (OCEANOGRAFÍA)</a>
-                    <a onclick="window.open('https://senapred.cl/informate/eventos')" class="source-btn">DMC (ALERTAS OFICIALES)</a>
+                    <a onclick="window.open('https://senapred.cl/informate/eventos')" class="source-btn">SENAPRED (ALERTAS)</a>
                     <a onclick="window.open('https://www.saf.cl/')" class="source-btn">SAF (AEROFOTOGRAMETRÍA)</a>
                     <a onclick="window.open('https://www.sernageomin.cl/')" class="source-btn">SERNAGEOMIN</a>
                     <a onclick="window.open('https://www.windy.com/')" class="source-btn">WINDY</a>
@@ -3514,7 +3518,7 @@ input, select {
           <label class="report-check"><input id="rbIncludeCharts" type="checkbox" checked> Incluir gráficos</label>
           <label class="report-check"><input id="rbIncludeTables" type="checkbox" checked> Incluir tablas resumen</label>
           <label class="report-check"><input id="rbIncludeTimeline" type="checkbox" checked> Incluir línea de tiempo</label>
-          <label class="report-check"><input id="rbIncludeAlerts" type="checkbox" checked> Incluir alertas DMC</label>
+          <label class="report-check"><input id="rbIncludeAlerts" type="checkbox" checked> Incluir alertas SENAPRED</label>
           <label class="report-check"><input id="rbIncludeRecs" type="checkbox" checked> Incluir recomendaciones</label>
           <label class="report-check"><input id="rbIncludeConclusions" type="checkbox" checked> Incluir conclusiones</label>
           <label class="report-check"><input id="rbIncludeMap" type="checkbox"> Incluir mapa / referencia geográfica</label>
@@ -3888,7 +3892,7 @@ async function fetchAlerts(){
         const updated = updatedStr ? new Date(updatedStr) : null;
 
         meta.textContent =
-            `FUENTE: DMC (VISOR OFICIAL) | ${count} ALERTAS | ACTUALIZADO: ` +
+            `FUENTE: SENAPRED (WORKER) | ${count} ALERTAS | ACTUALIZADO: ` +
             `${updated && !isNaN(updated.getTime()) ? updated.toLocaleString('es-CL',{hour12:false}) : "N/D"}`;
 
         
@@ -3980,7 +3984,7 @@ async function fetchAlerts(){
 
                 const items = Array.isArray(js.items) ? js.items : [];
                 const updated = js.updated_at ? new Date(js.updated_at) : null;
-                meta.textContent = `FUENTE: DMC (VISOR OFICIAL) | REGIÓN: ${js.region || "NACIONAL"} | ${items.length} ALERTAS | ACTUALIZADO: ${updated ? updated.toLocaleString('es-CL',{hour12:false}) : "N/D"}`;
+                meta.textContent = `FUENTE: SENAPRED (WEB) | REGIÓN: ${js.region || "NACIONAL"} | ${items.length} ALERTAS | ACTUALIZADO: ${updated ? updated.toLocaleString('es-CL',{hour12:false}) : "N/D"}`;
 
                 if(!items.length){
                     list.innerHTML = `<div class="alert-item"><div class="alert-title">SIN ALERTAS PUBLICADAS (O SIN ACCESO)</div><div class="alert-meta"><span>—</span><span>—</span></div></div>`;
@@ -4556,6 +4560,7 @@ try {
                     } else {
                         lines.push(`<div><b>Origen operativo:</b> DMC</div>`);
                     }
+                    if (parseStatus && parseStatus !== 'ok' && !/openmeteo/i.test(parseStatus)) lines.push(`<div style="color:#92400e;">Modo: ${parseStatus}</div>`);
                     lines.push(`<div>Temp actual: <b>${__dmcFmt(c.temperature_2m,'°C')}</b></div>`);
                     lines.push(`<div>HR: <b>${__dmcFmt(c.relative_humidity_2m,'%')}</b></div>`);
                     lines.push(`<div>Viento: <b>${__dmcFmt(c.wind_speed_10m,' km/h')}</b></div>`);
@@ -4670,56 +4675,9 @@ try {
     function __dmcEnsureAlertsOverlay(){
         try{
             __dmc.alertLayer = __dmc.alertLayer || L.layerGroup();
-            __dmc.alertAvisosLayer = __dmc.alertAvisosLayer || L.layerGroup();
-            __dmc.alertAlertasLayer = __dmc.alertAlertasLayer || L.layerGroup();
-            __dmc.alertAlarmasLayer = __dmc.alertAlarmasLayer || L.layerGroup();
             if (!__dmc._alertsAdded && __uav?.layersCtl) {
-                __uav.layersCtl.addOverlay(__dmc.alertLayer, 'ALERTAS DMC · TODAS');
-                __uav.layersCtl.addOverlay(__dmc.alertAvisosLayer, 'ALERTAS DMC · AVISOS');
-                __uav.layersCtl.addOverlay(__dmc.alertAlertasLayer, 'ALERTAS DMC · ALERTAS');
-                __uav.layersCtl.addOverlay(__dmc.alertAlarmasLayer, 'ALERTAS DMC · ALARMAS');
+                __uav.layersCtl.addOverlay(__dmc.alertLayer, 'ALERTAS DMC OFICIALES');
                 __dmc._alertsAdded = true;
-            }
-            if (!__dmc.alertMenuCtl) {
-                __dmc.alertMenuCtl = L.control({ position: 'topright' });
-                __dmc.alertMenuCtl.onAdd = function(){
-                    const div = L.DomUtil.create('div', 'leaflet-control');
-                    div.style.background = 'rgba(255,255,255,.96)';
-                    div.style.border = '1px solid rgba(15,23,42,.18)';
-                    div.style.borderRadius = '12px';
-                    div.style.padding = '8px';
-                    div.style.minWidth = '250px';
-                    div.style.boxShadow = '0 6px 18px rgba(2,6,23,.12)';
-                    div.innerHTML = `
-                      <div style="font:700 11px Consolas,monospace; margin-bottom:6px; color:#0f172a;"></div>
-                      <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;">
-                        <button type="button" data-dmc-alert-filter="all" style="padding:4px 8px; border:1px solid #94a3b8; background:#fff; cursor:pointer; font:inherit;">TODAS</button>
-                        <button type="button" data-dmc-alert-filter="Aviso" style="padding:4px 8px; border:1px solid #a16207; background:#fef08a; cursor:pointer; font:inherit;">AVISOS</button>
-                        <button type="button" data-dmc-alert-filter="Alerta" style="padding:4px 8px; border:1px solid #c2410c; background:#fdba74; cursor:pointer; font:inherit;">ALERTAS</button>
-                        <button type="button" data-dmc-alert-filter="Alarma" style="padding:4px 8px; border:1px solid #b91c1c; background:#fca5a5; cursor:pointer; font:inherit;">ALARMAS</button>
-                      </div>
-                      <div style="display:flex; gap:6px; align-items:center;">
-                        <select id="dmcAlertJump" style="flex:1; min-width:0; padding:4px 6px; font:inherit; border:1px solid #cbd5e1;">
-                          <option value="">Seleccionar evento…</option>
-                        </select>
-                        <button id="dmcAlertGo" type="button" style="padding:4px 8px; border:1px solid #0f766e; background:#fff; color:#0f766e; cursor:pointer; font:inherit;">IR</button>
-                      </div>
-                    `;
-                    L.DomEvent.disableClickPropagation(div);
-                    L.DomEvent.disableScrollPropagation(div);
-                    setTimeout(()=>{
-                        div.querySelectorAll('[data-dmc-alert-filter]').forEach(btn=>{
-                            btn.addEventListener('click', ()=> window.__dmcMapLayers?.setAlertFilter?.(btn.getAttribute('data-dmc-alert-filter') || 'all'));
-                        });
-                        const go = div.querySelector('#dmcAlertGo');
-                        const sel = div.querySelector('#dmcAlertJump');
-                        const run = ()=> window.__dmcMapLayers?.focusAlertById?.(sel?.value || '');
-                        if (go) go.addEventListener('click', run);
-                        if (sel) sel.addEventListener('change', run);
-                    },0);
-                    return div;
-                };
-                __dmc.alertMenuCtl.addTo(__pickMap);
             }
         }catch(_e){}
     }
@@ -4867,7 +4825,7 @@ try {
         try{
             __dmcEnsureAlertsOverlay();
             if (!__dmc.alertLayer) return;
-            [__dmc.alertLayer, __dmc.alertAvisosLayer, __dmc.alertAlertasLayer, __dmc.alertAlarmasLayer].forEach(g=>{ try{ g && g.clearLayers(); }catch(_e){} });
+            __dmc.alertLayer.clearLayers();
 
             const pack = await __dmcEnsureOfficialAlertsLoaded();
             const items = __dmcOfficialNormalizeItems(pack);
@@ -4875,30 +4833,15 @@ try {
 
             window.__alertsState = window.__alertsState || {};
             window.__alertsState.items = items;
-            __dmc._alertIndex = {};
-
-            function addGeom(targetLayer, geomLayer, item){
-                if(!targetLayer || !geomLayer) return;
-                targetLayer.addLayer(geomLayer);
-                __dmc.alertLayer.addLayer(geomLayer);
-                const id = String(item?.id ?? '');
-                if(id){
-                    __dmc._alertIndex[id] = __dmc._alertIndex[id] || [];
-                    __dmc._alertIndex[id].push(geomLayer);
-                }
-            }
 
             items.forEach(it=>{
                 const sty = __dmcOfficialStyle(it.tipo);
                 const popup = __dmcOfficialPopup(it);
-                const tipo = String(it.tipo || '');
-                const target = /alarma/i.test(tipo) ? __dmc.alertAlarmasLayer : (/alerta/i.test(tipo) ? __dmc.alertAlertasLayer : __dmc.alertAvisosLayer);
 
                 if(String(it.tipoZonaAfecta || '').toLowerCase() === 'area'){
                     const pairs = String(it.dataZonaAfecta || '').split('|').map(s => s.split(',').map(Number)).filter(a => a.length===2 && Number.isFinite(a[0]) && Number.isFinite(a[1]));
                     if(pairs.length >= 3){
-                        const lyr = L.polygon(pairs, sty).bindPopup(popup);
-                        addGeom(target, lyr, it);
+                        L.polygon(pairs, sty).bindPopup(popup).addTo(__dmc.alertLayer);
                     }
                     return;
                 }
@@ -4906,16 +4849,16 @@ try {
                 if(String(it.tipoZonaAfecta || '').toLowerCase() === 'regiones'){
                     const regs = String(it.dataZonaAfecta || '').split(',').map(s => s.trim()).filter(Boolean);
                     regs.forEach(reg=>{
-                        let lyr = null;
                         if(reg === 'ip' || reg === 'jf' || reg === 'an'){
                             const center = window['myCoordinates_' + reg];
                             const radius = window['myCoordinates_' + reg + '_radius'] || 90000;
-                            if(center) lyr = L.circle(center, { ...sty, radius }).bindPopup(popup);
-                        } else {
-                            const coords = __dmcGetOfficialCoord(reg, 'regiones');
-                            if(Array.isArray(coords) && coords.length) lyr = L.polygon(coords, sty).bindPopup(popup);
+                            if(center) L.circle(center, { ...sty, radius }).bindPopup(popup).addTo(__dmc.alertLayer);
+                            return;
                         }
-                        if(lyr) addGeom(target, lyr, it);
+                        const coords = __dmcGetOfficialCoord(reg, 'regiones');
+                        if(Array.isArray(coords) && coords.length){
+                            L.polygon(coords, sty).bindPopup(popup).addTo(__dmc.alertLayer);
+                        }
                     });
                     return;
                 }
@@ -4925,47 +4868,11 @@ try {
                     zones.forEach(z=>{
                         const coords = __dmcGetOfficialCoord(z, 'zonas');
                         if(Array.isArray(coords) && coords.length){
-                            const lyr = L.polygon(coords, sty).bindPopup(popup);
-                            addGeom(target, lyr, it);
+                            L.polygon(coords, sty).bindPopup(popup).addTo(__dmc.alertLayer);
                         }
                     });
                 }
             });
-
-            __dmc._allAlertItems = items.slice();
-
-            const sel = document.getElementById('dmcAlertJump');
-            if (sel) {
-                const grouped = { Aviso: [], Alerta: [], Alarma: [] };
-                items.forEach(it=>{
-                    const key = /alarma/i.test(it.tipo||'') ? 'Alarma' : (/alerta/i.test(it.tipo||'') ? 'Alerta' : 'Aviso');
-                    grouped[key].push(it);
-                });
-                const mk = (arr)=> arr.map(it => `<option value="${String(it.id)}">[${String(it.tipo||'').toUpperCase()}] ${clean(it.titulo || '').slice(0,90)}</option>`).join('');
-                sel.innerHTML = `<option value="">Seleccionar evento…</option>` +
-                    (grouped.Aviso.length ? `<optgroup label="Avisos (${grouped.Aviso.length})">${mk(grouped.Aviso)}</optgroup>` : '') +
-                    (grouped.Alerta.length ? `<optgroup label="Alertas (${grouped.Alerta.length})">${mk(grouped.Alerta)}</optgroup>` : '') +
-                    (grouped.Alarma.length ? `<optgroup label="Alarmas (${grouped.Alarma.length})">${mk(grouped.Alarma)}</optgroup>` : '');
-            }
-
-            window.__dmcMapLayers.setAlertFilter = function(kind){
-                const k = String(kind || 'all').toLowerCase();
-                const on = (layer) => { try{ if(!__pickMap.hasLayer(layer)) layer.addTo(__pickMap); }catch(_e){} };
-                const off = (layer) => { try{ if(__pickMap.hasLayer(layer)) __pickMap.removeLayer(layer); }catch(_e){} };
-                off(__dmc.alertLayer); off(__dmc.alertAvisosLayer); off(__dmc.alertAlertasLayer); off(__dmc.alertAlarmasLayer);
-                if (k === 'aviso') on(__dmc.alertAvisosLayer);
-                else if (k === 'alerta') on(__dmc.alertAlertasLayer);
-                else if (k === 'alarma') on(__dmc.alertAlarmasLayer);
-                else on(__dmc.alertLayer);
-            };
-
-            window.__dmcMapLayers.focusAlertById = function(id){
-                const arr = __dmc._alertIndex?.[String(id || '')];
-                if(!arr || !arr.length) return;
-                const fg = L.featureGroup(arr);
-                try{ __pickMap.fitBounds(fg.getBounds(), { padding:[20,20] }); }catch(_e){}
-                try{ arr[0].openPopup(); }catch(_e){}
-            };
         }catch(e){
             console.error('DMC official alerts layer error', e);
         }
@@ -4997,7 +4904,32 @@ try {
     }
 } catch (e) { /* ignora capa DMC */ }
 window.__dmcMapLayers = window.__dmcMapLayers || {};
+
 window.__dmcMapLayers.refreshAlerts = __dmcRefreshAlertsLayer;
+
+function hideInteractiveMapAlertsMenu(){
+    const mapRoot = document.getElementById('pickMap');
+    if(!mapRoot) return;
+    const candidates = Array.from(mapRoot.querySelectorAll('div, section, aside'));
+    candidates.forEach(el => {
+        const txt = (el.textContent || '').replace(/\s+/g,' ').trim().toUpperCase();
+        if(!txt) return;
+        const looksLikeMenu = txt.includes('AVISOS') && txt.includes('ALERTAS') && txt.includes('ALARMAS')
+            || txt.includes('SELECCIONAR EVENTO');
+        if(looksLikeMenu) el.classList.add('dmc-alert-menu-hidden');
+    });
+}
+
+const __hideInteractiveMapAlertsMenuObserver = new MutationObserver(()=> hideInteractiveMapAlertsMenu());
+document.addEventListener('DOMContentLoaded', ()=>{
+    const mapRoot = document.getElementById('pickMap');
+    if(mapRoot){
+        __hideInteractiveMapAlertsMenuObserver.observe(mapRoot, { childList:true, subtree:true });
+        setTimeout(hideInteractiveMapAlertsMenu, 300);
+        setTimeout(hideInteractiveMapAlertsMenu, 1200);
+        setTimeout(hideInteractiveMapAlertsMenu, 2500);
+    }
+});
 // =================== /DMC / ESTACIONES OFICIALES ===================
 
 } catch (e) { /* ignora */ }
@@ -5819,19 +5751,46 @@ window.onload = async function() {
                     usedModel = 'WRF DMC';
                 }
 
-                // Pronóstico principal siempre vía Worker: DMC primero y AccuWeather como respaldo.
-                usedSource = (sourceSel === "dmc") ? "DMC / WRF DMC (WEB OFICIAL)" : (sourceSel === "accuweather" ? "ACCUWEATHER (WORKER)" : (sourceSel === "auto" ? "AUTO (DMC → ACCUWEATHER)" : sourceSel.toUpperCase() + " (WORKER)"));
-                usedUrl = buildWorkerUrl({
-                    lat: latitude,
-                    lon: longitude,
-                    source: sourceSel,
-                    model: model
-                });
+                if (sourceSel === "openmeteo") {
+                    usedSource = "OPEN-METEO (DIRECTO)";
+                    usedUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,dew_point_2m,apparent_temperature,precipitation,visibility,wind_speed_10m,wind_gusts_10m,uv_index,cloud_cover,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,wind_speed_10m_max,uv_index_max,weather_code,snowfall_sum&hourly=temperature_2m,precipitation,precipitation_probability,cloud_cover,cloud_cover_mid,cloud_base,visibility,wind_speed_10m,wind_gusts_10m,pressure_msl,relative_humidity_2m,snowfall&past_days=7&forecast_days=11&timezone=auto&models=${model}`;
+                    res = await fetch(usedUrl);
 
-                res = await fetch(usedUrl);
-                if(!res.ok) throw new Error("WORKER_HTTP_" + res.status);
-                const ct = (res.headers.get("content-type") || "").toLowerCase();
-                if(!ct.includes("application/json")) throw new Error("WORKER_NOT_JSON");
+                    // Fallback a best_match si el modelo no existe en la ubicación
+                    if (!res.ok) {
+                        usedUrl = usedUrl.replace(`models=${model}`, `models=best_match`);
+                        res = await fetch(usedUrl);
+                        usedModel = "AUTO (RESPALDO)";
+                    }
+                } else {
+                    // Worker (AUTO/Meteoblue/Pirate/DMC preparado)
+                    usedSource = (sourceSel === "auto") ? "AUTO (WORKER)" : (sourceSel === "dmc" ? "DMC / WRF DMC (WEB OFICIAL)" : sourceSel.toUpperCase() + " (WORKER)");
+                    usedUrl = buildWorkerUrl({
+                        lat: latitude,
+                        lon: longitude,
+                        source: sourceSel,   // auto | meteoblue | pirate | openmeteo (si tu worker lo soporta)
+                        model: model         // ecmwf_ifs04 | best_match | gfs_seamless (si tu worker lo soporta)
+                    });
+
+                    try{
+                        res = await fetch(usedUrl);
+                        // Si el Worker no tiene el endpoint o falla, caemos a Open-Meteo directo
+                        if(!res.ok) throw new Error("WORKER_HTTP_" + res.status);
+                        // Validación mínima: debe ser JSON
+                        const ct = (res.headers.get("content-type") || "").toLowerCase();
+                        if(!ct.includes("application/json")) throw new Error("WORKER_NOT_JSON");
+                    }catch(e){
+                        // Fallback robusto: Open-Meteo directo (para que la UI no quede sin datos)
+                        usedSource = "OPEN-METEO (FALLBACK)";
+                        usedUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,dew_point_2m,apparent_temperature,precipitation,visibility,wind_speed_10m,wind_gusts_10m,uv_index,cloud_cover,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,wind_speed_10m_max,uv_index_max,weather_code,snowfall_sum&hourly=temperature_2m,precipitation,precipitation_probability,cloud_cover,cloud_cover_mid,cloud_base,visibility,wind_speed_10m,wind_gusts_10m,pressure_msl,relative_humidity_2m,snowfall&past_days=7&forecast_days=11&timezone=auto&models=${model}`;
+                        res = await fetch(usedUrl);
+                        if (!res.ok) {
+                            usedUrl = usedUrl.replace(`models=${model}`, `models=best_match`);
+                            res = await fetch(usedUrl);
+                            usedModel = "AUTO (RESPALDO)";
+                        }
+                    }
+                }
 
                 if (!res.ok) throw new Error("Fallo API");
 
@@ -5899,7 +5858,7 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
 
             // Coordenadas clickeables para copiar
             const coordSpan = `<span id="coordCopy" style="color: var(--text); cursor:pointer; text-decoration:underline;" title="Click para copiar">${latDms}, ${lonDms} 📋</span>`;
-            document.getElementById('sourceInfo').innerHTML = `FUENTE: <span style="color: var(--text)">${(window.__lastSourceLabel||'DMC / WRF DMC (WEB OFICIAL)')}</span> | MODELO: <span style="color: var(--text)">${model}</span> | COORD: ${coordSpan}`;
+            document.getElementById('sourceInfo').innerHTML = `FUENTE: <span style="color: var(--text)">${(window.__lastSourceLabel||'OPEN-METEO')}</span> | MODELO: <span style="color: var(--text)">${model}</span> | COORD: ${coordSpan}`;
 
             setTimeout(() => {
                 const el = document.getElementById('coordCopy');
@@ -5926,11 +5885,63 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
             return decodeWMO(code);
         }
 
-        function renderCurrent(data, lat, lon) {
-            const cur = data.current;
-            const todayIdx = 7;
+        function getTodayIsoLocal(){
+            const d = new Date();
+            const y = d.getFullYear();
+            const m = String(d.getMonth()+1).padStart(2,'0');
+            const day = String(d.getDate()).padStart(2,'0');
+            return `${y}-${m}-${day}`;
+        }
 
-            const todayDate = data.daily.time[todayIdx];
+        function findTodayIndex(daily){
+            const times = Array.isArray(daily?.time) ? daily.time : [];
+            if(!times.length) return 0;
+            const todayIso = getTodayIsoLocal();
+            const exact = times.findIndex(t => String(t).slice(0,10) === todayIso);
+            if(exact >= 0) return exact;
+            const now = new Date(todayIso + 'T12:00:00').getTime();
+            let bestIdx = 0;
+            let bestDiff = Infinity;
+            times.forEach((t,i)=>{
+                const ms = new Date(String(t).slice(0,10) + 'T12:00:00').getTime();
+                const diff = Math.abs(ms - now);
+                if(diff < bestDiff){ bestDiff = diff; bestIdx = i; }
+            });
+            return bestIdx;
+        }
+
+        function hourlyStatsForDate(hourly, isoDate){
+            let maxIccm = 0, maxIccmTime = '00:00';
+            let maxTccv = 0, maxTccvTime = '00:00';
+            let minWind = 999;
+            let humMin = 100, humMax = 0, cloudSum = 0, count = 0;
+            if(hourly && Array.isArray(hourly.time)){
+                hourly.time.forEach((ht, idx)=>{
+                    if(String(ht).slice(0,10) !== isoDate) return;
+                    const hh = String(ht).slice(11,13) || '00';
+                    if(hourly.relative_humidity_2m && hourly.relative_humidity_2m[idx] !== undefined){
+                        let valH = hourly.relative_humidity_2m[idx];
+                        if(valH < humMin) humMin = valH;
+                        if(valH > humMax) humMax = valH;
+                        if(hourly.cloud_cover && hourly.cloud_cover[idx] !== undefined){
+                            cloudSum += hourly.cloud_cover[idx]; count++;
+                        }
+                    }
+                    if(hourly.cloud_cover_mid && hourly.cloud_cover_mid[idx] > maxIccm) { maxIccm = hourly.cloud_cover_mid[idx]; maxIccmTime = `${hh}:00`; }
+                    if(hourly.cloud_cover && hourly.cloud_cover[idx] > maxTccv) { maxTccv = hourly.cloud_cover[idx]; maxTccvTime = `${hh}:00`; }
+                    if(hourly.wind_speed_10m && hourly.wind_speed_10m[idx] < minWind) { minWind = hourly.wind_speed_10m[idx]; }
+                });
+            }
+            if(minWind === 999) minWind = '-';
+            if(humMin === 100) humMin = 0;
+            return { maxIccm, maxIccmTime, maxTccv, maxTccvTime, minWind, humMin, humMax, cloudAvg: count > 0 ? (cloudSum / count) : 50 };
+        }
+
+        function renderCurrent(data, lat, lon) {
+            const cur = data.current || {};
+            const todayIdx = findTodayIndex(data.daily || {});
+
+            const todayDate = data?.daily?.time?.[todayIdx] || getTodayIsoLocal();
             const astroToday = getAstroDataFromCoords(todayDate, lat, lon);
 
             document.getElementById('valCccm').innerText = astroToday.c;
@@ -5975,53 +5986,32 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
         function renderTimeline(data, lat, lon) {
             const container = document.getElementById('timelineBox');
             container.innerHTML = "";
-            const daily = data.daily;
-            const hourly = data.hourly;
+            const daily = data.daily || {};
+            const hourly = data.hourly || {};
+            const times = Array.isArray(daily.time) ? daily.time : [];
+            const todayIdx = findTodayIndex(daily);
+            const startIdx = Math.max(0, todayIdx);
+            const endIdx = Math.min(times.length, startIdx + 11);
 
-            daily.time.forEach((t, i) => {
-                let type = "past";
-                let statusText = "HISTORIAL";
-                if(i === 7) { type = "today"; statusText = "ESTADO ACTUAL"; }
-                if(i > 7) { type = "future"; statusText = "DATO PROYECTADO"; }
+            times.slice(startIdx, endIdx).forEach((t, offset) => {
+                const i = startIdx + offset;
+                let type = offset === 0 ? 'today' : 'future';
+                let statusText = offset === 0 ? 'ESTADO ACTUAL' : 'DATO PROYECTADO';
 
-                const date = new Date(t + "T12:00");
+                const date = new Date(t + 'T12:00');
                 const dayStr = date.toLocaleDateString('es-CL', {weekday:'short', day:'2-digit'});
-                const dateNum = t.slice(8,10) + "-" + t.slice(5,7);
+                const dateNum = t.slice(8,10) + '-' + t.slice(5,7);
                 const moon = getMoonPhase(date);
 
                 const astroDay = getAstroDataFromCoords(t, lat, lon);
+                const stats = hourlyStatsForDate(hourly, t);
+                const { maxIccm, maxIccmTime, maxTccv, maxTccvTime, minWind, humMin, humMax, cloudAvg } = stats;
 
-                const startHour = i * 24;
-                let maxIccm = 0, maxIccmTime = "00:00";
-                let maxTccv = 0, maxTccvTime = "00:00";
-                let minWind = 999;
-                let humMin = 100, humMax = 0, cloudSum = 0, count = 0;
-
-                if(hourly && hourly.cloud_cover) {
-                    for(let h=0; h<24; h++) {
-                        const idx = startHour + h;
-                        if(hourly.time && !hourly.time[idx]) break;
-
-                        if(hourly.relative_humidity_2m && hourly.relative_humidity_2m[idx] !== undefined) {
-                            let valH = hourly.relative_humidity_2m[idx];
-                            if(valH < humMin) humMin = valH;
-                            if(valH > humMax) humMax = valH;
-                            cloudSum += hourly.cloud_cover[idx]; count++;
-                        }
-                        if(hourly.cloud_cover_mid && hourly.cloud_cover_mid[idx] > maxIccm) { maxIccm = hourly.cloud_cover_mid[idx]; maxIccmTime = (h<10?"0"+h:h)+":00"; }
-                        if(hourly.cloud_cover && hourly.cloud_cover[idx] > maxTccv) { maxTccv = hourly.cloud_cover[idx]; maxTccvTime = (h<10?"0"+h:h)+":00"; }
-                        if(hourly.wind_speed_10m && hourly.wind_speed_10m[idx] < minWind) { minWind = hourly.wind_speed_10m[idx]; }
-                    }
-                }
-                if(minWind === 999) minWind = "-";
-                if(humMin === 100) humMin = 0;
-
-                let weatherText = "";
-                if(i === 7) {
-                    weatherText = currentStatusText;
+                let weatherText = '';
+                if(offset === 0) {
+                    weatherText = currentStatusText || calculateWeatherText(daily.weather_code?.[i], cloudAvg, humMax, 1);
                 } else {
-                    let dailyCloudAvg = count > 0 ? (cloudSum / count) : 50;
-                    weatherText = calculateWeatherText(daily.weather_code[i], dailyCloudAvg, humMax, 1);
+                    weatherText = calculateWeatherText(daily.weather_code?.[i], cloudAvg, humMax, 1);
                 }
 
                 const div = document.createElement('div');
@@ -6053,7 +6043,7 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
                     <div class="op-status">${statusText}</div>
                 `;
                 container.appendChild(div);
-                if(i === 7) setTimeout(() => div.scrollIntoView({ inline: "center", behavior: "smooth" }), 500);
+                if(offset === 0) setTimeout(() => div.scrollIntoView({ inline: "center", behavior: "smooth", block: "nearest" }), 250);
             });
         }
 
