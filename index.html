@@ -177,10 +177,10 @@
     const vars = selectedValues('#rbVariablesBox');
     return {
       title: qs('rbTitle')?.value || 'Boletín Meteorológico',
-      type: qs('rbType')?.value || 'Boletín operacional',
-      focus: qs('rbFocus')?.value || 'Operacional',
-      audience: qs('rbAudience')?.value || 'Personal operativo',
-      tone: qs('rbTone')?.value || 'Técnico formal',
+      type: qs('rbType')?.value || 'Informe diario',
+      focus: qs('rbFocus')?.value || 'Misión',
+      audience: 'Personal operativo',
+      tone: 'Técnico formal / operacional / institucional',
       rangePreset: qs('rbRangePreset')?.value || 'today',
       dateFrom: qs('rbDateFrom')?.value || todayIso(0),
       dateTo: qs('rbDateTo')?.value || todayIso(0),
@@ -222,7 +222,7 @@
     try{
       const raw = localStorage.getItem(storageKey); if(!raw) return;
       const cfg = JSON.parse(raw);
-      Object.entries({rbTitle:'title',rbType:'type',rbFocus:'focus',rbAudience:'audience',rbTone:'tone',rbRangePreset:'rangePreset',rbDateFrom:'dateFrom',rbDateTo:'dateTo',rbResponsible:'responsible',rbNotes:'notes',rbAeroDrone:'aeroDrone',rbSignatureName:'signatureName',rbSignatureRank:'signatureRank',rbSignatureRole:'signatureRole',rbDistribution1:'distribution1',rbDistribution2:'distribution2',rbDistribution3:'distribution3',rbDistribution4:'distribution4'}).forEach(([id,k])=>{ if(qs(id) && cfg[k]!=null) qs(id).value = cfg[k]; });
+      Object.entries({rbTitle:'title',rbType:'type',rbFocus:'focus',rbRangePreset:'rangePreset',rbDateFrom:'dateFrom',rbDateTo:'dateTo',rbResponsible:'responsible',rbNotes:'notes',rbAeroDrone:'aeroDrone',rbSignatureName:'signatureName',rbSignatureRank:'signatureRank',rbSignatureRole:'signatureRole',rbDistribution1:'distribution1',rbDistribution2:'distribution2',rbDistribution3:'distribution3',rbDistribution4:'distribution4'}).forEach(([id,k])=>{ if(qs(id) && cfg[k]!=null) qs(id).value = cfg[k]; });
       if(qs('rbLocationLabel')) qs('rbLocationLabel').value = getCurrentLocationLabel();
       ['rbIncludeCharts','rbIncludeTables','rbIncludeTimeline','rbIncludeAlerts','rbIncludeRecs','rbIncludeConclusions','rbIncludeMap','rbIncludeSignature','rbIncludeDistribution','rbIncludeSemaforo','rbIncludeAero'].forEach(id=>{
         const key = id.replace('rbInclude','include');
@@ -419,12 +419,8 @@
     return '<ul class="gr-list">'+items.map(a=>`<li><strong>${htmlSafe(a.title)}</strong>${a.meta ? ` <span class="gr-small">${htmlSafe(a.meta)}</span>`:''}${a.body ? `<div class="gr-small" style="margin-top:4px;">${htmlSafe(a.body)}</div>`:''}</li>`).join('')+'</ul>';
   }
 
-  function reportAudienceHint(cfg){
-    const s = String(cfg.audience || '').toLowerCase();
-    if(s.includes('mando')) return 'La lectura prioriza impacto general, continuidad de actividades y necesidad de control de riesgo para la toma de decisión.';
-    if(s.includes('técnico') || s.includes('tecnico') || s.includes('análisis') || s.includes('analisis')) return 'La lectura prioriza consistencia de variables, evolución temporal y señales útiles para validación técnica del escenario.';
-    if(s.includes('externo')) return 'La lectura prioriza claridad expositiva, síntesis del riesgo y comprensión general de las condiciones del periodo.';
-    return 'La lectura prioriza efectos directos sobre ejecución, seguridad y oportunidad de las actividades previstas en terreno.';
+  function reportAudienceHint(){
+    return 'La lectura prioriza efectos directos sobre ejecución, seguridad, oportunidad de las actividades previstas y control de riesgo en terreno.';
   }
 
 
@@ -465,10 +461,10 @@
   function getDoctrineFocus(cfg){
     const s = `${cfg?.focus || ''} ${cfg?.type || ''}`.toLowerCase();
     if(/rpas|dron|aeron/.test(s)) return { id:'rpas', label:'RPAS / aeronáutico' };
-    if(/observ|terreno|patrull/.test(s)) return { id:'terreno', label:'Observación en terreno' };
-    if(/ipb|misi/.test(s)) return { id:'ipb', label:'IPB / misión' };
+    if(/observ|terreno|patrull/.test(s)) return { id:'terreno', label:'Terreno' };
+    if(/ipb|misi/.test(s)) return { id:'ipb', label:'Misión' };
     if(/ejecut/.test(s)) return { id:'ejecutivo', label:'Ejecutivo' };
-    return { id:'impacto', label:'Impacto operacional' };
+    return { id:'impacto', label:'Operación' };
   }
 
   function getRelevantAlertItems(){
@@ -544,12 +540,13 @@
   function doctrinalCloudBand(percent){
     const v = Number(percent);
     if(!Number.isFinite(v)) return { octas:'N/D', label:'Sin dato suficiente', detail:'No existe cobertura fiable para clasificar la nubosidad.' };
-    const octas = Math.max(0, Math.min(8, Math.round(v / 12.5)));
+    const octasRaw = Math.max(0, Math.min(8, v / 12.5));
+    const octas = Math.max(0, Math.min(8, Math.round(octasRaw)));
     let label = 'Cubierto';
-    if(octas === 0) label = 'Despejado';
-    else if(octas >= 1 && octas <= 4) label = 'Nubosidad parcial';
-    else if(octas >= 5 && octas <= 7) label = 'Nublado';
-    return { octas:`${octas}/8`, label, detail:`Cobertura equivalente aproximada a ${octas}/8 del cielo.` };
+    if(octasRaw < 1) label = 'Despejado';
+    else if(octasRaw <= 4) label = 'Nubosidad parcial';
+    else if(octasRaw <= 7) label = 'Nublado';
+    return { octas:`${octas}/8`, label, detail:`Cobertura equivalente aproximada a ${octas}/8 del cielo; para la lectura doctrinaria se considera conversión porcentual -> octas.` };
   }
 
   function doctrineAltitudeGuidance(){
@@ -711,6 +708,105 @@
     return `<table class="gr-table"><tbody>${rows.map(r=>`<tr><th>${htmlSafe(r[0])}</th><td>${htmlSafe(r[1])}</td></tr>`).join('')}</tbody></table>`;
   }
 
+  function buildDoctrineAuditMatrix(cfg){
+    const focus = getDoctrineFocus(cfg);
+    let title = 'Matriz doctrinaria auditable';
+    let intro = 'Los márgenes de decisión se anclan a los documentos doctrinarios cargados. Las únicas conversiones operativas del boletín son porcentaje -> octas para nubosidad y ft -> m para techo, a fin de compararlos con las tablas doctrinarias.';
+    let headings = ['Variable / sistema', 'Favorable / referencia', 'Marginal / exigente', 'Crítico / restrictivo', 'Fuente doctrinaria y uso'];
+    let rows = [];
+
+    if(focus.id === 'terreno'){
+      title = 'Matriz doctrinaria auditable de observación en terreno';
+      headings = ['Variable', 'Rango / margen doctrinario', 'Fuente doctrinaria', 'Aplicación directa', 'Observación'];
+      rows = [
+        ['Viento superficial', '0–1 calma; 2–5 ventolina; 6–11 flojito; 12–19 flojo; 20–28 bonancible; 29–38 fresquito; 39–49 fresco; 50–61 frescachón; 62–74 temporal; 75–88 temporal duro; 89–102 temporal muy duro; 103–117 temporal huracanado; ≥118 huracán.', 'CDI 3.2 / MDI 1.2.3.6', 'Registrar dirección, velocidad y efecto visible antes de iniciar actividad.', 'La cartilla exige observar primero el viento.'],
+        ['Nubosidad', '<1 octa despejado; 1–4 octas parcial; 4–7 octas nublado; >7 octas cubierto; 9 cielo no observable.', 'CDI 3.3 / MDI 1.2.3.3', 'Estimar iluminación, persistencia de nubosidad baja y posible compromiso de apoyo aéreo.', 'En el boletín la conversión desde % de cobertura se muestra en octas.'],
+        ['Visibilidad', 'Niebla ≤1 km; neblina 1–5 km; >5 km apertura relativa.', 'CDI 3.3.6 / MDI 1.2.3.2', 'Controlar orientación, observación, seguridad de desplazamiento y vigilancia.', 'La niebla/neblina también afectan visión nocturna y reconocimientos.'],
+        ['Temperatura y sensación térmica', 'Gradiente medio 0,6–0,7 °C/100 m; referencia extrema 1 °C/100 m en aire seco y 0,5 °C/100 m en aire saturado.', 'CDI 3.4', 'Corregir expectativa térmica según altitud y leer sensación térmica junto con viento/humedad.', 'La sensación térmica no reemplaza la temperatura real.'],
+        ['Altitud / aclimatación', '>3.000 m: no pernoctar >500 m sobre altitud alcanzada; 4.000 m: dos noches; antes de 5.000 m: 8 días de aclimatación.', 'CDI 3.6', 'Aplicar a personal y permanencia en altura.', 'Se mantiene como criterio de seguridad del personal.'],
+        ['Precipitación', '1 mm = 1 L/m²; registrar tipo de precipitación; como sensibilidad operativa: lluvia ~20 mm en 1–12 h, nieve ~3 mm en 1 h o 50 mm en 12 h, nieve >5 cm en 12 h o 15 cm acumulados.', 'CDI 3.5 / MDI Tabla 1-2', 'Anticipar deterioro de transitabilidad, visibilidad, abastecimientos y vivac.', 'Cuando el dato proviene del modelo, la salida se contrasta con el tipo de fenómeno.']
+      ];
+    }else if(focus.id === 'impacto'){
+      title = 'Matriz doctrinaria auditable de impacto operacional';
+      headings = ['Variable', 'Umbral sensible', 'Efecto doctrinario principal', 'Fuente doctrinaria', 'Aplicación al boletín'];
+      rows = [
+        ['Precipitación (lluvia)', '±20 mm en 1 a 12 h.', 'Afecta suelo, movimiento de vehículos, nivel y paso de ríos, marchas, abastecimientos, demoliciones, visibilidad y radares.', 'MDI Tabla 1-2', 'Se marca como variable crítica cuando el periodo se aproxima o supera ese valor.'],
+        ['Precipitación (nieve)', '±3 mm en 1 h o 50 mm en 12 h.', 'Afecta las acciones tácticas.', 'MDI Tabla 1-2', 'Se eleva el riesgo aunque el resto de variables permanezca estable.'],
+        ['Nieve acumulada', '>5 cm en 12 h o 15 cm acumulados.', 'Afecta transitabilidad, minas y vivac.', 'MDI Tabla 1-2', 'Se trata como restricción severa para continuidad en superficie.'],
+        ['Hielo / deshielo', '15 cm de espesor.', 'Compromete orillas de río, vehículos a rueda a campo traviesa y pendientes de 0 a 15 %.', 'MDI Tabla 1-2', 'Se incorpora como comentario doctrinario cuando hay ambiente frío.'],
+        ['Techo / nubosidad', '<250 m; <300 m.', '<250 m afecta observación de artillería y detección de objetivos; <300 m compromete cubierta, apoyo aéreo y contraste de objetivos.', 'MDI Tabla 1-2', 'El techo del boletín compara la base modelada contra estos cortes.'],
+        ['Temperatura', '<0 °C; >0 °C; variación de ±10 °C.', '<0 °C seca suelo y condiciona espesor del hielo; >0 °C favorece deshielo; ±10 °C altera trayectoria de proyectiles.', 'MDI Tabla 1-2', 'El análisis de temperatura se vincula a movilidad, fuego y sostenimiento.'],
+        ['Viento de superficie', '>7 nudos; >20 nudos.', '>7 nudos afecta fumígenos; >20 nudos restringe visibilidad, seca suelo y sobreenfría personal/equipo.', 'MDI Tabla 1-2', 'El boletín expone la banda de viento y su efecto doctrinario.'],
+        ['Viento en altura', '>30 nudos.', 'Afecta trayectoria de proyectiles de morteros y artillería.', 'MDI Tabla 1-2', 'Se consigna como advertencia para fuego indirecto y medios aéreos.']
+      ];
+    }else if(focus.id === 'ipb'){
+      title = 'Matriz doctrinaria auditable Misión';
+      headings = ['Sistema / variable', 'Favorable', 'Marginal', 'Crítico', 'Fuente doctrinaria y lectura'];
+      rows = [
+        ['Movilidad oruga (día) / visibilidad', '>1,5 km', '0,8 a 1,5 km', '<0,8 km', 'RDI Tabla 8; describe impacto meteorológico sobre maniobra diurna.'],
+        ['Movilidad oruga (día) / lluvia', '<3 mm/h', '3 a 13 mm/h', '>13 mm/h', 'RDI Tabla 8; cruzar con estado del suelo y caudales.'],
+        ['Movilidad oruga (día) / nieve', '<30 cm', '30 a 50 cm', '>50 cm', 'RDI Tabla 8.'],
+        ['Infantería desembarcada / visibilidad', '>0,3 km', '0,1 a 0,3 km', '<0,1 km', 'RDI Tabla 8.'],
+        ['Infantería desembarcada / precipitación', '<3 mm/h', '3 a 13 mm/h', '>13 mm/h', 'RDI Tabla 8.'],
+        ['Infantería desembarcada / nieve', '<8 cm', '8 a 16 cm', '>16 cm', 'RDI Tabla 8.'],
+        ['Infantería desembarcada / temperatura', '<32 °C', '>32 °C', '—', 'RDI Tabla 8; calor elevado reduce eficacia, aunque el documento no fija tercer corte adicional.'],
+        ['Infantería desembarcada / windchill', '>0 °C', '0 a -30 °C', '<-30 °C', 'RDI Tabla 8; aplicar junto con viento y temperatura.'],
+        ['Emplazamiento de armas / visibilidad', '>3,0 km', '0,5 a 3,0 km', '<0,5 km', 'RDI Tabla 8.'],
+        ['Emplazamiento de armas / temperatura', '>-18 °C', '<-18 °C', '—', 'RDI Tabla 8; el documento no entrega un tercer corte adicional.'],
+        ['Apoyo de fuego 155 mm / visibilidad', '>5,0 km', '1,5 a 5,0 km', '<1,5 km', 'RDI Tabla 8.'],
+        ['Apoyo de fuego 155 mm / techo', '>800 ft', '500 a 800 ft', '<500 ft', 'RDI Tabla 8; en el boletín se compara tras convertir ft -> m.'],
+        ['Apoyo de fuego 155 mm / viento', '<65 km/h', '65 a 93 km/h', '>93 km/h', 'RDI Tabla 8.'],
+        ['Apoyo aéreo estrecho / visibilidad', '>8,0 km', '5,0 a 8,0 km', '<5,0 km', 'RDI Tabla 8.'],
+        ['Apoyo aéreo estrecho / techo', '>3.000 ft', '500 a 3.000 ft', '<500 ft', 'RDI Tabla 8.'],
+        ['Inteligencia ala fija / visibilidad', '>5,0 km', '3,0 a 5,0 km', '<3,0 km', 'RDI Tabla 8.'],
+        ['Inteligencia ala fija / nubosidad', '<3/8 octas', '3/8 a 5/8 octas', '>5/8 octas', 'RDI Tabla 8; en el boletín se muestra la equivalencia en octas.'],
+        ['Artillería antiaérea / visibilidad', '>5,0 km', '3,0 a 5,0 km', '<3,0 km', 'RDI Tabla 8.'],
+        ['Artillería antiaérea / techo', '>5.000 ft', '3.000 a 5.000 ft', '<3.000 ft', 'RDI Tabla 8.'],
+        ['Artillería antiaérea / lluvia', '<13 mm/h', '13 a 26 mm/h', '>26 mm/h', 'RDI Tabla 8.'],
+        ['NBC humo / viento', '<10 km/h', '10 a 13 km/h', '>13 km/h', 'RDI Tabla 8.'],
+        ['NBC humo / estabilidad', 'Estable', 'Neutral', 'Inestable', 'RDI Tabla 8; en el boletín se aproxima mediante tendencia/interpretación, no por cálculo sinótico completo.'],
+        ['NBC humo / temperatura', '>21 °C', '4 a 21 °C', '<4 °C', 'RDI Tabla 8.'],
+        ['NBC humo / humedad', '>60 %', '40 a 60 %', '<40 %', 'RDI Tabla 8.'],
+        ['NBC humo / precipitación', 'Nada', 'Ligera', 'Moderada o fuerte', 'RDI Tabla 8; si el modelo solo entrega mm/h, la salida se traduce operacionalmente.'],
+        ['Aerotransportadas / visibilidad', '>5,0 km', '1,0 a 5,0 km', '<1,0 km', 'RDI Tabla 8.'],
+        ['Aerotransportadas / techo', '>500 ft', '300 a 500 ft', '<300 ft', 'RDI Tabla 8.'],
+        ['Aerotransportadas / viento', '<19 km/h', '19 a 24 km/h', '>24 km/h', 'RDI Tabla 8.'],
+        ['Helicópteros / visibilidad', '>1,5 km', '0,4 a 1,5 km', '<0,4 km', 'RDI Tabla 8.'],
+        ['Helicópteros / techo', '>500 ft', '300 a 500 ft', '<300 ft', 'RDI Tabla 8.'],
+        ['Helicópteros / viento', '<37 km/h', '37 a 56 km/h', '>56 km/h', 'RDI Tabla 8.']
+      ];
+    }else if(focus.id === 'rpas'){
+      title = 'Matriz doctrinaria auditable RPAS / aeronáutico';
+      headings = ['Sistema / variable', 'Favorable', 'Marginal', 'Crítico', 'Fuente doctrinaria y uso'];
+      rows = [
+        ['Apoyo aéreo estrecho / visibilidad', '>8,0 km', '5,0 a 8,0 km', '<5,0 km', 'RDI Tabla 8; usar como techo doctrinario de referencia para empleo aéreo visual.'],
+        ['Apoyo aéreo estrecho / techo', '>3.000 ft', '500 a 3.000 ft', '<500 ft', 'RDI Tabla 8; el boletín compara tras convertir ft -> m.'],
+        ['Inteligencia ala fija / visibilidad', '>5,0 km', '3,0 a 5,0 km', '<3,0 km', 'RDI Tabla 8; válido para reconocimiento visual.'],
+        ['Inteligencia ala fija / nubosidad', '<3/8 octas', '3/8 a 5/8 octas', '>5/8 octas', 'RDI Tabla 8; se obtiene por conversión de cobertura a octas.'],
+        ['Operaciones aerotransportadas / visibilidad', '>5,0 km', '1,0 a 5,0 km', '<1,0 km', 'RDI Tabla 8; útil como marco para RPAS liviano.'],
+        ['Operaciones aerotransportadas / techo', '>500 ft', '300 a 500 ft', '<300 ft', 'RDI Tabla 8.'],
+        ['Operaciones aerotransportadas / viento', '<19 km/h', '19 a 24 km/h', '>24 km/h', 'RDI Tabla 8; marco más conservador para plataformas muy livianas.'],
+        ['Helicópteros / visibilidad', '>1,5 km', '0,4 a 1,5 km', '<0,4 km', 'RDI Tabla 8.'],
+        ['Helicópteros / techo', '>500 ft', '300 a 500 ft', '<300 ft', 'RDI Tabla 8.'],
+        ['Helicópteros / viento', '<37 km/h', '37 a 56 km/h', '>56 km/h', 'RDI Tabla 8; marco base del boletín RPAS / aeronáutico.'],
+        ['Precipitación aeronáutica', 'Nada', 'Ligera', 'Agua nieve o granizo', 'RDI Tabla 8; cuando el modelo solo entrega mm/h, el boletín lo expresa como señal operativa conservadora.']
+      ];
+    }else{
+      title = 'Matriz doctrinaria auditable de decisión ejecutiva';
+      headings = ['Variable', 'Referencia ejecutiva', 'Margen de alerta', 'Restricción', 'Fuente doctrinaria y uso'];
+      rows = [
+        ['Viento', '<29 km/h', '29 a 38 km/h', '≥39 km/h', 'CDI escala de viento + MDI Tabla 1-2.'],
+        ['Visibilidad', '>5 km', '1 a 5 km', '≤1 km', 'CDI niebla/neblina.'],
+        ['Techo', '>300 m', '250 a 300 m', '<250 m', 'MDI Tabla 1-2.'],
+        ['Precipitación', 'Sin señal relevante', 'Precipitación ligera / en aumento', 'Lluvia sensible ~20 mm en 1 a 12 h o equivalente restrictivo', 'MDI Tabla 1-2 + CDI 3.5.'],
+        ['Estado meteorológico', 'Sin alerta y sin variable en banda exigente', 'Una variable en margen o alerta preventiva', 'Variable crítica o alerta oficial con efecto sobre la misión', 'Síntesis operacional del boletín.']
+      ];
+    }
+
+    return `<div class="gr-section"><h3>III.A. ${htmlSafe(title)}</h3><p class="gr-small">${htmlSafe(intro)}</p><table class="gr-table"><thead><tr>${headings.map(h=>`<th>${htmlSafe(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${htmlSafe(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  }
+
+
   function getAnalysisTableMeta(cfg){
     const focus = getDoctrineFocus(cfg);
     if(focus.id === 'terreno'){
@@ -848,7 +944,7 @@
     parts.push(`Considerando la ubicación seleccionada (${cfg.locationLabel}), el escenario meteorológico evaluado presenta como elementos centrales la condición ${metrics.current.condicion}, temperatura ${metrics.current.temp}, humedad ${metrics.current.humedad}, viento ${metrics.current.viento}, ráfagas ${metrics.current.rafagas}, precipitación de referencia ${metrics.current.precip} y visibilidad ${metrics.current.visibilidad}.`);
     parts.push(`La clasificación general del periodo es ${sem.label}, debiendo interpretarse en relación con la duración de la actividad, la exposición del personal y la sensibilidad del material o plataforma.`);
     if(focus.id === 'terreno') parts.push('Desde la lógica de observación en terreno, el mayor valor del boletín es ordenar la verificación local de variables y reducir la posibilidad de que un cambio puntual pase inadvertido antes de la ejecución.');
-    else if(focus.id === 'ipb') parts.push('Desde la lógica IPB / misión, el boletín permite transformar el ambiente meteorológico en una matriz de efectos, delimitando restricciones, oportunidades y medidas de control para la misión.');
+    else if(focus.id === 'ipb') parts.push('Desde la lógica Misión, el boletín permite transformar el ambiente meteorológico en una matriz de efectos, delimitando restricciones, oportunidades y medidas de control para la misión.');
     else if(focus.id === 'rpas') parts.push('Desde la lógica RPAS / aeronáutica, la decisión útil depende de sostener márgenes conservadores frente a viento, ráfagas, visibilidad y techo, priorizando seguridad por sobre continuidad automática de la ventana.');
     else if(focus.id === 'ejecutivo') parts.push('Desde la lógica ejecutiva, la información debe leerse en términos de condición general, restricción dominante y medida de conducción sugerida para la jefatura.');
     else parts.push('Desde la lógica de impacto operacional, la lectura correcta consiste en traducir cada variable en efectos sobre movilidad, observación, seguridad, equipos y continuidad de la operación.');
@@ -1805,15 +1901,17 @@
       </div>
 
       <div class="gr-section">
-        <h3>III. Enfoque aplicado al boletín</h3>
+        <h3>III. Modo de análisis aplicado al boletín</h3>
         <div>
-          <p><strong>Enfoque seleccionado:</strong> ${htmlSafe(focus.label)}.</p>
+          <p><strong>Modo seleccionado:</strong> ${htmlSafe(focus.label)}.</p>
           <p><strong>Orientación de lectura:</strong> ${htmlSafe(reportFocusHint(cfg))}</p>
           ${buildDoctrineFrame(cfg, metrics)}
           ${buildDoctrineReferenceTable(cfg, metrics)}
           <p>Los horarios astronómicos relevantes para planificación son <strong>CCCM ${htmlSafe(astroPlan.cccm)}</strong> y <strong>TCCV ${htmlSafe(astroPlan.tccv)}</strong>. La lectura operacional debe apoyarse en la evolución horaria o diaria del periodo solicitado, según corresponda.</p>
         </div>
       </div>
+
+      ${buildDoctrineAuditMatrix(cfg)}
 
       ${cfg.includeTables ? `<div class="gr-section"><h3>${htmlSafe(analysisMeta.periodTitle)}</h3>${buildVariablePeriodTable(cfg)}</div><div class="gr-section"><h3>${htmlSafe(analysisMeta.analysisTitle)}</h3><table class="gr-table"><thead><tr><th>${htmlSafe(analysisMeta.headings[0])}</th><th>${htmlSafe(analysisMeta.headings[1])}</th><th>${htmlSafe(analysisMeta.headings[2])}</th></tr></thead><tbody>${variableRows(metrics, cfg.variables, cfg)}</tbody></table></div>`:''}
       ${cfg.includeTimeline ? `<div class="gr-section"><h3>VI. Ventanas operacionales</h3><p class="gr-small">La calificación se entrega por horario para facilitar la interpretación operacional del tramo. Cada ventana se estima a partir de viento, ráfagas, visibilidad, precipitación, nubosidad y techo, clasificando el horario como favorable, marginal o desfavorable.</p>${buildOperationalWindows(cfg, metrics)}</div><div class="gr-section"><h3>VII. Resumen por día</h3>${buildTimeline(cfg)}</div>`:''}
@@ -3837,44 +3935,16 @@ input, select {
           <div class="report-field">
             <label for="rbType">Tipo de informe</label>
             <select id="rbType">
-              <option>Informe diario</option>
+              <option selected>Informe diario</option>
               <option>Informe por rango de fechas</option>
-              <option selected>Boletín operacional</option>
-              <option>Boletín ejecutivo</option>
-              <option>Informe técnico completo</option>
-              <option>Informe aeronáutico / RPAS</option>
-              <option>Resumen comparativo</option>
-              <option>Resumen semanal</option>
             </select>
           </div>
           <div class="report-field">
-            <label for="rbFocus">Enfoque doctrinario / operacional</label>
+            <label for="rbFocus">Modo de análisis</label>
             <select id="rbFocus">
-              <option>Operacional</option>
-              <option>Observación en terreno</option>
-              <option>Impacto operacional</option>
-              <option selected>IPB / misión</option>
-              <option>RPAS / aeronáutico</option>
-              <option>Ejecutivo</option>
-            </select>
-          </div>
-          <div class="report-field">
-            <label for="rbAudience">Destinatario</label>
-            <select id="rbAudience">
-              <option>Mando / jefatura</option>
-              <option selected>Personal operativo</option>
-              <option>Sección análisis</option>
-              <option>Uso externo</option>
-              <option>Equipo técnico</option>
-            </select>
-          </div>
-          <div class="report-field">
-            <label for="rbTone">Estilo de redacción</label>
-            <select id="rbTone">
-              <option>Ejecutivo</option>
-              <option selected>Técnico formal</option>
-              <option>Operacional</option>
-              <option>Institucional</option>
+              <option>Terreno</option>
+              <option>Operación</option>
+              <option selected>Misión</option>
             </select>
           </div>
         </div>
