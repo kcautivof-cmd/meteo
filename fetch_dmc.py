@@ -165,7 +165,8 @@ def extract_inline_scripts(html):
 
 def extract_script_urls(html, base_url):
     urls = []
-    for m in re.finditer(r'<script[^>]+src=["']([^"']+)["']', html, re.IGNORECASE):
+    pat_src = re.compile(r'src=["\'](http[^"\']+)["\']')
+    for m in re.finditer(pat_src, html):
         src = m.group(1)
         if src.startswith("http"):
             urls.append(src)
