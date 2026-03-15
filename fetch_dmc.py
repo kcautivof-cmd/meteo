@@ -4,7 +4,7 @@
 import json, re, time, datetime, sys
 try:
     import urllib.request as urlreq
-    from urllib.error import URLError
+    from urllib.error import URLError, HTTPError
 except ImportError:
     import urllib2 as urlreq
 
@@ -81,88 +81,80 @@ LOCALITIES = [
 ]
 LOC_BY_INDICE = {l["indice"]: l for l in LOCALITIES}
 
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "es-CL,es;q=0.9,en;q=0.8",
+    "Referer": "https://www.meteochile.gob.cl/",
+    "Connection": "keep-alive",
+}
+
 # ── helpers ───────────────────────────────────────────────────────────────────
 
-def fetch_html(url, timeout=20):
-    req = urlreq.Request(url, headers={"User-Agent": "fetch-dmc/3.0"})
+def fetch_html(url, timeout=25):
+    req = urlreq.Request(url, headers=HEADERS)
     with urlreq.urlopen(req, timeout=timeout) as r:
         raw = r.read()
-    for enc in ("utf-8", "latin-1"):
+    for enc in ("utf-8", "latin-1", "iso-8859-1"):
         try:
             return raw.decode(enc)
         except Exception:
             pass
     return raw.decode("utf-8", errors="replace")
 
-def get_field(block, key):
-    """Extract a field value from a JS object string using regex (like worker.js does)."""
-    m = re.search(
-        key + r'\s*:\s*([\[\]"\'\w\s,./\-]+?)(?=\s*,\s*\w+\s*:|\s*\})',
-        block
-    )
-    return m.group(1).strip() if m else None
-
-def get_array_field(block, key):
-    """Extract array field (handles nested arrays too)."""
-    m = re.search(key + r'\s*:\s*(\[)', block)
-    if not m:
-        return None
-    start = m.start(1)
+def find_matching_brace(text, start):
+    """Find matching closing brace, aware of quoted strings."""
     depth = 0
-    for i in range(start, len(block)):
-        if block[i] == '[':
-            depth += 1
-        elif block[i] == ']':
-            depth -= 1
-            if depth == 0:
-                raw = block[start:i+1]
-                return raw
+    i = start
+    in_str = False
+    str_char = None
+    escaped = False
+    while i < len(text):
+        c = text[i]
+        if in_str:
+            if escaped:
+                escaped = False
+            elif c == '\\':
+                escaped = True
+            elif c == str_char:
+                in_str = False
+        else:
+            if c in ('"', "'"):
+                in_str = True
+                str_char = c
+            elif c == '{':
+                depth += 1
+            elif c == '}':
+                depth -= 1
+                if depth == 0:
+                    return text[start:i+1]
+        i += 1
     return None
 
-def parse_js_str_array(raw):
-    """Parse JS string array like ["a","b","c"] or ['a','b'] into Python list."""
-    if not raw:
-        return []
-    items = re.findall(r'["\']([^"\']*)["\']', raw)
-    return items
-
-def parse_js_int(raw):
-    """Parse a simple JS integer."""
-    if not raw:
-        return None
-    m = re.search(r'-?\d+', raw.strip())
-    return int(m.group()) if m else None
-
 def parse_temp(raw_str):
-    """Split 'min/max' string into (t_min, t_max) as float|None."""
+    """Split 'min/max' → (t_min, t_max) as float|None."""
     s = str(raw_str or "").strip()
     if "/" in s:
         left, right = s.split("/", 1)
         def to_f(x):
             x = x.strip()
-            try:
-                return float(x) if x else None
-            except ValueError:
-                return None
+            try: return float(x) if x else None
+            except ValueError: return None
         return to_f(left), to_f(right)
     try:
-        v = float(s)
-        return v, v
+        v = float(s); return v, v
     except ValueError:
         return None, None
 
 def extract_wind_kmh(texts):
-    """Extract wind speed from text like 'viento entre 40 y 60 km/h'."""
     all_text = " ".join(str(t) for t in texts if t)
     best = None
     for m in re.finditer(r'entre\s+(\d+)\s+y\s+(\d+)\s*km', all_text, re.I):
         val = max(float(m.group(1)), float(m.group(2)))
-        if best is None or val > best:
-            best = val
+        if best is None or val > best: best = val
     for m in re.finditer(r'(\d+)\s*km/h', all_text, re.I):
         val = float(m.group(1))
-        if best is None or val > best:
-            best = val
+        if best is None or val > best: best = val
     return best
 
 def text_to_weather_code(texts):
@@ -176,6 +168,170 @@ def text_to_weather_code(texts):
     if re.search(r'despejado|soleado', s): return 0
     return 0
 
+# ── block extraction: 3 approaches ───────────────────────────────────────────
+
+def extract_blocks_method1(html):
+    """Approach 1: find Pronostico.push({ with brace counting + string awareness."""
+    blocks = []
+    for m in re.finditer(r'[Pp]ronostico\s*\.\s*push\s*\(\s*\{', html, re.DOTALL):
+        brace_pos = html.rfind('{', m.start(), m.end())
+        if brace_pos < 0:
+            brace_pos = m.end() - 1
+        block = find_matching_brace(html, brace_pos)
+        if block and len(block) > 20:
+            blocks.append(block)
+    return blocks
+
+def extract_blocks_method2(html):
+    """Approach 2: per-indice context search — find each known indice and grab surrounding chunk."""
+    blocks = []
+    for indice in LOC_BY_INDICE:
+        for pat in [
+            r'indice\s*:\s*["\']?' + re.escape(indice) + r'["\']?',
+            r'"indice"\s*:\s*"' + re.escape(indice) + r'"',
+        ]:
+            for m in re.finditer(pat, html, re.I):
+                # grab 3000 chars of context around the match
+                start = max(0, m.start() - 50)
+                chunk = html[start: m.start() + 3000]
+                blocks.append(chunk)
+                break
+    return blocks
+
+def extract_blocks_method3(html):
+    """Approach 3: look for temperatura arrays near known indice values."""
+    blocks = []
+    # Find all temperatura:[...] arrays and match to nearest indice
+    temp_positions = [(m.start(), m.group(1))
+                      for m in re.finditer(r'temperatura\s*:\s*(\[[^\]]*\])', html, re.I)]
+    ind_positions = [(m.start(), m.group(1).lower())
+                     for m in re.finditer(r'indice\s*:\s*["\']?(\w+)["\']?', html, re.I)]
+
+    for tp, temp_arr in temp_positions:
+        # find closest indice
+        closest = None
+        closest_dist = 9999
+        for ip, ind in ind_positions:
+            dist = abs(tp - ip)
+            if dist < closest_dist and dist < 2000:
+                closest_dist = dist
+                closest = (ip, ind, temp_arr)
+        if closest:
+            ip, ind, temp_arr = closest
+            start = min(ip, tp)
+            blocks.append(html[start: start + 4000])
+    return blocks
+
+# ── parse a block ─────────────────────────────────────────────────────────────
+
+def parse_block(block):
+    """Extract indice, tope, temperatura, texto, fecha from a text block."""
+    # indice
+    m = re.search(r'indice\s*:\s*["\']?(\w+)["\']?', block, re.I)
+    if not m:
+        return None
+    indice = m.group(1).strip().lower()
+
+    # tope
+    mt = re.search(r'tope\s*:\s*(\d+)', block, re.I)
+    tope = int(mt.group(1)) if mt else 5
+    tope = min(max(tope, 1), 10)
+
+    # temperatura array (simple: no nested arrays)
+    temp_raw = re.search(r'temperatura\s*:\s*(\[[^\]]*\])', block, re.I)
+    temps = re.findall(r'["\']([^"\']*)["\']', temp_raw.group(1)) if temp_raw else []
+    if not temps:
+        # try without quotes: [13/26,14/27,...]
+        if temp_raw:
+            temps = re.findall(r'[\d./\-]+', temp_raw.group(1))
+
+    # fecha array
+    fecha_raw = re.search(r'fecha\s*:\s*(\[[^\]]*\])', block, re.I)
+    fechas = re.findall(r'["\']([^"\']*)["\']', fecha_raw.group(1)) if fecha_raw else []
+
+    # texto: nested array of arrays
+    texto_days = []
+    tm = re.search(r'texto\s*:\s*\[', block, re.I)
+    if tm:
+        texto_block = find_matching_brace(block.replace('[', '{').replace(']', '}'), tm.end() - 1)
+        if texto_block:
+            # restore and extract sub-arrays
+            texto_block = texto_block.replace('{', '[').replace('}', ']')
+        else:
+            # fallback: find all sub-lists
+            texto_block = block[tm.start():]
+
+        day_re = re.compile(r'\[([^\[\]]*)\]')
+        for dm in day_re.finditer(texto_block):
+            texts = re.findall(r'["\']([^"\']*)["\']', dm.group(1))
+            if texts:
+                texto_days.append(texts)
+
+    return {
+        "indice": indice,
+        "tope": tope,
+        "temps": temps,
+        "fechas": fechas,
+        "texto_days": texto_days,
+    }
+
+# ── build daily data ──────────────────────────────────────────────────────────
+
+def build_daily(parsed, loc):
+    indice = parsed["indice"]
+    tope = parsed["tope"]
+    temps = parsed["temps"]
+    fechas = parsed["fechas"]
+    texto_days = parsed["texto_days"]
+    base = datetime.date.today()
+
+    daily = {
+        "time": [],
+        "temperature_2m_max": [],
+        "temperature_2m_min": [],
+        "precipitation_sum": [],
+        "wind_speed_10m_max": [],
+        "weather_code": [],
+        "__summary_text": [],
+    }
+
+    for i in range(tope):
+        raw_date = fechas[i] if i < len(fechas) else None
+        if raw_date and re.match(r'\d{4}-\d{2}-\d{2}', str(raw_date)):
+            date_str = str(raw_date)[:10]
+        else:
+            date_str = (base + datetime.timedelta(days=i)).isoformat()
+        daily["time"].append(date_str)
+
+        # ── TEMPERATURE: split "min/max" ──
+        temp_str = temps[i] if i < len(temps) else ""
+        t_min, t_max = parse_temp(temp_str)
+        daily["temperature_2m_min"].append(t_min)
+        daily["temperature_2m_max"].append(t_max)
+
+        period_texts = texto_days[i] if i < len(texto_days) else []
+        if not isinstance(period_texts, list):
+            period_texts = [period_texts]
+
+        all_text = " ".join(str(t) for t in period_texts if t).lower()
+        precip = 0.0
+        if re.search(r'lluvi|chubasc|precipit', all_text): precip = 2.0
+        elif re.search(r'llovizna', all_text): precip = 0.5
+        daily["precipitation_sum"].append(precip)
+        daily["wind_speed_10m_max"].append(extract_wind_kmh(period_texts))
+        daily["weather_code"].append(text_to_weather_code(period_texts))
+        daily["__summary_text"].append(period_texts)
+
+    return {
+        "indice": indice,
+        "ciudad": loc["ciudad"],
+        "reg": loc["reg"],
+        "lat": loc["lat"],
+        "lon": loc["lon"],
+        "daily": daily,
+        "horizon_days": tope,
+    }
+
 # ── main scraper ──────────────────────────────────────────────────────────────
 
 def scrape_region(reg):
@@ -183,152 +339,45 @@ def scrape_region(reg):
     try:
         html = fetch_html(url)
     except Exception as e:
-        print(f"[{reg}] fetch err: {e}")
+        print(f"[{reg}] FETCH ERR: {e}")
         return {}
 
-    print(f"[{reg}] HTML={len(html)} chars")
+    print(f"[{reg}] HTML={len(html)} push(={html.count('push(')} temperatura={html.count('temperatura')} indice={html.count('indice')}")
 
-    # Count debug indicators (like the old version did)
-    print(f"[{reg}] push(: {html.count('push(')}")
-    print(f"[{reg}] temperatura: {html.count('temperatura')}")
+    # Try all 3 methods and deduplicate by indice
+    found = {}
+    for method_num, get_blocks in enumerate([extract_blocks_method1, extract_blocks_method2, extract_blocks_method3], 1):
+        if len(found) > 0 and method_num > 1:
+            break  # method 1 worked, skip
+        blocks = get_blocks(html)
+        print(f"  method{method_num}: {len(blocks)} blocks")
+        for block in blocks:
+            parsed = parse_block(block)
+            if not parsed:
+                continue
+            indice = parsed["indice"]
+            if indice not in LOC_BY_INDICE:
+                continue
+            if indice in found:
+                continue  # already got it
+            loc = LOC_BY_INDICE[indice]
+            result = build_daily(parsed, loc)
+            found[indice] = result
+            t_max = result["daily"]["temperature_2m_max"][:3]
+            t_min = result["daily"]["temperature_2m_min"][:3]
+            print(f"  OK {indice} ({method_num}): {parsed['tope']}d tmax={t_max} tmin={t_min}")
 
-    # Find all Pronostico.push({...}) blocks using same approach as worker.js
-    push_re = re.compile(
-        r'[Pp]ronostico\s*\.\s*push\s*\(\s*\{',
-        re.DOTALL
-    )
+    if not found:
+        print(f"  [!] NO DATA found for region {reg}. First 300 chars of HTML:")
+        print(f"  {repr(html[:300])}")
 
-    results = {}
-    for pm in push_re.finditer(html):
-        # Find the opening brace
-        brace_start = html.index('{', pm.start())
-        # Walk to find matching closing brace
-        depth = 0
-        i = brace_start
-        while i < len(html):
-            c = html[i]
-            if c == '{':
-                depth += 1
-            elif c == '}':
-                depth -= 1
-                if depth == 0:
-                    block = html[brace_start:i+1]
-                    break
-            i += 1
-        else:
-            continue
-
-        # Extract indice
-        m_ind = re.search(r'indice\s*:\s*["\']?(\w+)["\']?', block)
-        if not m_ind:
-            continue
-        indice = m_ind.group(1).strip().lower()
-        if indice not in LOC_BY_INDICE:
-            continue
-
-        loc = LOC_BY_INDICE[indice]
-
-        # Extract tope (number of forecast days)
-        m_tope = re.search(r'tope\s*:\s*(\d+)', block)
-        tope = int(m_tope.group(1)) if m_tope else 5
-        tope = min(max(tope, 1), 10)
-
-        # Extract temperatura array: ["13/26","14/28",...]
-        temp_raw = get_array_field(block, 'temperatura')
-        temps = parse_js_str_array(temp_raw) if temp_raw else []
-
-        # Extract texto array of arrays
-        texto_raw = get_array_field(block, 'texto')
-
-        # Extract fecha array
-        fecha_raw = get_array_field(block, 'fecha')
-        fechas = parse_js_str_array(fecha_raw) if fecha_raw else []
-
-        # Parse texto into list of period-text lists
-        texto_days = []
-        if texto_raw:
-            # Each day is a sub-array: [["texto1","texto2","texto3","texto4"],...]
-            day_re = re.compile(r'\[([^\[\]]*)\]')
-            # Remove outer bracket
-            inner = texto_raw.strip()
-            if inner.startswith('['):
-                inner = inner[1:]
-            if inner.endswith(']'):
-                inner = inner[:-1]
-            for dm in day_re.finditer(inner):
-                texts = re.findall(r'["\']([^"\']*)["\']', dm.group(1))
-                texto_days.append(texts)
-
-        base = datetime.date.today()
-        daily = {
-            "time": [],
-            "temperature_2m_max": [],
-            "temperature_2m_min": [],
-            "precipitation_sum": [],
-            "wind_speed_10m_max": [],
-            "weather_code": [],
-            "summarytext": [],
-        }
-
-        for i in range(tope):
-            # date
-            raw_date = fechas[i] if i < len(fechas) else None
-            if raw_date and re.match(r'\d{4}-\d{2}-\d{2}', str(raw_date)):
-                date_str = str(raw_date)[:10]
-            else:
-                date_str = (base + datetime.timedelta(days=i)).isoformat()
-            daily["time"].append(date_str)
-
-            # ── TEMPERATURE FIX: split "min/max" correctly ──
-            temp_str = temps[i] if i < len(temps) else ""
-            t_min, t_max = parse_temp(temp_str)
-            daily["temperature_2m_min"].append(t_min)
-            daily["temperature_2m_max"].append(t_max)
-
-            # periods text for this day
-            period_texts = texto_days[i] if i < len(texto_days) else []
-            if not isinstance(period_texts, list):
-                period_texts = [period_texts]
-
-            all_text = " ".join(str(t) for t in period_texts if t).lower()
-
-            # precipitation
-            precip = 0.0
-            if re.search(r'lluvi|chubasc|precipit', all_text):
-                precip = 2.0
-            elif re.search(r'llovizna', all_text):
-                precip = 0.5
-            daily["precipitation_sum"].append(precip)
-
-            # wind
-            daily["wind_speed_10m_max"].append(extract_wind_kmh(period_texts))
-
-            # weather code
-            daily["weather_code"].append(text_to_weather_code(period_texts))
-
-            # summary text (raw period list for frontend formatting)
-            daily["summarytext"].append(period_texts)
-
-        results[indice] = {
-            "indice": indice,
-            "ciudad": loc["ciudad"],
-            "reg": loc["reg"],
-            "lat": loc["lat"],
-            "lon": loc["lon"],
-            "daily": daily,
-            "horizon_days": tope,
-        }
-        t_max_preview = daily["temperature_2m_max"][:3]
-        t_min_preview = daily["temperature_2m_min"][:3]
-        print(f"  OK {indice}: {tope}d | tmax={t_max_preview} tmin={t_min_preview}")
-
-    return results
+    return found
 
 # ── entry point ───────────────────────────────────────────────────────────────
 
 def main():
     all_localities = {}
-    ok_count = fail_count = 0
+    ok_count = 0
     for reg in REGIONS:
         try:
             res = scrape_region(reg)
@@ -336,11 +385,9 @@ def main():
             ok_count += len(res)
         except Exception as e:
             print(f"[{reg}] ERROR: {e}")
-            fail_count += 1
-        time.sleep(0.3)
+        time.sleep(0.4)
 
-    print(f"\nTOTAL: {ok_count} localidades, {fail_count} fallos de region")
-
+    print(f"\nTOTAL: {ok_count} localidades")
     cache = {
         "generated_at": datetime.datetime.utcnow().isoformat() + "Z",
         "localities": all_localities,
