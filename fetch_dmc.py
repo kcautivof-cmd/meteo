@@ -109,6 +109,29 @@ def fetch_text(url):
         except Exception: pass
     return raw.decode("latin-1", errors="replace")
 
+# ── Convierte objeto JS a JSON válido ──────────────────────────────────────
+def js_obj_to_json(s):
+    # Eliminar comentarios de línea
+    s = re.sub(r"//[^\n]*", "", s)
+    # Comillas simples → dobles (valores)
+    s = re.sub(r"'([^']*)'", r'"\1"', s)
+    # Claves sin comillas: {indice: → {"indice":
+    s = re.sub(r"([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)(\s*:)", r'\1"\2"\3', s)
+    # Trailing commas
+    s = re.sub(r",\s*([}\]])", r"\1", s)
+    return s
+
+# ── Extrae contenido con brackets balanceados ──────────────────────────────
+def balanced(text, pos, o, c):
+    depth = 0
+    for i in range(pos, min(pos + 80000, len(text))):
+        if text[i] == o: depth += 1
+        elif text[i] == c:
+            depth -= 1
+            if depth == 0:
+                return text[pos:i+1]
+    return None
+
 def get_all_js(html, base_url):
     merged = html
     pat_inline = re.compile(r"<script[^>]*>([\s\S]*?)</script>", re.IGNORECASE)
@@ -164,11 +187,11 @@ def item_to_entry(item, reg):
     if tope <= 0: tope = len(item.get("fecha", item.get("texto", [])))
     if tope <= 0: return None
     loc = LOC_BY_INDICE[indice]
-    fecha = item.get("fecha", item.get("date", []))
     texto = item.get("texto", item.get("text", []))
     temp  = item.get("temperatura", item.get("temperature", item.get("temp", [])))
     viento = item.get("viento", item.get("wind", []))
     precip = item.get("precipitacion", item.get("precip", []))
+    fecha  = item.get("fecha", item.get("date", []))
     mins, maxs = parse_temp(temp)
     dates = infer_dates(tope, fecha)
     texts = pad(texto, tope, "")
@@ -200,49 +223,53 @@ def item_to_entry(item, reg):
         "horizon_days": tope,
     }
 
-def extract_items(js):
+# ── Extrae items Pronostico.push({...}) del JS ─────────────────────────────
+def extract_push_items(js):
     items = []
-    for vname in ["Pronostico","pronostico","datos","Datos","forecast","data"]:
-        m = re.search(vname + r"\s*=\s*(\[[\s\S]*?\])\s*;", js)
-        if m:
-            try:
-                raw = re.sub(r",\s*([\}\]])", r"\1", m.group(1))
-                arr = json.loads(raw)
-                if isinstance(arr, list) and arr:
-                    print("  var "+vname+": "+str(len(arr))+" items")
-                    return arr
-            except Exception as e:
-                print("  parse err "+vname+": "+str(e)[:80])
-    for m in re.finditer(r"[Pp]ronostico\.push\s*\(\s*\{", js):
-        start = m.end()-1
-        depth,i = 0, start
-        while i < len(js) and i < start+8000:
-            c = js[i]
-            if c == "{": depth += 1
-            elif c == "}":
-                depth -= 1
-                if depth == 0:
-                    try:
-                        raw = re.sub(r",\s*([\}\]])", r"\1", js[start:i+1])
-                        items.append(json.loads(raw))
-                    except Exception: pass
-                    break
-            i += 1
-    if items: print("  push(): "+str(len(items))+" items")
+    pat = re.compile(r"[Pp]ronostico\.push\s*\(\s*\{")
+    for m in pat.finditer(js):
+        obj_str = balanced(js, m.end()-1, "{", "}")
+        if not obj_str: continue
+        try:
+            obj = json.loads(js_obj_to_json(obj_str))
+            items.append(obj)
+        except Exception as e:
+            # Debug: mostrar primeros 120 chars del objeto fallido
+            print("  push parse err: " + str(e)[:60] + " | " + obj_str[:120].replace("\n"," "))
     return items
 
+# ── Extrae array var Pronostico = [...] del JS ─────────────────────────────
+def extract_var_array(js, varname):
+    pat = re.compile(varname + r"\s*=\s*\[")
+    m = pat.search(js)
+    if not m: return []
+    arr_str = balanced(js, m.end()-1, "[", "]")
+    if not arr_str: return []
+    try:
+        return json.loads(js_obj_to_json(arr_str))
+    except Exception as e:
+        print("  var " + varname + " parse err: " + str(e)[:80])
+        return []
+
+def extract_items(js):
+    # 1) Buscar Pronostico.push({...})
+    items = extract_push_items(js)
+    if items:
+        print("  push(): " + str(len(items)) + " items")
+        return items
+    # 2) Buscar var Pronostico = [...]
+    for vname in ["Pronostico", "pronostico"]:
+        arr = extract_var_array(js, vname)
+        if arr:
+            print("  var " + vname + ": " + str(len(arr)) + " items")
+            return arr
+    print("  WARNING: no items encontrados")
+    return []
+
 def process_region(reg):
-    url = "https://archivos.meteochile.gob.cl/portaldmc/pronosticos/pronosticoRegion.php?reg="+reg
+    url = "https://archivos.meteochile.gob.cl/portaldmc/pronosticos/pronosticoRegion.php?reg=" + reg
     html = fetch_text(url)
-    if reg == "05m":
-        print("[DEBUG 05m] HTML="+str(len(html))+" chars")
-        for kw in ["Pronostico","pronostico","temperatura","stgoc","push(","JSON"]:
-            print("[DEBUG 05m] "+kw+": "+str(html.count(kw)))
-        print("[DEBUG 05m] HTML inicio:")
-        print(html[:1200])
     js = get_all_js(html, url)
-    if reg == "05m":
-        print("[DEBUG 05m] JS total="+str(len(js)))
     items = extract_items(js)
     results = {}
     for item in items:
@@ -259,14 +286,14 @@ def main():
             data = process_region(reg)
             cache["localities"].update(data)
             ok += len(data)
-            print("OK "+reg+": "+str(len(data)))
+            print("OK " + reg + ": " + str(len(data)))
         except Exception as e:
             fail += 1
-            print("FAIL "+reg+": "+str(e))
+            print("FAIL " + reg + ": " + str(e))
     cache["stats"] = {"ok_localities": ok, "fail_regions": fail}
     with open("dmc_cache.json", "w", encoding="utf-8") as f:
         json.dump(cache, f, ensure_ascii=False, indent=2)
-    print("TOTAL: "+str(ok)+" localidades, "+str(fail)+" fallos")
+    print("TOTAL: " + str(ok) + " localidades, " + str(fail) + " fallos")
 
 if __name__ == "__main__":
     main()
