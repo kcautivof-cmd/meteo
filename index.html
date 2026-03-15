@@ -6011,7 +6011,17 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
             return String(src).toUpperCase();
         }
         function timelineSummaryText(daily, i){
-            return Array.isArray(daily.__summary_text) ? (daily.__summary_text[i] || '') : '';
+            // FIX: deduplica y filtra vacíos en el array de periodos
+            const raw = Array.isArray(daily.__summary_text) ? daily.__summary_text[i] : null;
+            if (!raw) return '';
+            const arr = Array.isArray(raw) ? raw : [raw];
+            const seen = new Set();
+            const unique = [];
+            for (const t of arr) {
+                const clean = (t || '').trim().toUpperCase();
+                if (clean && !seen.has(clean)) { seen.add(clean); unique.push(clean); }
+            }
+            return unique.join(', ');
         }
         function timelineWindMin(daily, i, fallbackVal){
             const v = Array.isArray(daily.__wind_min_kmh) ? daily.__wind_min_kmh[i] : null;
