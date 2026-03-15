@@ -1,16 +1,12 @@
 #!/usr/bin/env python3
-"""
-GitHub Actions: scraping DMC meteochile.gob.cl → dmc_cache.json
-Parser v2: extrae datos desde JavaScript embebido (Pronostico.push / var Pronostico)
-"""
-import re, json, math, unicodedata, sys
+import re, json, sys, unicodedata
 from datetime import datetime, date, timedelta
 from urllib.request import urlopen, Request
-from urllib.error import URLError
+from urllib.parse import urlparse
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "Accept": "text/html,application/xhtml+xml,*/*",
     "Accept-Language": "es-CL,es;q=0.9",
     "Referer": "https://www.meteochile.gob.cl/"
 }
@@ -24,7 +20,7 @@ DMC_LOCALITIES = [
   {"indice":"colchane","ciudad":"Colchane","reg":"01b","lat":-19.277,"lon":-68.639},
   {"indice":"iquique","ciudad":"Iquique","reg":"01b","lat":-20.216,"lon":-70.153},
   {"indice":"pica","ciudad":"Pica","reg":"01b","lat":-20.491,"lon":-69.329},
-  {"indice":"ollague","ciudad":"Ollagüe","reg":"02","lat":-21.225,"lon":-68.254},
+  {"indice":"ollague","ciudad":"Ollague","reg":"02","lat":-21.225,"lon":-68.254},
   {"indice":"tocopilla","ciudad":"Tocopilla","reg":"02","lat":-22.092,"lon":-70.197},
   {"indice":"calama","ciudad":"Calama","reg":"02","lat":-22.456,"lon":-68.923},
   {"indice":"snpedro","ciudad":"San Pedro de Atacama","reg":"02","lat":-22.911,"lon":-68.201},
@@ -32,19 +28,19 @@ DMC_LOCALITIES = [
   {"indice":"antofagasta","ciudad":"Antofagasta","reg":"02","lat":-23.650,"lon":-70.400},
   {"indice":"taltal","ciudad":"Taltal","reg":"02","lat":-25.408,"lon":-70.485},
   {"indice":"salvador","ciudad":"El Salvador","reg":"03","lat":-26.314,"lon":-69.544},
-  {"indice":"chanaral","ciudad":"Chañaral","reg":"03","lat":-26.348,"lon":-70.623},
+  {"indice":"chanaral","ciudad":"Chanaral","reg":"03","lat":-26.348,"lon":-70.623},
   {"indice":"caldera","ciudad":"Caldera","reg":"03","lat":-27.067,"lon":-70.825},
-  {"indice":"copiapo","ciudad":"Copiapó","reg":"03","lat":-27.366,"lon":-70.332},
+  {"indice":"copiapo","ciudad":"Copiapo","reg":"03","lat":-27.366,"lon":-70.332},
   {"indice":"huasco","ciudad":"Huasco","reg":"03","lat":-28.464,"lon":-71.218},
   {"indice":"vallenar","ciudad":"Vallenar","reg":"03","lat":-28.576,"lon":-70.759},
   {"indice":"serena","ciudad":"La Serena","reg":"04","lat":-29.902,"lon":-71.251},
-  {"indice":"vicuna","ciudad":"Vicuña","reg":"04","lat":-30.031,"lon":-70.708},
+  {"indice":"vicuna","ciudad":"Vicuna","reg":"04","lat":-30.031,"lon":-70.708},
   {"indice":"ovalle","ciudad":"Ovalle","reg":"04","lat":-30.598,"lon":-71.200},
   {"indice":"illapel","ciudad":"Illapel","reg":"04","lat":-31.633,"lon":-71.170},
   {"indice":"vilos","ciudad":"Los Vilos","reg":"04","lat":-31.908,"lon":-71.507},
   {"indice":"papudo","ciudad":"Papudo","reg":"05","lat":-32.507,"lon":-71.441},
-  {"indice":"valpo","ciudad":"Valparaíso","reg":"05","lat":-33.047,"lon":-71.613},
-  {"indice":"vdelmar","ciudad":"Viña del Mar","reg":"05","lat":-33.024,"lon":-71.552},
+  {"indice":"valpo","ciudad":"Valparaiso","reg":"05","lat":-33.047,"lon":-71.613},
+  {"indice":"vdelmar","ciudad":"Vina del Mar","reg":"05","lat":-33.024,"lon":-71.552},
   {"indice":"snantonio","ciudad":"San Antonio","reg":"05","lat":-33.593,"lon":-71.607},
   {"indice":"stgoo","ciudad":"Santiago Oriente","reg":"05m","lat":-33.437,"lon":-70.650},
   {"indice":"stgoc","ciudad":"Santiago Centro","reg":"05m","lat":-33.448,"lon":-70.669},
@@ -56,13 +52,13 @@ DMC_LOCALITIES = [
   {"indice":"snfernando","ciudad":"San Fernando","reg":"06","lat":-34.586,"lon":-70.989},
   {"indice":"stacruz","ciudad":"Santa Cruz","reg":"06","lat":-34.638,"lon":-71.365},
   {"indice":"pichilemu","ciudad":"Pichilemu","reg":"06","lat":-34.392,"lon":-72.006},
-  {"indice":"curico","ciudad":"Curicó","reg":"07","lat":-34.982,"lon":-71.239},
+  {"indice":"curico","ciudad":"Curico","reg":"07","lat":-34.982,"lon":-71.239},
   {"indice":"talca","ciudad":"Talca","reg":"07","lat":-35.426,"lon":-71.655},
-  {"indice":"constitucion","ciudad":"Constitución","reg":"07","lat":-35.333,"lon":-72.417},
+  {"indice":"constitucion","ciudad":"Constitucion","reg":"07","lat":-35.333,"lon":-72.417},
   {"indice":"linares","ciudad":"Linares","reg":"07","lat":-35.846,"lon":-71.593},
-  {"indice":"chillan","ciudad":"Chillán","reg":"08a","lat":-36.606,"lon":-72.103},
-  {"indice":"concepcion","ciudad":"Concepción","reg":"08b","lat":-36.827,"lon":-73.050},
-  {"indice":"angeles","ciudad":"Los Ángeles","reg":"08b","lat":-37.469,"lon":-72.353},
+  {"indice":"chillan","ciudad":"Chillan","reg":"08a","lat":-36.606,"lon":-72.103},
+  {"indice":"concepcion","ciudad":"Concepcion","reg":"08b","lat":-36.827,"lon":-73.050},
+  {"indice":"angeles","ciudad":"Los Angeles","reg":"08b","lat":-37.469,"lon":-72.353},
   {"indice":"angol","ciudad":"Angol","reg":"09","lat":-37.798,"lon":-72.716},
   {"indice":"temuco","ciudad":"Temuco","reg":"09","lat":-38.739,"lon":-72.598},
   {"indice":"villarica","ciudad":"Villarrica","reg":"09","lat":-39.285,"lon":-72.227},
@@ -71,7 +67,7 @@ DMC_LOCALITIES = [
   {"indice":"pmontt","ciudad":"Puerto Montt","reg":"10b","lat":-41.469,"lon":-72.942},
   {"indice":"ancud","ciudad":"Ancud","reg":"10b","lat":-41.870,"lon":-73.820},
   {"indice":"castro","ciudad":"Castro","reg":"10b","lat":-42.482,"lon":-73.764},
-  {"indice":"chaiten","ciudad":"Chaitén","reg":"10b","lat":-42.915,"lon":-72.707},
+  {"indice":"chaiten","ciudad":"Chaiten","reg":"10b","lat":-42.915,"lon":-72.707},
   {"indice":"coyhaique","ciudad":"Coyhaique","reg":"11","lat":-45.571,"lon":-72.068},
   {"indice":"balmaceda","ciudad":"Balmaceda","reg":"11","lat":-45.915,"lon":-71.689},
   {"indice":"cochrane","ciudad":"Cochrane","reg":"11","lat":-47.255,"lon":-72.573},
@@ -80,19 +76,17 @@ DMC_LOCALITIES = [
   {"indice":"porvenir","ciudad":"Porvenir","reg":"12","lat":-53.296,"lon":-70.366},
   {"indice":"pwilliams","ciudad":"Puerto Williams","reg":"12","lat":-54.935,"lon":-67.605},
   {"indice":"rapanui","ciudad":"Rapa Nui","reg":"ip","lat":-27.112,"lon":-109.349},
-  {"indice":"jfernandez","ciudad":"Juan Fernández","reg":"jf","lat":-33.639,"lon":-78.829},
-  {"indice":"antartica","ciudad":"Antártica","reg":"an","lat":-62.190,"lon":-58.986},
+  {"indice":"jfernandez","ciudad":"Juan Fernandez","reg":"jf","lat":-33.639,"lon":-78.829},
+  {"indice":"antartica","ciudad":"Antartica","reg":"an","lat":-62.190,"lon":-58.986},
 ]
-
 LOC_BY_INDICE = {p["indice"]: p for p in DMC_LOCALITIES}
 
 TEXT_TO_CODE = {
-    "despejado": 0, "soleado": 1, "mayormente despejado": 1, "mayormente soleado": 1,
-    "parcialmente nublado": 2, "nublado": 3, "cubierto": 3, "mayormente nublado": 3,
-    "niebla": 45, "neblina": 45, "lluvia debil": 61, "lluvia ligera": 61,
-    "lluvia": 63, "lluvia intensa": 65, "llovizna": 51,
-    "chubascos": 80, "chubascos aislados": 80, "nieve": 73, "tormenta": 95,
-    "despejado (soleado)": 1, "cielo despejado": 0,
+    "despejado":0,"soleado":1,"mayormente despejado":1,"mayormente soleado":1,
+    "parcialmente nublado":2,"nublado":3,"cubierto":3,"mayormente nublado":3,
+    "niebla":45,"neblina":45,"lluvia debil":61,"lluvia ligera":61,
+    "lluvia":63,"lluvia intensa":65,"llovizna":51,
+    "chubascos":80,"nieve":73,"tormenta":95,
 }
 
 def nrm(s):
@@ -100,11 +94,10 @@ def nrm(s):
     s = "".join(c for c in s if unicodedata.category(c) != "Mn")
     return re.sub(r"\s+", " ", s).strip()
 
-def text_to_wcode(text):
-    n = nrm(text)
+def text_to_wcode(t):
+    n = nrm(t)
     for k, v in sorted(TEXT_TO_CODE.items(), key=lambda x: -len(x[0])):
-        if k in n:
-            return v
+        if k in n: return v
     return 1
 
 def fetch_text(url):
@@ -112,253 +105,168 @@ def fetch_text(url):
     with urlopen(req, timeout=25) as r:
         raw = r.read()
     for enc in ("utf-8", "latin-1", "iso-8859-1"):
-        try:
-            return raw.decode(enc)
-        except Exception:
-            pass
+        try: return raw.decode(enc)
+        except Exception: pass
     return raw.decode("latin-1", errors="replace")
 
-def extract_js_array(js_text, var_name):
-    """Extrae el valor de var varName = [...] o varName = [...]"""
-    pattern = rf"(?:var\s+)?{re.escape(var_name)}\s*=\s*(\[[\s\S]*?\])\s*;"
-    m = re.search(pattern, js_text)
-    if not m:
-        return None
-    try:
-        # Limpiar comentarios JS simples y parsear
-        val = m.group(1)
-        val = re.sub(r"//[^\n]*", "", val)
-        val = re.sub(r",\s*([}\]])", r"\1", val)  # trailing commas
-        return json.loads(val)
-    except Exception:
-        return None
-
-def extract_pronostico_push(js_text):
-    """Extrae items de Pronostico.push({...}) o similar"""
-    items = []
-    # Buscar patrones: Pronostico.push({...}) con llaves balanceadas
-    pattern = r"Pronostico\.push\(\{"
-    for m in re.finditer(pattern, js_text, re.IGNORECASE):
-        start = m.end() - 1  # posición del {
-        depth = 0
-        i = start
-        while i < len(js_text):
-            c = js_text[i]
-            if c == "{": depth += 1
-            elif c == "}":
-                depth -= 1
-                if depth == 0:
-                    obj_str = js_text[start:i+1]
-                    try:
-                        obj_str_clean = re.sub(r"//[^\n]*", "", obj_str)
-                        obj_str_clean = re.sub(r",\s*([}\]])", r"\1", obj_str_clean)
-                        obj = json.loads(obj_str_clean)
-                        items.append(obj)
-                    except Exception:
-                        pass
-                    break
-            i += 1
-    return items
-
-def extract_inline_scripts(html):
-    return re.findall(r"<script[^>]*>([\s\S]*?)</script>", html, re.IGNORECASE)
-
-def extract_script_urls(html, base_url):
-    urls = []
-    pat_src = re.compile(r'src=["\'](http[^"\']+)["\']')
-    for m in re.finditer(pat_src, html):
+def get_all_js(html, base_url):
+    merged = html
+    pat_inline = re.compile(r"<script[^>]*>([\s\S]*?)</script>", re.IGNORECASE)
+    for m in pat_inline.finditer(html):
+        merged += "\n" + m.group(1)
+    pat_src = re.compile(r'<script[^>]+src="([^"]+)"')
+    for m in pat_src.finditer(html):
         src = m.group(1)
-        if src.startswith("http"):
-            urls.append(src)
-        elif src.startswith("/"):
-            from urllib.parse import urlparse
+        if not src.startswith("http"):
             p = urlparse(base_url)
-            urls.append(f"{p.scheme}://{p.netloc}{src}")
-        else:
-            urls.append(base_url.rsplit("/", 1)[0] + "/" + src)
-    return urls
+            src = (p.scheme+"://"+p.netloc+src) if src.startswith("/") else (base_url.rsplit("/",1)[0]+"/"+src)
+        try: merged += "\n" + fetch_text(src)
+        except Exception: pass
+    return merged
 
-def parse_temp_array(val):
-    """Normaliza array de temperaturas: puede ser [min,max,min,max,...] o [[min,max],...]"""
-    if not isinstance(val, list) or not val:
-        return [], []
+def parse_temp(val):
+    if not isinstance(val, list) or not val: return [], []
     if isinstance(val[0], list):
-        mins = [v[0] if len(v) > 0 else None for v in val]
-        maxs = [v[1] if len(v) > 1 else None for v in val]
-        return mins, maxs
-    # Flat: pares [min, max, min, max, ...]
-    if len(val) % 2 == 0 and all(isinstance(x, (int, float)) for x in val):
-        mins = [val[i] for i in range(0, len(val), 2)]
-        maxs = [val[i] for i in range(1, len(val), 2)]
-        return mins, maxs
-    # Solo un valor por día
+        return [v[0] if v else None for v in val], [v[1] if len(v)>1 else None for v in val]
+    if len(val) >= 2 and len(val) % 2 == 0:
+        return [val[i] for i in range(0,len(val),2)], [val[i] for i in range(1,len(val),2)]
     return val, val
 
-def infer_dates_from_tope(tope, fecha_arr=None):
+def pad(arr, n, d=None):
+    arr = list(arr) if arr else []
+    return (arr + [d]*n)[:n]
+
+def infer_dates(tope, fecha=None):
     today = date.today()
-    if fecha_arr and len(fecha_arr) >= tope:
-        dates = []
-        for f in fecha_arr[:tope]:
+    if fecha and len(fecha) >= tope:
+        out = []
+        for i, f in enumerate(fecha[:tope]):
             try:
                 day = int(re.search(r"\d+", str(f)).group())
-                candidate = today.replace(day=day)
-                if dates:
-                    # Avanzar desde el último
-                    prev = date.fromisoformat(dates[-1])
-                    candidate = prev + timedelta(days=1)
-                elif candidate < today - timedelta(days=1):
-                    m = today.month + 1 if today.month < 12 else 1
-                    y = today.year if today.month < 12 else today.year + 1
-                    try:
-                        candidate = date(y, m, day)
-                    except Exception:
-                        candidate = today
-                dates.append(candidate.isoformat())
+                if not out:
+                    c = today.replace(day=day)
+                    if c < today - timedelta(days=1):
+                        m2 = today.month+1 if today.month < 12 else 1
+                        y2 = today.year if today.month < 12 else today.year+1
+                        c = date(y2, m2, day)
+                else:
+                    c = date.fromisoformat(out[-1]) + timedelta(days=1)
+                out.append(c.isoformat())
             except Exception:
-                dates.append((today + timedelta(days=len(dates))).isoformat())
-        return dates
-    return [(today + timedelta(days=i)).isoformat() for i in range(tope)]
+                out.append((today+timedelta(days=i)).isoformat())
+        return out
+    return [(today+timedelta(days=i)).isoformat() for i in range(tope)]
 
 def item_to_entry(item, reg):
-    """Convierte un item JS de Pronostico a entrada de cache."""
-    indice = str(item.get("indice", "")).lower().strip()
-    if not indice:
-        return None
-    loc = LOC_BY_INDICE.get(indice)
-    if not loc:
-        return None
-
+    indice = str(item.get("indice","")).lower().strip()
+    if not indice or indice not in LOC_BY_INDICE: return None
     tope = int(item.get("tope", 0))
-    if tope <= 0:
-        return None
-
+    if tope <= 0: tope = len(item.get("fecha", item.get("texto", [])))
+    if tope <= 0: return None
+    loc = LOC_BY_INDICE[indice]
     fecha = item.get("fecha", item.get("date", []))
     texto = item.get("texto", item.get("text", []))
-    icono = item.get("icono", item.get("icon", []))
     temp  = item.get("temperatura", item.get("temperature", item.get("temp", [])))
     viento = item.get("viento", item.get("wind", []))
-    precip = item.get("precipitacion", item.get("precip", item.get("precipitation", [])))
-
-    mins, maxs = parse_temp_array(temp)
-
-    # Padding/truncado a tope
-    def pad(arr, n, default=None):
-        arr = list(arr) if arr else []
-        return (arr + [default] * n)[:n]
-
-    dates = infer_dates_from_tope(tope, fecha)
+    precip = item.get("precipitacion", item.get("precip", []))
+    mins, maxs = parse_temp(temp)
+    dates = infer_dates(tope, fecha)
     texts = pad(texto, tope, "")
-    tmins = pad(mins, tope, None)
-    tmaxs = pad(maxs, tope, None)
-
-    # Viento: puede ser array de strings "10 a 20 km/h" o numérico
+    tmins = pad(mins, tope)
+    tmaxs = pad(maxs, tope)
     wind_max = []
-    for w in pad(viento, tope, None):
-        if w is None:
-            wind_max.append(None)
-        elif isinstance(w, (int, float)):
-            wind_max.append(float(w))
+    for w in pad(viento, tope):
+        if w is None: wind_max.append(None)
+        elif isinstance(w, (int, float)): wind_max.append(float(w))
         else:
             nums = re.findall(r"\d+", str(w))
             wind_max.append(max(int(x) for x in nums) if nums else None)
-
-    # Precipitación
     prec_arr = []
-    for p in pad(precip, tope, 0):
-        try:
-            prec_arr.append(float(p) if p is not None else 0.0)
-        except Exception:
-            prec_arr.append(0.0)
-
-    # Weather codes desde texto
-    wcodes = [text_to_wcode(t) for t in texts]
-
+    for p2 in pad(precip, tope, 0):
+        try: prec_arr.append(float(p2) if p2 else 0.0)
+        except Exception: prec_arr.append(0.0)
     return {
-        "indice": indice,
-        "ciudad": loc["ciudad"],
-        "reg": reg,
-        "lat": loc["lat"],
-        "lon": loc["lon"],
+        "indice": indice, "ciudad": loc["ciudad"], "reg": reg,
+        "lat": loc["lat"], "lon": loc["lon"],
         "daily": {
             "time": dates,
             "temperature_2m_max": tmaxs,
             "temperature_2m_min": tmins,
             "precipitation_sum": prec_arr,
             "wind_speed_10m_max": wind_max,
-            "weather_code": wcodes,
+            "weather_code": [text_to_wcode(t) for t in texts],
             "summary_text": texts,
         },
         "horizon_days": tope,
     }
 
-def parse_region(html, base_url, reg):
-    """Extrae todos los items Pronostico del HTML+JS de una región."""
-    # Juntar HTML + scripts inline + scripts externos
-    merged = html
-    for s in extract_inline_scripts(html):
-        merged += "\n" + s
-
-    script_urls = extract_script_urls(html, base_url)
-    for url in script_urls:
-        try:
-            merged += "\n" + fetch_text(url)
-        except Exception:
-            pass
-
-    # Buscar var Pronostico = [...]
+def extract_items(js):
     items = []
-    arr = extract_js_array(merged, "Pronostico") or extract_js_array(merged, "pronostico")
-    if arr and isinstance(arr, list):
-        items = arr
-    else:
-        items = extract_pronostico_push(merged)
+    for vname in ["Pronostico","pronostico","datos","Datos","forecast","data"]:
+        m = re.search(vname + r"\s*=\s*(\[[\s\S]*?\])\s*;", js)
+        if m:
+            try:
+                raw = re.sub(r",\s*([\}\]])", r"\1", m.group(1))
+                arr = json.loads(raw)
+                if isinstance(arr, list) and arr:
+                    print("  var "+vname+": "+str(len(arr))+" items")
+                    return arr
+            except Exception as e:
+                print("  parse err "+vname+": "+str(e)[:80])
+    for m in re.finditer(r"[Pp]ronostico\.push\s*\(\s*\{", js):
+        start = m.end()-1
+        depth,i = 0, start
+        while i < len(js) and i < start+8000:
+            c = js[i]
+            if c == "{": depth += 1
+            elif c == "}":
+                depth -= 1
+                if depth == 0:
+                    try:
+                        raw = re.sub(r",\s*([\}\]])", r"\1", js[start:i+1])
+                        items.append(json.loads(raw))
+                    except Exception: pass
+                    break
+            i += 1
+    if items: print("  push(): "+str(len(items))+" items")
+    return items
 
+def process_region(reg):
+    url = "https://archivos.meteochile.gob.cl/portaldmc/pronosticos/pronosticoRegion.php?reg="+reg
+    html = fetch_text(url)
+    if reg == "05m":
+        print("[DEBUG 05m] HTML="+str(len(html))+" chars")
+        for kw in ["Pronostico","pronostico","temperatura","stgoc","push(","JSON"]:
+            print("[DEBUG 05m] "+kw+": "+str(html.count(kw)))
+        print("[DEBUG 05m] HTML inicio:")
+        print(html[:1200])
+    js = get_all_js(html, url)
+    if reg == "05m":
+        print("[DEBUG 05m] JS total="+str(len(js)))
+    items = extract_items(js)
     results = {}
     for item in items:
-        entry = item_to_entry(item, reg)
-        if entry:
-            results[entry["indice"]] = entry
-
-    return results, len(items)
+        if isinstance(item, dict):
+            entry = item_to_entry(item, reg)
+            if entry: results[entry["indice"]] = entry
+    return results
 
 def main():
-    cache = {"generated_at": datetime.utcnow().isoformat() + "Z", "localities": {}}
-    ok_count = 0
-    fail_count = 0
-    fetched_regs = []
-    debug_info = []
-
+    cache = {"generated_at": datetime.utcnow().isoformat()+"Z", "localities": {}}
+    ok, fail = 0, 0
     for reg in DMC_REGIONS:
-        url = f"https://archivos.meteochile.gob.cl/portaldmc/pronosticos/pronosticoRegion.php?reg={reg}"
         try:
-            html = fetch_text(url)
-            data, raw_items = parse_region(html, url, reg)
+            data = process_region(reg)
             cache["localities"].update(data)
-            ok_count += len(data)
-            fetched_regs.append(reg)
-            status = f"OK {reg}: {len(data)} localidades (raw_items={raw_items})"
-            debug_info.append(status)
-            print(f"  {status}", flush=True)
+            ok += len(data)
+            print("OK "+reg+": "+str(len(data)))
         except Exception as e:
-            fail_count += 1
-            status = f"FAIL {reg}: {e}"
-            debug_info.append(status)
-            print(f"  {status}", flush=True)
-
-    cache["stats"] = {
-        "ok_localities": ok_count,
-        "fail_regions": fail_count,
-        "fetched_regions": fetched_regs,
-        "debug": debug_info,
-    }
-
+            fail += 1
+            print("FAIL "+reg+": "+str(e))
+    cache["stats"] = {"ok_localities": ok, "fail_regions": fail}
     with open("dmc_cache.json", "w", encoding="utf-8") as f:
         json.dump(cache, f, ensure_ascii=False, indent=2)
-
-    print(f"\n✅ dmc_cache.json: {ok_count} localidades, {fail_count} fallos", flush=True)
-    if ok_count == 0:
-        print("⚠️  ADVERTENCIA: 0 localidades — DMC puede haber cambiado estructura JS", flush=True)
-        sys.exit(0)  # no falla el workflow aunque sea 0
+    print("TOTAL: "+str(ok)+" localidades, "+str(fail)+" fallos")
 
 if __name__ == "__main__":
     main()
