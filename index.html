@@ -62,11 +62,11 @@
     else if(sourceVal === 'pirate') source = 'Pirate Weather';
     else if(sourceVal === 'accuweather') source = 'AccuWeather';
     else if(sourceVal === 'dmc') source = 'Dirección Meteorológica de Chile';
-    else if(sourceVal === 'dmc_accu') source = 'DMC + AccuWeather';
+    else if(sourceVal === 'dmc_accu') source = 'DMC / AccuWeather';
     else if(sourceVal === 'auto'){
       const forecastSource = qs('forecastSource')?.value;
       const uavSource = qs('uavSource')?.value;
-      if(forecastSource === 'dmc_accu' || uavSource === 'dmc_accu') source = 'DMC + AccuWeather';
+      if(forecastSource === 'dmc_accu' || uavSource === 'dmc_accu') source = 'DMC / AccuWeather';
       else if(forecastSource === 'accuweather' || uavSource === 'accuweather') source = 'AccuWeather';
       else if(forecastSource === 'dmc' || uavSource === 'dmc') source = 'Dirección Meteorológica de Chile';
       else source = 'Open-Meteo';
@@ -3066,7 +3066,7 @@ input, select {
     <div style="font-weight:700;">ANEXO 2 – <span id="forecastVarTitle">Evolución térmica</span></div>
     <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
   <select id="forecastSource" style="font-size:12px; padding:2px 6px;">
-    <option value="dmc_accu" selected>DMC + AccuWeather</option>
+    <option value="dmc_accu" selected>DMC / AccuWeather</option>
     <option value="dmc">DMC</option>
     <option value="openmeteo">Open‑Meteo (Forecast)</option>
     <option value="accuweather">AccuWeather (Core)</option>
@@ -3115,7 +3115,7 @@ input, select {
     <div style="font-weight:700;letter-spacing:1px;font-size:12px;">✈ AeroForecast</div>
     <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
       <select id="uavSource" onchange="loadUAVForecast()" style="font-size:11px;padding:2px 6px;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:3px;">
-        <option value="dmc_accu" selected>🛡️ DMC + AccuWeather</option>
+        <option value="dmc_accu" selected>🛡️ DMC / AccuWeather</option>
         <option value="accuweather">🎯 AccuWeather</option>
         <option value="openmeteo">🌐 Open-Meteo</option>
       </select>
@@ -3176,7 +3176,7 @@ input, select {
       <div style="font-size:16px;font-weight:700;" id="uavTemp">--°C</div>
     </div>
   </div>
-  <div id="uavSourceNote" style="text-align:center;padding:3px 8px;font-size:9px;color:var(--muted);border-top:1px solid var(--border);">📡 Sin TFRs ni NFZs · Fuente recomendada: DMC + AccuWeather · Pronóstico oficial base: WRF DMC</div>
+  <div id="uavSourceNote" style="text-align:center;padding:3px 8px;font-size:9px;color:var(--muted);border-top:1px solid var(--border);">📡 Sin TFRs ni NFZs · Fuente recomendada: DMC / AccuWeather · Pronóstico oficial base: WRF DMC</div>
   <div style="border-top:2px solid var(--border);padding:8px 10px;background:var(--panel);">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;margin-bottom:6px;">
       <div style="font-weight:700;font-size:11px;letter-spacing:.8px;">⚙️ UMBRAL DE VUELO</div>
@@ -3232,7 +3232,7 @@ input, select {
       <div style="font-weight:700;font-size:11px;letter-spacing:.8px;">📅 PRONÓSTICO VUELO · 15 DÍAS</div>
       <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;">
         <select id="uav15source" onchange="loadUAV15Day()" style="font-size:10px;padding:2px 5px;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:3px;cursor:pointer;">
-          <option value="dmc_accu" selected>🛡️ DMC + AccuWeather</option>
+          <option value="dmc_accu" selected>🛡️ DMC / AccuWeather</option>
           <option value="accuweather">🎯 AccuWeather</option>
           <option value="openmeteo">🌐 Open-Meteo</option>
         </select>
@@ -7975,11 +7975,11 @@ function updateAnnex2UI() {
     if (rangeSel) rangeSel.style.display = "inline-block";
     if (accuMode) accuMode.style.display = "none";
     if (label) label.textContent = src === "dmc_accu"
-      ? "Fuente: DMC + AccuWeather (recomendada) · Base oficial WRF DMC"
+      ? "Fuente: DMC / AccuWeather (recomendada) · Base oficial WRF DMC"
       : "Fuente: Dirección Meteorológica de Chile · Modelo: WRF DMC";
     if (badge) badge.style.display = "inline-flex";
     renderAnnex2Status(src === "dmc_accu"
-      ? "Modo híbrido activo: DMC como base oficial y AccuWeather como apoyo para lectura complementaria en variables técnicas."
+      ? "Modo híbrido activo: DMC como base oficial, con AccuWeather como apoyo para lectura complementaria en variables técnicas."
       : "DMC / WRF DMC activo vía pronóstico oficial web. El horizonte y las variables visibles se leen desde la publicación oficial; las variables técnicas no publicadas por DMC se mantienen con respaldo complementario.");
     renderAnnex2Vars(src === "dmc_accu"
       ? [
@@ -8143,7 +8143,7 @@ async function _uDMAW(lat,lon){
     wx:_uTextToWx(firstSummary,cur?.weather_code),
     sunrise:sun.sr,
     sunset:sun.ss,
-    src:'DMC oficial + AccuWeather + NOAA Kp'
+    src:'DMC oficial / AccuWeather / NOAA Kp'
   };
 }
 async function loadUAVForecast(){
@@ -8313,7 +8313,7 @@ async function loadUAV15Day(){
     if(tsEl)tsEl.textContent=new Date().toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'});
     if(noteEl){
       const lbl = src==='dmc_accu'
-        ? 'DMC + AccuWeather (DMC base 7–10d + extensión AccuWeather)'
+        ? 'DMC / AccuWeather (DMC base 7–10d con extensión AccuWeather)'
         : (src==='accuweather' ? 'AccuWeather '+(uav15Cache.days?.length>=10?'15d':'5d fallback') : 'Open-Meteo 16d');
       noteEl.textContent='Viento / ráfagas / lluvia máx en rango horario · '+lbl;
     }
