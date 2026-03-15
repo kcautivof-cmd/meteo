@@ -427,14 +427,369 @@
     return 'La lectura prioriza efectos directos sobre ejecución, seguridad y oportunidad de las actividades previstas en terreno.';
   }
 
+
   function reportFocusHint(cfg){
-    const s = `${cfg.focus || ''} ${cfg.type || ''}`.toLowerCase();
-    if(/rpas|dron|aeron/.test(s)) return 'Se da prioridad a viento, ráfagas, visibilidad, techo y precipitación para apoyar evaluación de empleo RPAS.';
-    if(/miner/.test(s)) return 'Se da prioridad a polvo potencial, visibilidad, viento, ráfagas y estabilidad del tramo para continuidad de faena.';
-    if(/logíst|logist|convoy|desplaz/.test(s)) return 'Se da prioridad a visibilidad, precipitación, viento y ventanas de tránsito para desplazamiento seguro.';
-    if(/seguridad|patrull|terreno/.test(s)) return 'Se da prioridad a exposición del personal, lectura del entorno, radiación, viento y cambios de visibilidad.';
-    return 'Se da prioridad al comportamiento integrado de temperatura, viento, ráfagas, visibilidad, nubosidad y precipitación.';
+    const focus = getDoctrineFocus(cfg);
+    if(focus.id === 'rpas') return 'Se da prioridad a viento, ráfagas, visibilidad, techo, precipitación y franjas horarias útiles para empleo RPAS o aeronáutico.';
+    if(focus.id === 'terreno') return 'Se da prioridad a la observación secuencial en terreno: viento, nubosidad, visibilidad, humedad, temperatura, precipitación y presión.';
+    if(focus.id === 'ipb') return 'Se da prioridad a la matriz THVNPV y a la incidencia del tiempo atmosférico sobre la misión, el personal, la movilidad y los medios principales.';
+    if(focus.id === 'ejecutivo') return 'Se da prioridad a una lectura breve de condición, restricción dominante, ventana útil y recomendación de mando.';
+    return 'Se da prioridad a variables críticas, umbrales de control y efectos directos sobre movilidad, observación, seguridad, equipos y continuidad operacional.';
   }
+
+  function normalizeReportVariableKey(key){
+    const map = {
+      temperatura:'temp',
+      temp:'temp',
+      sensacion:'sensacion',
+      humedad:'humedad',
+      viento:'viento',
+      rafagas:'rafagas',
+      direccion:'direccion',
+      precipitacion:'precipitacion',
+      nubosidad:'nubosidad',
+      visibilidad:'visibilidad',
+      presion:'presion',
+      uv:'uv',
+      techo:'cloudbase',
+      cloudbase:'cloudbase',
+      astronomicos:'astronomia',
+      astronomia:'astronomia',
+      alertas:'alertas',
+      estado:'operacional',
+      operacional:'operacional'
+    };
+    return map[String(key || '').toLowerCase()] || String(key || '').toLowerCase();
+  }
+
+  function getDoctrineFocus(cfg){
+    const s = `${cfg?.focus || ''} ${cfg?.type || ''}`.toLowerCase();
+    if(/rpas|dron|aeron/.test(s)) return { id:'rpas', label:'RPAS / aeronáutico' };
+    if(/observ|terreno|patrull/.test(s)) return { id:'terreno', label:'Observación en terreno' };
+    if(/ipb|misi/.test(s)) return { id:'ipb', label:'IPB / misión' };
+    if(/ejecut/.test(s)) return { id:'ejecutivo', label:'Ejecutivo' };
+    return { id:'impacto', label:'Impacto operacional' };
+  }
+
+  function getRelevantAlertItems(){
+    const point = getCurrentPoint();
+    const pool = Array.isArray(window.__alertsState?.items) && window.__alertsState.items.length
+      ? window.__alertsState.items
+      : Array.from(document.querySelectorAll('#alertsList .alert-item')).map(el=>({
+          title: el.querySelector('.alert-title')?.textContent?.trim() || 'ALERTA',
+          meta: el.querySelector('.alert-meta')?.textContent?.trim() || '',
+          contenido: el.textContent?.trim() || ''
+        }));
+    return pool.filter(it => alertMatchesPoint(it, point));
+  }
+
+  function getPrimaryRestriction(metrics, cfg){
+    const r = getRangeDiagnostics(cfg);
+    const candidates = [];
+    const gust = r.gust?.max;
+    const wind = r.wind?.max;
+    const visKm = Number.isFinite(r.visibility?.min) ? r.visibility.min / 1000 : NaN;
+    const precip = r.precip?.max;
+    const cloudBase = num(metrics.current.cloudBase);
+    const alertCount = getRelevantAlertItems().length;
+    if(Number.isFinite(gust) && gust >= 40) candidates.push({score:5, text:`Ráfagas de hasta ${fmtNum(gust,'km/h')}`});
+    if(Number.isFinite(wind) && wind >= 25) candidates.push({score:4, text:`Viento sostenido de hasta ${fmtNum(wind,'km/h')}`});
+    if(Number.isFinite(visKm) && visKm <= 5) candidates.push({score:4, text:`Visibilidad mínima del orden de ${fmtNum(visKm,'km')}`});
+    if(Number.isFinite(precip) && precip >= 1.5) candidates.push({score:3, text:`Precipitación relevante de ${fmtNum(precip,'mm')}`});
+    if(Number.isFinite(cloudBase) && cloudBase <= 600) candidates.push({score:3, text:`Techo bajo cercano a ${fmtNum(cloudBase,'m')}`});
+    if(alertCount) candidates.push({score: 4 + Math.min(alertCount,2), text:`${alertCount} alerta(s) oficial(es) asociada(s) al punto`});
+    candidates.sort((a,b)=>b.score-a.score);
+    return candidates[0]?.text || 'Sin restricción meteorológica dominante en el tramo evaluado';
+  }
+
+  function getDoctrineUseText(cfg){
+    const focus = getDoctrineFocus(cfg);
+    if(focus.id === 'terreno') return 'Cuadro orientado a control en sitio y observación secuencial de las variables meteorológicas.';
+    if(focus.id === 'ipb') return 'Cuadro orientado a matriz de efectos del tiempo atmosférico para apoyar apreciación y decisión de misión.';
+    if(focus.id === 'rpas') return 'Cuadro orientado a empleo RPAS/aeronáutico con énfasis en seguridad de vuelo y continuidad de ventana útil.';
+    if(focus.id === 'ejecutivo') return 'Cuadro orientado a lectura breve de situación, restricción dominante y recomendación de mando.';
+    return 'Cuadro orientado a impacto operacional sobre personal, movilidad, observación, equipos y continuidad de actividades.';
+  }
+
+  function doctrinalWindBand(kmh){
+    const v = Number(kmh);
+    if(!Number.isFinite(v)) return { label:'Sin dato suficiente', detail:'No existe valor confiable para clasificar el viento.' };
+    const bands = [
+      { max:1, label:'Calma', detail:'Calma; el humo asciende verticalmente.' },
+      { max:5, label:'Ventolina', detail:'El humo indica la dirección del viento.' },
+      { max:11, label:'Flojito (brisa muy débil)', detail:'Se mueven las hojas de los árboles; comienzan a moverse los molinos.' },
+      { max:19, label:'Flojo (brisa débil)', detail:'Se agitan las hojas y ondulan las banderas.' },
+      { max:28, label:'Bonancible (brisa moderada)', detail:'Se levanta polvo y papeles; se agitan las copas de los árboles.' },
+      { max:38, label:'Fresquito (brisa fresca)', detail:'Pequeños movimientos de los árboles; superficie de lagos ondulada.' },
+      { max:49, label:'Fresco (brisa fuerte)', detail:'Se mueven las ramas de los árboles y existe dificultad para mantener abierto el paraguas.' },
+      { max:61, label:'Frescachón (viento fuerte)', detail:'Se mueven los árboles grandes y existe dificultad para andar contra el viento.' },
+      { max:74, label:'Temporal (viento duro)', detail:'Se quiebran las copas de los árboles y se dificulta la circulación de personas.' },
+      { max:88, label:'Temporal duro', detail:'Se producen daños en árboles e imposibilidad de andar contra el viento.' },
+      { max:102, label:'Temporal muy duro (borrasca)', detail:'Puede arrancar árboles y provocar daños estructurales.' },
+      { max:117, label:'Temporal huracanado', detail:'Puede producir estragos abundantes en construcciones, tejados y árboles.' },
+      { max:Infinity, label:'Huracán', detail:'Escenario destructivo.' }
+    ];
+    return bands.find(b => v <= b.max) || bands[bands.length-1];
+  }
+
+  function doctrinalVisibilityBand(km){
+    const v = Number(km);
+    if(!Number.isFinite(v)) return { label:'Sin dato suficiente', detail:'No existe referencia confiable de visibilidad.' };
+    if(v <= 1) return { label:'Niebla', detail:'Visibilidad de hasta 1 km.' };
+    if(v <= 5) return { label:'Neblina', detail:'Visibilidad entre 1 y 5 km.' };
+    if(v <= 8) return { label:'Visibilidad reducida', detail:'Requiere control adicional de desplazamiento, observación y referencias.' };
+    return { label:'Visibilidad abierta', detail:'No cae en rango de niebla o neblina según la cartilla.' };
+  }
+
+  function doctrinalCloudBand(percent){
+    const v = Number(percent);
+    if(!Number.isFinite(v)) return { octas:'N/D', label:'Sin dato suficiente', detail:'No existe cobertura fiable para clasificar la nubosidad.' };
+    const octas = Math.max(0, Math.min(8, Math.round(v / 12.5)));
+    let label = 'Cubierto';
+    if(octas === 0) label = 'Despejado';
+    else if(octas >= 1 && octas <= 4) label = 'Nubosidad parcial';
+    else if(octas >= 5 && octas <= 7) label = 'Nublado';
+    return { octas:`${octas}/8`, label, detail:`Cobertura equivalente aproximada a ${octas}/8 del cielo.` };
+  }
+
+  function doctrineAltitudeGuidance(){
+    return 'Bajo 3.000 m normalmente no se presentan síntomas de puna; sobre 3.000 m no conviene pernoctar más de 500 m por sobre la altitud alcanzada durante el día; a 4.000 m se recomienda pernoctar dos noches; antes de continuar a 5.000 m se recomienda aclimatación de al menos 8 días.';
+  }
+
+  function ftToM(ft){
+    const v = Number(ft);
+    return Number.isFinite(v) ? v * 0.3048 : NaN;
+  }
+
+  function getDoctrineThresholdText(focusId, key){
+    const base = {
+      temp: 'CDI: gradiente medio de 0,6 a 0,7 °C por cada 100 m; como referencia extrema, 1 °C/100 m en aire seco y 0,5 °C/100 m en aire saturado.',
+      sensacion: 'CDI: la sensación térmica debe interpretarse cruzando temperatura con viento o humedad; describe lo que percibe la persona y no reemplaza la temperatura real.',
+      humedad: 'CDI/RDI: leer junto con visibilidad y nubosidad; para NBQ humo, > 60% es favorable, 40% a 60% marginal y < 40% crítico.',
+      viento: 'CDI terreno: 0-1 calma; 2-5 ventolina; 6-11 flojito; 12-19 flojo; 20-28 bonancible; 29-38 fresquito; 39-49 fresco; 50-61 frescachón; 62-74 temporal; 75-88 temporal duro; 89-102 temporal muy duro; 103-117 temporal huracanado; >= 118 huracán.',
+      rafagas: 'No existe banda doctrinaria separada para ráfagas en los textos; se aplica como criterio conservador la misma escala del viento superficial, tratando la racha máxima como pulso limitante.',
+      direccion: 'CDI: registrar la dirección desde donde proviene el viento con apoyo de brújula, GPS o puntos cardinales reconocidos en terreno.',
+      precipitacion: 'CDI: 1 mm equivale a 1 L/m². MDI: lluvia sensible alrededor de 20 mm en 1 a 12 h; nieve sensible desde 3 mm en 1 h o 50 mm en 12 h; cobertura nival > 5 cm en 12 h o 15 cm acumulados afecta transitabilidad y acciones tácticas.',
+      nubosidad: 'CDI octas: 0/8 despejado; 1/8 escasa nubosidad; 2/8 a 4/8 nubosidad parcial; 5/8 a 7/8 nublado; 8/8 cubierto; 9 cielo no observable.',
+      visibilidad: 'CDI: niebla <= 1 km; neblina entre 1 y 5 km. RDI: el umbral favorable/marginal/crítico depende del sistema evaluado y de la misión.',
+      presion: 'CDI/MDI: debe interpretarse por tendencia en sitio fijo. En altura, complementar con consideración de aclimatación y efecto sobre el personal.',
+      uv: 'No existe tabla doctrinaria en los documentos cargados; se mantiene como referencia operativa complementaria.',
+      cloudbase: 'CDI: registrar la altura de la base de la nube más baja. MDI/RDI: la base y el techo pasan a ser críticos cuando comprometen observación, apoyo aéreo o maniobra vertical.',
+      astronomia: 'No forma parte de la secuencia doctrinaria clásica, pero se agrega como apoyo de planificación para luz útil y maniobra.',
+      alertas: 'Las alertas oficiales no sustituyen el cuadro doctrinario; elevan el riesgo y deben contrastarse con el punto analizado y la misión.',
+      operacional: 'El estado operacional resume el cruce entre variable observada, margen doctrinario y efecto sobre la actividad.'
+    };
+    const impacto = {
+      temp: 'MDI: < 0 °C afecta secado del suelo y espesor del hielo; > 0 °C favorece derretimiento de nieve o hielo; variaciones de ±10 °C influyen en trayectoria de proyectiles.',
+      viento: 'MDI: > 7 nudos afecta empleo de fumígenos; > 20 nudos restringe visibilidad, acelera secado del suelo y sobreenfría personal/equipo; > 30 nudos afecta trayectoria de morteros y artillería.',
+      precipitacion: 'MDI: lluvia sensible alrededor de 20 mm en 1 a 12 h; nieve sensible desde 3 mm en 1 h o 50 mm en 12 h; > 5 cm en 12 h o 15 cm acumulados afectan transitabilidad, vivac y acciones tácticas.',
+      nubosidad: 'MDI: techo < 250 m afecta observación de artillería y detección de objetivos; techo < 300 m compromete cubierta, apoyo aéreo y contraste de objetivos.',
+      cloudbase: 'MDI: techo < 250 m afecta observación de artillería/detección; techo < 300 m compromete cubierta, apoyo aéreo y contraste de objetivos.',
+      visibilidad: 'MDI: no fija una sola cifra universal; debe leerse combinada con precipitación, viento, polvo, niebla/neblina y tipo de sistema afectado.',
+      humedad: 'MDI: humedad > 35% afecta comodidad y funcionamiento de equipos; además debe leerse junto con temperatura y viento.',
+      presion: 'MDI: la presión es variable doctrinaria de seguimiento diario; apoya análisis de estabilidad y transición del tiempo atmosférico.'
+    };
+    const ipb = {
+      temp: 'RDI: infantería desembarcada favorable < 32 °C, marginal > 32 °C; emplazamiento de armas favorable > -18 °C, marginal < -18 °C; windchill favorable > 0 °C, marginal 0 a -30 °C y crítico < -30 °C.',
+      humedad: 'RDI NBC humo: > 60% favorable, 40% a 60% marginal, < 40% crítico.',
+      viento: 'RDI: apoyo de fuego 155 mm < 65 / 65 a 93 / > 93 km/h; NBC humo < 10 / 10 a 13 / > 13 km/h; aerotransportadas < 19 / 19 a 24 / > 24 km/h; helicópteros < 37 / 37 a 56 / > 56 km/h.',
+      rafagas: 'RDI no separa ráfagas como tabla independiente; si la racha supera el margen del viento superficial del sistema evaluado, debe tratarse como condición crítica.',
+      precipitacion: 'RDI: movilidad e infantería < 3 / 3 a 13 / > 13 mm/h; artillería antiaérea < 13 / 13 a 26 / > 26 mm/h; aerotransportadas nada / ligera / agua nieve o granizo.',
+      nubosidad: 'RDI inteligencia ala fija: < 3/8 favorable, 3/8 a 5/8 marginal, > 5/8 crítico.',
+      visibilidad: 'RDI: infantería > 0,3 / 0,1 a 0,3 / < 0,1 km; apoyo de fuego 155 mm > 5,0 / 1,5 a 5,0 / < 1,5 km; apoyo aéreo estrecho > 8,0 / 5,0 a 8,0 / < 5,0 km; helicópteros > 1,5 / 0,4 a 1,5 / < 0,4 km.',
+      cloudbase: 'RDI techo: 155 mm > 800 / 500 a 800 / < 500 ft; apoyo aéreo estrecho > 3.000 / 500 a 3.000 / < 500 ft; helicópteros > 500 / 300 a 500 / < 300 ft.',
+      presion: 'RDI NBC humo: atmósfera estable favorable, neutral marginal e inestable crítica para empleo de humo.',
+      alertas: 'En IPB, una alerta oficial vigente debe incorporarse como restricción del ambiente del campo de batalla y no solo como nota informativa.'
+    };
+    const rpas = {
+      viento: 'RDI conservador para aeronáutico/RPAS: helicópteros < 37 / 37 a 56 / > 56 km/h; aerotransportadas < 19 / 19 a 24 / > 24 km/h. Para RPAS conviene adoptar el margen más conservador según la plataforma.',
+      rafagas: 'Como criterio conservador, tratar rachas que lleven el pulso por sobre 37 km/h como marginales y sobre 56 km/h como críticas para operación tipo helicóptero/RPAS ligero.',
+      visibilidad: 'RDI helicópteros: > 1,5 / 0,4 a 1,5 / < 0,4 km. Para apoyo aéreo estrecho: > 8,0 / 5,0 a 8,0 / < 5,0 km. RPAS debe adoptar el margen más exigente según la misión.',
+      precipitacion: 'RDI aeronáutico: nada favorable, precipitación ligera marginal y agua nieve o granizo crítico. Sin clasificación de tipo, la precipitación numérica debe interpretarse con criterio conservador.',
+      nubosidad: 'RDI ala fija visual: < 3/8 favorable, 3/8 a 5/8 marginal, > 5/8 crítico. Complementar siempre con techo.',
+      cloudbase: 'RDI helicópteros: > 500 / 300 a 500 / < 300 ft. Para apoyo aéreo estrecho: > 3.000 / 500 a 3.000 / < 500 ft. RPAS debe mantener el criterio más restrictivo aplicable.',
+      astronomia: 'Cruzar luz útil con viento, visibilidad y techo antes de autorizar elevación o despegue.',
+      alertas: 'Una alerta vigente obliga a verificación inmediata de restricciones locales antes de volar.'
+    };
+    const executive = {
+      viento: 'Usar como referencia rápida el corte 29-38 km/h como exigente y >= 39 km/h como restrictivo para personal y material liviano.',
+      visibilidad: 'Usar como lectura ejecutiva: <= 1 km niebla, 1 a 5 km neblina/restricción, > 5 km apertura relativa.',
+      precipitacion: 'Distinguir entre ausencia, precipitación ligera y precipitación capaz de afectar desplazamiento o continuidad.',
+      cloudbase: 'Tratar techos bajos como restricción inmediata para apoyo aéreo, observación y RPAS.'
+    };
+    const byFocus = focusId === 'impacto' ? impacto : focusId === 'ipb' ? ipb : focusId === 'rpas' ? rpas : focusId === 'ejecutivo' ? executive : {};
+    return byFocus[key] || base[key] || '';
+  }
+
+  function getDoctrineWindowThresholds(focusId){
+    if(focusId === 'rpas'){
+      return {
+        wind:{ marginal:37, critical:56, unit:'km/h' },
+        gust:{ marginal:37, critical:56, unit:'km/h' },
+        vis:{ marginal:1.5, critical:0.4, unit:'km' },
+        precip:{ marginal:0.1, critical:1.0, unit:'mm/h' },
+        ceiling:{ marginal:ftToM(500), critical:ftToM(300), unit:'m' },
+        cloud:{ marginal:62.5, critical:87.5, unit:'%' },
+        note:'Base RDI aeronáutica conservadora: helicópteros > 1,5 / 0,4 a 1,5 / < 0,4 km de visibilidad; > 500 / 300 a 500 / < 300 ft de techo; < 37 / 37 a 56 / > 56 km/h de viento.'
+      };
+    }
+    if(focusId === 'ipb'){
+      return {
+        wind:{ marginal:65, critical:93, unit:'km/h' },
+        gust:{ marginal:65, critical:93, unit:'km/h' },
+        vis:{ marginal:1.5, critical:0.8, unit:'km' },
+        precip:{ marginal:3, critical:13, unit:'mm/h' },
+        ceiling:{ marginal:ftToM(800), critical:ftToM(500), unit:'m' },
+        cloud:{ marginal:62.5, critical:87.5, unit:'%' },
+        note:'Base RDI de misión: apoyo de fuego 155 mm > 5,0 / 1,5 a 5,0 / < 1,5 km de visibilidad, > 800 / 500 a 800 / < 500 ft de techo y < 65 / 65 a 93 / > 93 km/h de viento; precipitación < 3 / 3 a 13 / > 13 mm/h para movilidad e infantería.'
+      };
+    }
+    return {
+      wind:{ marginal:29, critical:39, unit:'km/h' },
+      gust:{ marginal:39, critical:50, unit:'km/h' },
+      vis:{ marginal:5, critical:1, unit:'km' },
+      precip:{ marginal:0.1, critical:1.0, unit:'mm/h' },
+      ceiling:{ marginal:300, critical:250, unit:'m' },
+      cloud:{ marginal:62.5, critical:87.5, unit:'%' },
+      note:'Base CDI/MDI: niebla <= 1 km, neblina 1 a 5 km; techo < 300 m ya introduce restricción y < 250 m compromete observación/artillería/apoyo aéreo; viento 29 a 38 km/h exigente y >= 39 km/h restrictivo.'
+    };
+  }
+
+  function buildDoctrineReferenceTable(cfg, metrics){
+    const focus = getDoctrineFocus(cfg);
+    const r = getRangeDiagnostics(cfg);
+    const windBand = doctrinalWindBand(Math.max(Number.isFinite(r.gust?.max) ? r.gust.max : -Infinity, Number.isFinite(r.wind?.max) ? r.wind.max : -Infinity));
+    const visBand = doctrinalVisibilityBand(Number.isFinite(r.visibility?.min) ? r.visibility.min / 1000 : NaN);
+    const cloudBand = doctrinalCloudBand(Number.isFinite(r.cloud?.avg) ? r.cloud.avg : NaN);
+    const windowTh = getDoctrineWindowThresholds(focus.id);
+    let rows = [];
+    if(focus.id === 'terreno'){
+      rows = [
+        ['Secuencia doctrinaria', 'Viento -> nubosidad -> visibilidad -> humedad relativa -> temperatura -> sensación térmica -> precipitación -> presión atmosférica.'],
+        ['Régimen horario sugerido', 'Cuando se mantenga bitácora formal, efectuar observaciones de referencia en 00:00, 06:00, 12:00 y 18:00 UTC.'],
+        ['Viento', `${windBand.label}. ${getDoctrineThresholdText('terreno','viento')}`],
+        ['Nubosidad', `${cloudBand.octas}. ${cloudBand.label}. ${getDoctrineThresholdText('terreno','nubosidad')}`],
+        ['Visibilidad', `${visBand.label}. ${getDoctrineThresholdText('terreno','visibilidad')}`],
+        ['Temperatura / presión', `${getDoctrineThresholdText('terreno','temp')} ${getDoctrineThresholdText('terreno','presion')}`]
+      ];
+    }else if(focus.id === 'ipb'){
+      rows = [
+        ['Paso 2 del IPB', 'Describir los efectos del campo de batalla a partir de temperatura, humedad, vientos, nubosidad, precipitaciones y visibilidad (THVNPV).'],
+        ['Visibilidad', getDoctrineThresholdText('ipb','visibilidad')],
+        ['Precipitación', getDoctrineThresholdText('ipb','precipitacion')],
+        ['Viento', getDoctrineThresholdText('ipb','viento')],
+        ['Techo / nubosidad', `${getDoctrineThresholdText('ipb','cloudbase')} ${getDoctrineThresholdText('ipb','nubosidad')}`],
+        ['Temperatura / humedad / estabilidad', `${getDoctrineThresholdText('ipb','temp')} ${getDoctrineThresholdText('ipb','humedad')} ${getDoctrineThresholdText('ipb','presion')}`]
+      ];
+    }else if(focus.id === 'rpas'){
+      rows = [
+        ['Criterio base', 'El empleo RPAS/aeronáutico debe leerse con criterio conservador y verificación final en sitio.'],
+        ['Viento / ráfagas', `${getDoctrineThresholdText('rpas','viento')} ${getDoctrineThresholdText('rpas','rafagas')}`],
+        ['Visibilidad', getDoctrineThresholdText('rpas','visibilidad')],
+        ['Precipitación', getDoctrineThresholdText('rpas','precipitacion')],
+        ['Nubosidad / techo', `${getDoctrineThresholdText('rpas','nubosidad')} ${getDoctrineThresholdText('rpas','cloudbase')}`],
+        ['Ventana base usada en el boletín', windowTh.note]
+      ];
+    }else if(focus.id === 'ejecutivo'){
+      rows = [
+        ['Lectura de jefatura', 'Presentar condición, restricción dominante, ventana útil, alertas y medida recomendada.'],
+        ['Viento', getDoctrineThresholdText('ejecutivo','viento')],
+        ['Visibilidad', getDoctrineThresholdText('ejecutivo','visibilidad')],
+        ['Precipitación', getDoctrineThresholdText('ejecutivo','precipitacion')],
+        ['Techo', getDoctrineThresholdText('ejecutivo','cloudbase')]
+      ];
+    }else{
+      rows = [
+        ['Variables doctrinarias MDI', 'Temperatura, humedad, nubosidad, precipitaciones, presión atmosférica, vientos y visibilidad, con registro diario en hoja de observación meteorológica.'],
+        ['Precipitación', getDoctrineThresholdText('impacto','precipitacion')],
+        ['Techo / nubosidad', `${getDoctrineThresholdText('impacto','nubosidad')} ${getDoctrineThresholdText('impacto','cloudbase')}`],
+        ['Temperatura', getDoctrineThresholdText('impacto','temp')],
+        ['Viento', getDoctrineThresholdText('impacto','viento')],
+        ['Humedad / presión', `${getDoctrineThresholdText('impacto','humedad')} ${getDoctrineThresholdText('impacto','presion')}`]
+      ];
+    }
+    return `<table class="gr-table"><tbody>${rows.map(r=>`<tr><th>${htmlSafe(r[0])}</th><td>${htmlSafe(r[1])}</td></tr>`).join('')}</tbody></table>`;
+  }
+
+  function getAnalysisTableMeta(cfg){
+    const focus = getDoctrineFocus(cfg);
+    if(focus.id === 'terreno'){
+      return {
+        title: (cfg.dateFrom === cfg.dateTo) ? 'IV. Cuadro base de observación meteorológica' : 'IV. Cuadro base de observación y tendencia',
+        analysisTitle: 'V. Interpretación aplicada en terreno',
+        headings: ['Variable', 'Observación / rango doctrinario', 'Aplicación inmediata'],
+        periodTitle: (cfg.dateFrom === cfg.dateTo) ? 'IV. Cuadro base de observación meteorológica' : 'IV. Cuadro base de observación y tendencia'
+      };
+    }
+    if(focus.id === 'ipb'){
+      return {
+        title: (cfg.dateFrom === cfg.dateTo) ? 'IV. Matriz meteorológica de apoyo a la misión' : 'IV. Matriz meteorológica del periodo para apoyo a la misión',
+        analysisTitle: 'V. Matriz de efectos del tiempo atmosférico',
+        headings: ['Factor THVNPV / apoyo', 'Condición estimada / referencia', 'Incidencia sobre la misión'],
+        periodTitle: (cfg.dateFrom === cfg.dateTo) ? 'IV. Matriz meteorológica de apoyo a la misión' : 'IV. Matriz meteorológica del periodo para apoyo a la misión'
+      };
+    }
+    if(focus.id === 'rpas'){
+      return {
+        title: (cfg.dateFrom === cfg.dateTo) ? 'IV. Cuadro aeronáutico base' : 'IV. Cuadro aeronáutico del periodo',
+        analysisTitle: 'V. Criterio de empleo RPAS / aeronáutico',
+        headings: ['Factor aeronáutico', 'Condición estimada / límite', 'Criterio de empleo'],
+        periodTitle: (cfg.dateFrom === cfg.dateTo) ? 'IV. Cuadro aeronáutico base' : 'IV. Cuadro aeronáutico del periodo'
+      };
+    }
+    if(focus.id === 'ejecutivo'){
+      return {
+        title: 'IV. Variables críticas para decisión',
+        analysisTitle: 'V. Lectura ejecutiva de efectos',
+        headings: ['Variable crítica', 'Condición estimada', 'Decisión sugerida'],
+        periodTitle: 'IV. Variables críticas para decisión'
+      };
+    }
+    return {
+      title: (cfg.dateFrom === cfg.dateTo) ? 'IV. Cuadro de variables y efectos operacionales' : 'IV. Cuadro del periodo y efectos operacionales',
+      analysisTitle: 'V. Efectos operacionales por variable',
+      headings: ['Variable', 'Rango doctrinario / condición', 'Efecto operacional'],
+      periodTitle: (cfg.dateFrom === cfg.dateTo) ? 'IV. Cuadro de variables y efectos operacionales' : 'IV. Cuadro del periodo y efectos operacionales'
+    };
+  }
+
+  function buildDecisionSummary(cfg, metrics){
+    const sem = classifySemaforo(metrics);
+    const sourceModel = getReportSourceModel();
+    const focus = getDoctrineFocus(cfg);
+    const rows = [
+      ['Condición operacional', sem.label],
+      ['Restricción dominante', getPrimaryRestriction(metrics, cfg)],
+      ['Enfoque aplicado', focus.label],
+      ['Propósito del cuadro', getDoctrineUseText(cfg)],
+      ['Base fuente/modelo', `${sourceModel.source} / ${sourceModel.model}`],
+      ['Lectura de empleo', reportFocusHint(cfg)]
+    ];
+    return `<table class="gr-table"><tbody>${rows.map(r=>`<tr><th>${htmlSafe(r[0])}</th><td>${htmlSafe(r[1])}</td></tr>`).join('')}</tbody></table>`;
+  }
+
+  function buildDoctrineFrame(cfg, metrics){
+    const focus = getDoctrineFocus(cfg);
+    const paragraphs = [];
+    if(focus.id === 'terreno'){
+      paragraphs.push('El boletín se ordena siguiendo la secuencia doctrinaria de la cartilla de observación en terreno: viento, nubosidad, visibilidad, humedad relativa, temperatura, sensación térmica, precipitación y presión atmosférica.');
+      paragraphs.push('El objetivo es que el operador confirme la condición del punto, detecte cambios locales y contraste el pronóstico con observación directa antes de iniciar marcha, permanencia, vigilancia o instalación de medios.');
+    }else if(focus.id === 'ipb'){
+      paragraphs.push('El boletín organiza la información como apoyo al paso 2 del IPB, describiendo los efectos del campo de batalla mediante temperatura, humedad, vientos, nubosidad, precipitaciones y visibilidad (THVNPV), con énfasis en los valores críticos para el personal y el sistema principal.');
+      paragraphs.push('La salida debe leerse como una matriz de efectos del tiempo atmosférico: qué factor favorece, cuál restringe, qué expone una vulnerabilidad y qué medida de control requiere la misión.');
+    }else if(focus.id === 'rpas'){
+      paragraphs.push('El boletín organiza el cuadro para empleo RPAS/aeronáutico, priorizando viento, ráfagas, visibilidad, precipitación, techo de nubes y continuidad de la ventana astronómica útil.');
+      paragraphs.push('La recomendación final mantiene criterio conservador y no reemplaza la verificación local inmediata previa al despegue, elevación o tránsito de la plataforma.');
+    }else if(focus.id === 'ejecutivo'){
+      paragraphs.push('El boletín resume la situación meteorológica en términos de decisión: condición general, restricción dominante, ventana útil, alerta asociada y medida sugerida para conducción de jefatura.');
+      paragraphs.push('El detalle técnico queda subordinado a una lectura clara y defendible, evitando sobrecarga de datos que no cambian la decisión.');
+    }else{
+      paragraphs.push('El boletín organiza la información en términos de impacto operacional, priorizando el efecto del tiempo atmosférico sobre personal, movilidad, observación, comunicaciones, material, seguridad y continuidad de actividades.');
+      paragraphs.push('La lectura recomendada es identificar primero la variable crítica, luego el rango doctrinario o condición estimada y finalmente el efecto operacional o la medida de control que corresponde aplicar.');
+    }
+    return `<div>${paragraphs.map(p=>`<p>${htmlSafe(p)}</p>`).join('')}</div>`;
+  }
+
 
   function buildRecommendations(metrics, cfg){
     const recs = [];
@@ -446,32 +801,59 @@
     const cloudBase = num(metrics.current.cloudBase);
     const pressure = num(metrics.current.pressure);
     const sem = classifySemaforo(metrics);
+    const focus = getDoctrineFocus(cfg);
+    const r = getRangeDiagnostics(cfg);
+    const windBand = doctrinalWindBand(Math.max(Number.isFinite(gustNum)?gustNum:-Infinity, Number.isFinite(windNum)?windNum:-Infinity));
+    const visBand = doctrinalVisibilityBand(visNum);
+    const cloudBand = doctrinalCloudBand(Number.isFinite(r.cloud?.avg) ? r.cloud.avg : NaN);
 
-    recs.push(`Mantener la planificación operativa referida exactamente al punto seleccionado en el mapa (${cfg.locationLabel}), ya que las condiciones meteorológicas, el análisis y las alertas del boletín deben interpretarse para esa ubicación específica y no de forma regional genérica.`);
+    recs.push(`Mantener la interpretación del boletín exactamente referida al punto seleccionado (${cfg.locationLabel}), evitando extrapolar el diagnóstico a otras zonas sin verificación local.`);
     recs.push(reportAudienceHint(cfg));
     recs.push(reportFocusHint(cfg));
-    if(Number.isFinite(gustNum) && gustNum >= 35) recs.push(`Las ráfagas registradas/proyectadas alcanzan valores relevantes (${fmtNum(gustNum,'km/h')}); por ello conviene limitar maniobras sensibles al viento, reforzar control de elementos livianos, revisar estabilidad de equipos expuestos y priorizar ventanas con menor turbulencia para actividades críticas.`);
-    else if(Number.isFinite(windNum) && windNum >= 25) recs.push(`El viento sostenido se mantiene en un rango operacional exigente (${fmtNum(windNum,'km/h')}); se recomienda ajustar secuencias de trabajo en superficie, recalcular tiempos de exposición y verificar permanentemente la deriva potencial en operaciones RPAS, izajes y desplazamientos abiertos.`);
-    else recs.push(`El componente eólico no muestra una afectación severa inmediata en el punto analizado; aun así, debe mantenerse vigilancia sobre cambios horarios, especialmente durante las ventanas de transición diurna y cualquier incremento súbito de ráfaga.`);
-    if(Number.isFinite(visNum) && visNum <= 5) recs.push(`La visibilidad proyectada resulta reducida (${fmtNum(visNum,'km')}); corresponde reforzar reconocimiento previo de rutas, uso de referencias visuales, separación entre medios y confirmación continua del entorno antes de ejecutar desplazamientos, observación o elevación de dron.`);
-    if(Number.isFinite(precipNum) && precipNum > 30) recs.push(`La probabilidad/afectación por precipitación es significativa (${fmtNum(precipNum,'%')}); se recomienda proteger sensores, ópticas y equipamiento, prever degradación de terreno y considerar que una precipitación débil pero persistente puede alterar seguridad, adherencia y calidad de observación.`);
-    if(Number.isFinite(uvNum) && uvNum >= 8) recs.push(`El índice UV es alto a extremo (${fmtNum(uvNum)}); para personal en terreno conviene establecer rotación de exposición, hidratación reforzada, protección solar completa y supervisión del periodo de mayor carga radiativa.`);
-    if(Number.isFinite(cloudBase) && cloudBase < 500) recs.push(`El techo de nubes/altura de referencia aparece bajo (${fmtNum(cloudBase,'m')}); esto obliga a validar alturas de seguridad, referencias visuales y restricciones de maniobra vertical antes de cualquier empleo aeronáutico o RPAS.`);
-    if(Number.isFinite(pressure)) recs.push(`La presión atmosférica observada (${fmtNum(pressure,'hPa')}) debe leerse en conjunto con la tendencia sinóptica del periodo; variaciones persistentes pueden anticipar cambios de escenario, por lo que conviene actualizar el boletín si la operación se desplaza varias horas desde la hora de emisión.`);
-    if(/RPAS|dron|aeron/i.test(cfg.focus + ' ' + cfg.type)) recs.push(`Para misiones RPAS o de observación aérea, la decisión de elevación debe quedar condicionada a una última verificación en sitio del viento, ráfagas, visibilidad, nubosidad útil, amanecer/atardecer y eventuales restricciones publicadas para la zona inmediata del punto seleccionado.`);
-    recs.push(`El semáforo operacional actual del boletín es ${sem.label}. La recomendación práctica es utilizar este informe como base de decisión inicial y contrastarlo con observación directa, actualización de alertas de la zona del mapa y verificación final previa al inicio de la actividad.`);
+
+    if(focus.id === 'terreno') recs.push('Aplicar una verificación secuencial en sitio antes de iniciar actividad: viento, nubosidad, visibilidad, humedad, temperatura, sensación térmica, precipitación y presión, dejando constancia de cualquier desviación relevante respecto del boletín.');
+    if(focus.id === 'impacto') recs.push('Leer cada variable en términos de efecto sobre personal, movilidad, observación, comunicaciones, sensores y continuidad de la operación; la decisión no debe quedarse solo en el valor numérico.');
+    if(focus.id === 'ipb') recs.push('Transformar el cuadro meteorológico en una matriz de efectos del tiempo atmosférico, identificando oportunidades, restricciones y medidas de control para la misión y el sistema principal empleado.');
+    if(focus.id === 'rpas') recs.push('Mantener criterio conservador para empleo RPAS/aeronáutico, subordinando la decisión final a una última verificación en sitio de viento, ráfagas, visibilidad, techo, precipitación y restricción local inmediata.');
+    if(focus.id === 'ejecutivo') recs.push('Presentar la situación priorizando condición, restricción dominante, ventana útil y medida recomendada, evitando sobrecargar la lectura con detalle innecesario para la decisión de jefatura.');
+
+    if(Number.isFinite(windNum) || Number.isFinite(gustNum)){
+      recs.push(`El componente eólico del periodo cae en la referencia doctrinaria "${windBand.label}". ${windBand.detail}`);
+      if((Number.isFinite(gustNum) && gustNum >= 50) || (Number.isFinite(windNum) && windNum >= 39)) recs.push('Con esta intensidad conviene reforzar control de material liviano, revisar estabilidad de plataformas, anticipar polvo en suspensión y limitar maniobras sensibles al viento.');
+      else if((Number.isFinite(gustNum) && gustNum >= 29) || (Number.isFinite(windNum) && windNum >= 29)) recs.push('El viento puede afectar observación, desplazamientos y permanencia expuesta; conviene ajustar secuencias de trabajo y tiempos de exposición.');
+    }
+
+    if(Number.isFinite(visNum)){
+      recs.push(`La visibilidad disponible se clasifica como ${visBand.label}. ${visBand.detail}`);
+      if(visNum <= 1) recs.push('La niebla afecta la orientación, reduce la eficiencia de instrumentos de visión nocturna y limita todo reconocimiento visual; corresponde reforzar control de ruta y separación entre medios.');
+      else if(visNum <= 5) recs.push('La neblina reduce desplazamientos, despliegue y cambios de posición; corresponde reforzar referencias visuales, control del entorno y señalización de seguridad.');
+    }
+
+    if(Number.isFinite(precipNum) && precipNum > 0){
+      recs.push(`Se registra señal de precipitación (${fmtNum(precipNum, Number.isFinite(metrics.aero.precip) ? '%' : 'mm')}). Doctrinariamente se debe considerar que la precipitación, líquida o sólida, afecta desplazamientos, adherencia del terreno, empleo de armas y continuidad de actividades expuestas.`);
+    }
+    if(Number.isFinite(cloudBase) && cloudBase < 500) recs.push(`El techo estimado de nubes aparece bajo (${fmtNum(cloudBase,'m')}); esto obliga a validar referencias visuales, alturas de seguridad y restricciones de maniobra vertical.`);
+    if(cloudBand.label !== 'Sin dato suficiente') recs.push(`La cobertura nubosa estimada corresponde a ${cloudBand.octas} (${cloudBand.label}); esta referencia ayuda a anticipar pérdida de luz útil, persistencia de nubosidad baja y probabilidad de fenómenos asociados.`);
+    if(Number.isFinite(uvNum) && uvNum >= 8) recs.push(`El índice UV es alto a extremo (${fmtNum(uvNum)}); para personal en terreno conviene rotación de exposición, hidratación reforzada y protección solar completa.`);
+    if(Number.isFinite(pressure)) recs.push(`La presión atmosférica observada (${fmtNum(pressure,'hPa')}) debe leerse por tendencia y en sitio fijo; el valor aislado no basta para diagnosticar el tiempo, pero su descenso persistente suele anticipar empeoramiento y su ascenso, mejora relativa.`);
+    if(focus.id === 'terreno') recs.push('Para bitácora o control disciplinado en terreno, la cartilla recomienda observaciones de referencia en 00:00, 06:00, 12:00 y 18:00 UTC cuando se mantenga registro formal.');
+    recs.push(`El semáforo operacional actual del boletín es ${sem.label}. Debe emplearse como base de decisión inicial y contrastarse con observación local, alertas vigentes y verificación final previa a fases críticas.`);
     return recs;
   }
 
   function buildConclusion(metrics, cfg){
     const sem = classifySemaforo(metrics);
+    const focus = getDoctrineFocus(cfg);
     const parts = [];
-    parts.push(`Considerando la ubicación seleccionada en el mapa (${cfg.locationLabel}), el escenario meteorológico evaluado muestra como elementos más relevantes la condición ${metrics.current.condicion}, una temperatura de ${metrics.current.temp}, humedad de ${metrics.current.humedad}, viento de ${metrics.current.viento}, ráfagas de ${metrics.current.rafagas}, precipitación de referencia de ${metrics.current.precip} y visibilidad de ${metrics.current.visibilidad}.`);
-    parts.push(`Desde el punto de vista operacional, el panorama se clasifica como ${sem.label}, lo que debe interpretarse junto con el objetivo de la misión, el nivel de exposición del personal, la duración de la actividad y la sensibilidad del material o plataforma empleada.`);
-    parts.push(reportAudienceHint(cfg));
-    parts.push(reportFocusHint(cfg));
-    parts.push(`La continuidad de actividades resulta más razonable cuando existe control del componente eólico, vigilancia de la visibilidad, monitoreo de cambios dentro del periodo analizado y revisión de alertas efectivamente asociadas al punto geográfico donde se emite el boletín. En periodos extendidos, la decisión no debe descansar solo en el dato instantáneo, sino también en la tendencia de temperatura, presión, nubosidad, precipitación y viento.`);
-    parts.push(`En consecuencia, este informe constituye una base sólida para decisión táctica y operacional, pero su valor aumenta cuando se complementa con observación local, actualización de fuentes y verificación final inmediatamente antes de ejecutar fases críticas, especialmente en ventanas de transición horaria o ante señales de inestabilidad.`);
+    parts.push(`Considerando la ubicación seleccionada (${cfg.locationLabel}), el escenario meteorológico evaluado presenta como elementos centrales la condición ${metrics.current.condicion}, temperatura ${metrics.current.temp}, humedad ${metrics.current.humedad}, viento ${metrics.current.viento}, ráfagas ${metrics.current.rafagas}, precipitación de referencia ${metrics.current.precip} y visibilidad ${metrics.current.visibilidad}.`);
+    parts.push(`La clasificación general del periodo es ${sem.label}, debiendo interpretarse en relación con la duración de la actividad, la exposición del personal y la sensibilidad del material o plataforma.`);
+    if(focus.id === 'terreno') parts.push('Desde la lógica de observación en terreno, el mayor valor del boletín es ordenar la verificación local de variables y reducir la posibilidad de que un cambio puntual pase inadvertido antes de la ejecución.');
+    else if(focus.id === 'ipb') parts.push('Desde la lógica IPB / misión, el boletín permite transformar el ambiente meteorológico en una matriz de efectos, delimitando restricciones, oportunidades y medidas de control para la misión.');
+    else if(focus.id === 'rpas') parts.push('Desde la lógica RPAS / aeronáutica, la decisión útil depende de sostener márgenes conservadores frente a viento, ráfagas, visibilidad y techo, priorizando seguridad por sobre continuidad automática de la ventana.');
+    else if(focus.id === 'ejecutivo') parts.push('Desde la lógica ejecutiva, la información debe leerse en términos de condición general, restricción dominante y medida de conducción sugerida para la jefatura.');
+    else parts.push('Desde la lógica de impacto operacional, la lectura correcta consiste en traducir cada variable en efectos sobre movilidad, observación, seguridad, equipos y continuidad de la operación.');
+    parts.push('La continuidad de actividades resulta más razonable cuando existe control del componente eólico, vigilancia de la visibilidad, monitoreo de cambios dentro del periodo y revisión de alertas efectivamente asociadas al punto geográfico de emisión.');
+    parts.push('En consecuencia, este boletín constituye una base sólida para decisión táctica y operacional, pero aumenta su valor cuando se complementa con observación local, actualización de fuentes y verificación final inmediatamente antes de ejecutar fases críticas.');
     return parts.join(' ');
   }
 
@@ -660,10 +1042,12 @@
     return { sameDay, dates, selected };
   }
 
+
   function buildVariablePeriodTable(cfg){
     const series = getSelectedVariableSeries(cfg);
+    const meta = getAnalysisTableMeta(cfg);
     if(!series.selected.length){
-      return `<div class="gr-note">No hay series suficientes para construir el cuadro de variables solicitado con los datos disponibles para este periodo.</div>`;
+      return `<div class="gr-note">No hay series suficientes para construir el cuadro meteorológico solicitado con los datos disponibles para este periodo.</div>`;
     }
     const rowKeys = [];
     series.selected.forEach(s=>s.rows.forEach(r=>{ if(!rowKeys.includes(r.key)) rowKeys.push(r.key); }));
@@ -677,30 +1061,115 @@
       }).join('');
       return `<tr><td>${first}</td>${cells}</tr>`;
     }).join('');
-    return `<table class="gr-table gr-period-table"><thead><tr><th>${head0}</th>${series.selected.map(s=>`<th>${htmlSafe(s.label)}</th>`).join('')}</tr></thead><tbody>${rowsHtml}</tbody></table>`;
+    return `<p class="gr-small">${htmlSafe(getDoctrineUseText(cfg))}</p><table class="gr-table gr-period-table"><thead><tr><th>${head0}</th>${series.selected.map(s=>`<th>${htmlSafe(s.label)}</th>`).join('')}</tr></thead><tbody>${rowsHtml}</tbody></table>`;
   }
 
   function variableRows(metrics, vars, cfg){
     const r = getRangeDiagnostics(cfg);
     const sameDay = cfg.dateFrom === cfg.dateTo;
-    const map = {
-      temp:['Temperatura', r.temp ? (sameDay ? `Rango horario entre ${fmtNum(r.temp.min,'°C')} y ${fmtNum(r.temp.max,'°C')}.` : `Rango diario entre ${fmtNum(r.temp.min,'°C')} y ${fmtNum(r.temp.max,'°C')}, con promedio de ${fmtNum(r.temp.avg,'°C')}.`) : null, sameDay ? 'Puede aumentar o reducir la exigencia térmica del personal durante las horas de mayor exposición, afectando confort, hidratación y permanencia en terreno.' : 'La amplitud térmica del periodo puede modificar el confort operativo, la exposición prolongada y la planificación de permanencia en terreno.'],
-      sensacion:['Sensación térmica', metrics.current.sensacion || null, 'Permite valorar la percepción térmica real del ambiente y advertir eventuales exigencias adicionales sobre el personal expuesto al viento o a radiación.'],
-      humedad:['Humedad relativa', r.humidity ? `Promedio ${fmtNum(r.humidity.avg,'%')} con máximos de ${fmtNum(r.humidity.max,'%')}.` : null, 'Una humedad elevada o persistente puede favorecer condensación, bruma o sensación térmica más incómoda, mientras que valores bajos acentúan sequedad ambiental y deshidratación.'],
-      viento:['Viento superficial', r.wind ? `Promedio ${fmtNum(r.wind.avg,'km/h')} y máximos de ${fmtNum(r.wind.max,'km/h')}.` : null, 'Puede afectar desplazamientos, estabilidad de equipos, observación, maniobras en terreno y toda operación sensible a transporte de polvo o turbulencia superficial.'],
-      rafagas:['Ráfagas', r.gust ? `Pulsos máximos del orden de ${fmtNum(r.gust.max,'km/h')}.` : null, 'Las rachas más intensas pueden generar afectación súbita sobre personal, material liviano, maniobra vehicular y seguridad de operaciones aéreas o RPAS.'],
-      direccion:['Dirección del viento', txt('valWindDir','N/D'), 'Su interpretación ayuda a estimar exposición de rutas, laderas, quebradas, zonas de polvo en suspensión y sectores con canalización local del flujo.'],
-      precipitacion:['Precipitación', r.precip ? (sameDay ? `Acumulación horaria disponible con máximo de ${fmtNum(r.precip.max,'mm')}.` : `Comportamiento diario con máximo de ${fmtNum(r.precip.max,'mm')} y promedio de ${fmtNum(r.precip.avg,'mm')}.`) : null, 'Puede comprometer visibilidad, adherencia, transitabilidad, operación de sensores, estado de caminos y continuidad de actividades expuestas.'],
-      nubosidad:['Nubosidad', r.cloud ? `Cobertura media de ${fmtNum(r.cloud.avg,'%')} con máximos de ${fmtNum(r.cloud.max,'%')}.` : null, 'Incide en referencia visual, radiación, enfriamiento nocturno y posible evolución de inestabilidad o cobertura persistente en la zona de interés.'],
-      visibilidad:['Visibilidad', r.visibility ? `Promedio ${fmtNum(r.visibility.avg/1000,'km')} con mínimo de ${fmtNum(r.visibility.min/1000,'km')}.` : null, 'Una reducción de visibilidad puede afectar vigilancia, conducción, observación del terreno, control de rutas y seguridad general de desplazamientos.'],
-      presion:['Presión atmosférica', r.pressure ? `Media ${fmtNum(r.pressure.avg,'hPa')} con amplitud de ${fmtNum(r.pressure.max-r.pressure.min,'hPa')}.` : null, 'Su comportamiento apoya la interpretación de estabilidad, transición sinóptica o aproximación de cambios en el patrón meteorológico dominante.'],
-      uv:['Índice UV', metrics.current.uv || null, 'Valores altos incrementan la exposición radiativa del personal en superficie y exigen medidas de protección en actividades prolongadas al aire libre.'],
-      cloudbase:['Techo de nubes', metrics.current.cloudBase || null, 'Puede limitar referencias visuales, maniobra vertical disponible y evaluación de factibilidad para operaciones aéreas o RPAS.'],
-      astronomia:['Horarios astronómicos', `${metrics.current.sunrise} / ${metrics.current.sunset}`, 'Delimitan la luz útil disponible y apoyan la organización de fases de movimiento, observación y cierre de actividades.'],
-      alertas:['Alertas oficiales', 'Revisión efectuada para la zona de interés.', 'Debe considerarse cualquier aviso o alerta vigente que pueda incrementar el riesgo operacional del sector evaluado.'],
-      operacional:['Condición operacional general', metrics.current.status || null, 'Resume el efecto combinado de las variables críticas y orienta la apreciación general de factibilidad para la operación planificada.'],
+    const focus = getDoctrineFocus(cfg);
+    const cloudBand = doctrinalCloudBand(Number.isFinite(r.cloud?.avg) ? r.cloud.avg : NaN);
+    const visBand = doctrinalVisibilityBand(Number.isFinite(r.visibility?.min) ? r.visibility.min / 1000 : NaN);
+    const windBand = doctrinalWindBand(Math.max(Number.isFinite(r.gust?.max) ? r.gust.max : -Infinity, Number.isFinite(r.wind?.max) ? r.wind.max : -Infinity));
+    const doctrinal = key => getDoctrineThresholdText(focus.id, key);
+    const baseMap = {
+      temp:['Temperatura', r.temp ? ((sameDay ? `Rango horario entre ${fmtNum(r.temp.min,'°C')} y ${fmtNum(r.temp.max,'°C')}.` : `Rango diario entre ${fmtNum(r.temp.min,'°C')} y ${fmtNum(r.temp.max,'°C')}, con promedio de ${fmtNum(r.temp.avg,'°C')}.`) + ' ' + doctrinal('temp')) : null],
+      sensacion:['Sensación térmica', metrics.current.sensacion ? `${metrics.current.sensacion}. ${doctrinal('sensacion')}` : doctrinal('sensacion')],
+      humedad:['Humedad relativa', r.humidity ? `Promedio ${fmtNum(r.humidity.avg,'%')} con máximos de ${fmtNum(r.humidity.max,'%')}. ${doctrinal('humedad')}` : doctrinal('humedad')],
+      viento:['Viento superficial', r.wind ? `Promedio ${fmtNum(r.wind.avg,'km/h')} y máximos de ${fmtNum(r.wind.max,'km/h')}. Clasificación doctrinaria estimada: ${windBand.label}. ${windBand.detail} ${doctrinal('viento')}` : doctrinal('viento')],
+      rafagas:['Ráfagas', r.gust ? `Pulsos máximos del orden de ${fmtNum(r.gust.max,'km/h')}. Para lectura doctrinaria se considera la banda de ${doctrinalWindBand(r.gust.max).label}. ${doctrinal('rafagas')}` : doctrinal('rafagas')],
+      direccion:['Dirección del viento', `${txt('valWindDir','N/D')}. ${doctrinal('direccion')}`],
+      precipitacion:['Precipitación', r.precip ? ((sameDay ? `Acumulación/valor de referencia con máximo de ${fmtNum(r.precip.max,'mm')}.` : `Comportamiento diario con máximo de ${fmtNum(r.precip.max,'mm')} y promedio de ${fmtNum(r.precip.avg,'mm')}.`) + ' ' + doctrinal('precipitacion')) : doctrinal('precipitacion')],
+      nubosidad:['Nubosidad', r.cloud ? `Cobertura media de ${fmtNum(r.cloud.avg,'%')} con máximos de ${fmtNum(r.cloud.max,'%')}. Equivale aproximadamente a ${cloudBand.octas} del cielo (${cloudBand.label}). ${doctrinal('nubosidad')}` : doctrinal('nubosidad')],
+      visibilidad:['Visibilidad', r.visibility ? `Promedio ${fmtNum(r.visibility.avg/1000,'km')} con mínimo de ${fmtNum(r.visibility.min/1000,'km')}. Clasificación de referencia: ${visBand.label}. ${visBand.detail} ${doctrinal('visibilidad')}` : doctrinal('visibilidad')],
+      presion:['Presión atmosférica', r.pressure ? `Media ${fmtNum(r.pressure.avg,'hPa')} con amplitud de ${fmtNum(r.pressure.max-r.pressure.min,'hPa')}. ${doctrinal('presion')}` : doctrinal('presion')],
+      uv:['Índice UV', metrics.current.uv ? `${metrics.current.uv}. ${doctrinal('uv')}` : doctrinal('uv')],
+      cloudbase:['Techo de nubes', metrics.current.cloudBase ? `${metrics.current.cloudBase}. ${doctrinal('cloudbase')}` : doctrinal('cloudbase')],
+      astronomia:['Horarios astronómicos', `${metrics.current.sunrise} / ${metrics.current.sunset}. ${doctrinal('astronomia')}`],
+      alertas:['Alertas oficiales', `${getRelevantAlertItems().length} asociada(s) al punto evaluado. ${doctrinal('alertas')}`],
+      operacional:['Condición operacional general', metrics.current.status ? `${metrics.current.status}. ${doctrinal('operacional')}` : doctrinal('operacional')],
     };
-    return (vars || []).map(v => map[v]).filter(Boolean).filter(row=>row[1]).map(row=>`<tr><th>${htmlSafe(row[0])}</th><td>${htmlSafe(row[1])}</td><td>${htmlSafe(row[2])}</td></tr>`).join('');
+    function thirdColumn(key){
+      if(focus.id === 'terreno'){
+        const map = {
+          viento:'Permite reconocer exposición de rutas, crestas, quebradas y sectores con canalización local del flujo.',
+          nubosidad:'Ayuda a anticipar pérdida de luz útil, cambios de techo y evolución local del tiempo.',
+          visibilidad:'Orienta seguridad de marcha, observación, orientación y control del entorno inmediato.',
+          humedad:'Complementa la lectura de condensación, bruma o incomodidad ambiental.',
+          temp:'Ayuda a graduar exigencia térmica, abrigo, hidratación y protección del personal.',
+          sensacion:'Permite valorar la percepción térmica real del ambiente para ajustar permanencia y exposición.',
+          precipitacion:'Advierte degradación de terreno, adherencia, protección de equipo y continuidad de desplazamientos.',
+          presion:'Apoya seguimiento de tendencia y detección de cambio de escenario cuando se mide en sitio fijo.',
+          cloudbase:'Permite controlar referencia visual y maniobra vertical disponible.',
+          astronomia:'Define luz útil para inicio, permanencia y cierre de actividad.',
+          alertas:'Obliga a contrastar el boletín con avisos/alertas vigentes.',
+          operacional:'Entrega síntesis rápida de factibilidad.'
+        };
+        return map[key] || 'Útil para control inmediato de la actividad y verificación en sitio.';
+      }
+      if(focus.id === 'ipb'){
+        const map = {
+          temp:'Factor THVNPV que puede modificar resistencia del personal, consumo, empleo de equipo y ritmo de la misión.',
+          humedad:'Factor THVNPV asociado a condensación, bruma, persistencia de nubosidad baja y degradación del confort.',
+          viento:'Factor THVNPV que incide en movilidad, estabilidad de medios, polvo en suspensión y observación.',
+          rafagas:'Puede introducir restricciones súbitas sobre personal, equipo, sistema principal y apoyo aéreo / RPAS.',
+          precipitacion:'Puede degradar terreno, reducir adherencia y afectar continuidad de fases críticas.',
+          nubosidad:'Afecta observación, apoyo aéreo y referencia visual sobre el objetivo.',
+          visibilidad:'Afecta vigilancia, navegación visual, detección e identificación de actividad.',
+          presion:'Apoya la estimación de estabilidad o transición del patrón meteorológico cuando la misión lo exige.',
+          cloudbase:'Condiciona maniobra vertical y posibilidad de apoyo aéreo/RPAS.',
+          alertas:'Introduce restricciones formales y eleva la apreciación de riesgo.',
+          operacional:'Resume el efecto integrado del tiempo atmosférico sobre la misión.'
+        };
+        return map[key] || 'Debe leerse en función de oportunidad, limitación y medida de control para la misión.';
+      }
+      if(focus.id === 'rpas'){
+        const map = {
+          viento:'Determina control de plataforma, deriva y estabilidad de operación.',
+          rafagas:'Puede volver no aconsejable la elevación por turbulencia o pérdida de margen seguro.',
+          visibilidad:'Condiciona referencia visual, navegación y continuidad del tramo de vuelo.',
+          precipitacion:'Puede comprometer sensores, estructura y seguridad de operación.',
+          nubosidad:'Afecta iluminación, referencia visual y lectura del entorno.',
+          cloudbase:'Limita altura de trabajo y margen vertical disponible.',
+          astronomia:'Delimita luz útil y ventanas de empleo seguras.',
+          alertas:'Exige contraste inmediato con restricciones vigentes.'
+        };
+        return map[key] || 'Debe leerse con criterio conservador de empleo aeronáutico.';
+      }
+      if(focus.id === 'ejecutivo') return 'Debe traducirse en decisión simple: continuar, controlar o postergar.';
+      const map = {
+        temp:'Puede aumentar o reducir la exigencia térmica del personal y la permanencia en terreno.',
+        sensacion:'Permite valorar la percepción térmica real del ambiente y advertir exigencias adicionales.',
+        humedad:'Puede favorecer condensación, bruma o sensación térmica incómoda.',
+        viento:'Puede afectar desplazamientos, estabilidad de equipos, observación y maniobras en terreno.',
+        rafagas:'Las rachas intensas pueden afectar súbitamente personal, material liviano y maniobra vehicular.',
+        direccion:'Ayuda a estimar exposición de rutas, laderas, quebradas y polvo en suspensión.',
+        precipitacion:'Puede comprometer visibilidad, adherencia, transitabilidad y continuidad de actividades expuestas.',
+        nubosidad:'Incide en referencia visual, radiación y evolución de cobertura persistente.',
+        visibilidad:'Una reducción puede afectar vigilancia, conducción y seguridad general de desplazamientos.',
+        presion:'Apoya la interpretación de estabilidad o transición sinóptica.',
+        uv:'Valores altos incrementan la exposición radiativa del personal en superficie.',
+        cloudbase:'Puede limitar referencias visuales y maniobra vertical disponible.',
+        astronomia:'Delimita la luz útil disponible y apoya organización de fases.',
+        alertas:'Debe considerarse cualquier aviso o alerta vigente que incremente el riesgo operacional.',
+        operacional:'Resume el efecto combinado de las variables críticas.'
+      };
+      return map[key] || 'Entrega una referencia útil para ajustar control y continuidad operacional.';
+    }
+    const preferredOrder = focus.id === 'terreno'
+      ? ['viento','nubosidad','visibilidad','humedad','temp','sensacion','precipitacion','presion','cloudbase','astronomia','alertas','operacional']
+      : focus.id === 'ipb'
+      ? ['temp','humedad','viento','rafagas','nubosidad','precipitacion','visibilidad','presion','cloudbase','alertas','operacional']
+      : focus.id === 'rpas'
+      ? ['viento','rafagas','visibilidad','precipitacion','nubosidad','cloudbase','astronomia','alertas','operacional']
+      : ['operacional','viento','rafagas','visibilidad','precipitacion','nubosidad','temp','humedad','presion','uv','cloudbase','astronomia','alertas'];
+    const wanted = new Set((vars || []).map(normalizeReportVariableKey));
+    const ordered = preferredOrder.filter(k => wanted.has(k)).concat([...wanted].filter(k => !preferredOrder.includes(k)));
+    return ordered.map(k => {
+      const row = baseMap[k];
+      if(!row || !row[1]) return null;
+      return `<tr><th>${htmlSafe(row[0])}</th><td>${htmlSafe(row[1])}</td><td>${htmlSafe(thirdColumn(k))}</td></tr>`;
+    }).filter(Boolean).join('');
   }
 
   function buildOperationalWindows(cfg, metrics){
@@ -712,8 +1181,10 @@
       { label:'1200h.–1859h.', start:12, end:18 },
       { label:'1900h.–2359h.', start:19, end:23 }
     ];
+    const focus = getDoctrineFocus(cfg);
+    const th = getDoctrineWindowThresholds(focus.id);
     if(!Array.isArray(H.time) || !H.time.length){
-      return `<table class="gr-table"><thead><tr><th>Fecha</th><th>Horario</th><th>Condición</th><th>Fundamento</th></tr></thead><tbody>${dates.flatMap(date=>windows.map(w=>`<tr><td>${fmtDateCompactMDY(date)}</td><td>${w.label}</td><td>Evaluación referencial</td><td>No hay serie horaria suficiente; validar en pantalla principal viento, visibilidad, nubosidad y alertas antes de cada fase operativa.</td></tr>`)).join('')}</tbody></table>`;
+      return `<div class="gr-small" style="margin-bottom:8px;">${htmlSafe(th.note)}</div><table class="gr-table"><thead><tr><th>Fecha</th><th>Horario</th><th>Condición</th><th>Fundamento</th></tr></thead><tbody>${dates.flatMap(date=>windows.map(w=>`<tr><td>${fmtDateCompactMDY(date)}</td><td>${w.label}</td><td>Evaluación referencial</td><td>No hay serie horaria suficiente; validar en pantalla principal viento, visibilidad, nubosidad y alertas antes de cada fase operativa.</td></tr>`)).join('')}</tbody></table>`;
     }
     function valuesFor(date, start, end, key){
       const arr = [];
@@ -728,9 +1199,9 @@
       });
       return arr;
     }
-    function avg(arr){ return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : NaN; }
-    function max(arr){ return arr.length ? Math.max(...arr) : NaN; }
-    function min(arr){ return arr.length ? Math.min(...arr) : NaN; }
+    const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : NaN;
+    const max = arr => arr.length ? Math.max(...arr) : NaN;
+    const min = arr => arr.length ? Math.min(...arr) : NaN;
     const rows = [];
     dates.forEach(date=>{
       windows.forEach(w=>{
@@ -743,25 +1214,30 @@
         const windAvg = avg(wind), gustMax = max(gust), visMin = min(vis), precipMax = max(precip), cloudAvg = avg(cloud), ceilingMin = min(ceiling);
         let score = 0;
         const motivos = [];
-        if(Number.isFinite(windAvg) && windAvg >= 25) { score += 2; motivos.push(`viento medio ${fmtNum(windAvg,'km/h')}`); }
-        else if(Number.isFinite(windAvg) && windAvg >= 18) { score += 1; motivos.push(`viento medio ${fmtNum(windAvg,'km/h')}`); }
-        if(Number.isFinite(gustMax) && gustMax >= 40) { score += 2; motivos.push(`ráfagas ${fmtNum(gustMax,'km/h')}`); }
-        else if(Number.isFinite(gustMax) && gustMax >= 30) { score += 1; motivos.push(`ráfagas ${fmtNum(gustMax,'km/h')}`); }
-        if(Number.isFinite(visMin) && visMin <= 4000) { score += 2; motivos.push(`visibilidad mínima ${fmtNum(visMin/1000,'km')}`); }
-        else if(Number.isFinite(visMin) && visMin <= 8000) { score += 1; motivos.push(`visibilidad mínima ${fmtNum(visMin/1000,'km')}`); }
-        if(Number.isFinite(precipMax) && precipMax >= 1.5) { score += 2; motivos.push(`precipitación ${fmtNum(precipMax,'mm')}`); }
-        else if(Number.isFinite(precipMax) && precipMax > 0.2) { score += 1; motivos.push(`precipitación ${fmtNum(precipMax,'mm')}`); }
-        if(Number.isFinite(cloudAvg) && cloudAvg >= 85) { score += 1; motivos.push(`nubosidad ${fmtNum(cloudAvg,'%')}`); }
-        if(Number.isFinite(ceilingMin) && ceilingMin <= 600) { score += 2; motivos.push(`techo ${fmtNum(ceilingMin,'m')}`); }
-        else if(Number.isFinite(ceilingMin) && ceilingMin <= 1200) { score += 1; motivos.push(`techo ${fmtNum(ceilingMin,'m')}`); }
+        const windBand = doctrinalWindBand(Math.max(Number.isFinite(gustMax)?gustMax:-Infinity, Number.isFinite(windAvg)?windAvg:-Infinity));
+        const visBand = doctrinalVisibilityBand(Number.isFinite(visMin) ? visMin/1000 : NaN);
+        if(Number.isFinite(windAvg) && windAvg > th.wind.critical) { score += 2; motivos.push(`viento ${fmtNum(windAvg,'km/h')} (sobre margen crítico)`); }
+        else if(Number.isFinite(windAvg) && windAvg >= th.wind.marginal) { score += 1; motivos.push(`viento ${fmtNum(windAvg,'km/h')} (margen marginal)`); }
+        if(Number.isFinite(gustMax) && gustMax > th.gust.critical) { score += 2; motivos.push(`ráfagas ${fmtNum(gustMax,'km/h')} (sobre margen crítico)`); }
+        else if(Number.isFinite(gustMax) && gustMax >= th.gust.marginal) { score += 1; motivos.push(`ráfagas ${fmtNum(gustMax,'km/h')} (margen marginal)`); }
+        if(Number.isFinite(visMin) && (visMin/1000) < th.vis.critical) { score += 2; motivos.push(`visibilidad ${fmtNum(visMin/1000,'km')} (${visBand.label})`); }
+        else if(Number.isFinite(visMin) && (visMin/1000) <= th.vis.marginal) { score += 1; motivos.push(`visibilidad ${fmtNum(visMin/1000,'km')} (${visBand.label})`); }
+        if(Number.isFinite(precipMax) && precipMax > th.precip.critical) { score += 2; motivos.push(`precipitación ${fmtNum(precipMax,'mm/h')} (sobre margen crítico)`); }
+        else if(Number.isFinite(precipMax) && precipMax >= th.precip.marginal) { score += 1; motivos.push(`precipitación ${fmtNum(precipMax,'mm/h')} (margen marginal)`); }
+        if(Number.isFinite(cloudAvg) && cloudAvg >= th.cloud.critical) { score += 1; motivos.push(`nubosidad ${fmtNum(cloudAvg,'%')}`); }
+        else if(Number.isFinite(cloudAvg) && cloudAvg >= th.cloud.marginal && focus.id === 'rpas') { score += 1; motivos.push(`nubosidad ${fmtNum(cloudAvg,'%')}`); }
+        if(Number.isFinite(ceilingMin) && ceilingMin > 0 && ceilingMin < th.ceiling.critical) { score += 2; motivos.push(`techo ${fmtNum(ceilingMin,'m')} (sobre margen crítico)`); }
+        else if(Number.isFinite(ceilingMin) && ceilingMin > 0 && ceilingMin <= th.ceiling.marginal) { score += 1; motivos.push(`techo ${fmtNum(ceilingMin,'m')} (margen marginal)`); }
         let estado = 'Favorable';
         if(score >= 5) estado = 'Desfavorable';
         else if(score >= 3) estado = 'Marginal';
-        const fundamento = motivos.length ? `Horario evaluado con ${motivos.join(', ')}.` : 'Sin señales restrictivas relevantes en la serie horaria disponible para este horario.';
+        const fundamento = motivos.length
+          ? `Horario evaluado con ${motivos.join(', ')}. Referencia aplicada: ${th.note}`
+          : `Sin señales restrictivas relevantes frente a la referencia doctrinaria aplicada. ${th.note}`;
         rows.push(`<tr><td>${fmtDateCompactMDY(date)}</td><td>${w.label}</td><td>${estado}</td><td>${fundamento}</td></tr>`);
       });
     });
-    return `<table class="gr-table"><thead><tr><th>Fecha</th><th>Horario</th><th>Condición operacional</th><th>Fundamento</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
+    return `<div class="gr-small" style="margin-bottom:8px;">${htmlSafe(th.note)}</div><table class="gr-table"><thead><tr><th>Fecha</th><th>Horario</th><th>Condición operacional</th><th>Fundamento</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
   }
 
   function buildTimeline(cfg){
@@ -1293,6 +1769,10 @@
     const report = qs('generatedReport');
     const wrap = qs('generatedReportWrap');
 
+
+    const analysisMeta = getAnalysisTableMeta(cfg);
+    const focus = getDoctrineFocus(cfg);
+    const sourceModel = getReportSourceModel();
     const html = `
       ${buildLetterhead(cfg)}
       <div class="gr-header">
@@ -1301,7 +1781,7 @@
           <div class="gr-header-left">
             <p class="gr-subtitle"><strong>Ubicación:</strong> ${htmlSafe(cfg.locationLabel)}</p>
             <p class="gr-subtitle"><strong>Periodo evaluado:</strong> ${htmlSafe(cfg.dateFrom===cfg.dateTo ? fmtDateCompactMDY(cfg.dateFrom) : `${fmtDateCompactMDY(cfg.dateFrom)} a ${fmtDateCompactMDY(cfg.dateTo)}`)}</p>
-            <p class="gr-subtitle"><strong>Fuente y modelo:</strong> ${htmlSafe(getReportSourceModel().source)} / ${htmlSafe(getReportSourceModel().model)}</p>
+            <p class="gr-subtitle"><strong>Fuente y modelo:</strong> ${htmlSafe(sourceModel.source)} / ${htmlSafe(sourceModel.model)}</p>
           </div>
           <div class="gr-header-right">
             ${cfg.includeSemaforo ? `<div class="gr-semaforo ${sem.cls}" style="margin-left:auto;">${sem.label}</div>` : ''}
@@ -1312,8 +1792,9 @@
       ${cfg.includeMap ? `<div class="gr-note" style="margin:10px 0 16px 0; text-align:justify;"><strong>Referencia geográfica:</strong> Punto analizado en ${htmlSafe(cfg.locationLabel)}.</div>` : ''}
 
       <div class="gr-section">
-        <h3>I. Resumen</h3>
-        <p>El presente boletín se emite para la ZG en coordenadas <strong>${htmlSafe(cfg.locationLabel)}</strong>. Para ese sector, la condición meteorológica observada/proyectada indica <strong>${htmlSafe(metrics.current.condicion)}</strong>, temperatura de <strong>${htmlSafe(metrics.current.temp)}</strong>, humedad de <strong>${htmlSafe(metrics.current.humedad)}</strong>, viento de <strong>${htmlSafe(metrics.current.viento)}</strong>, ráfagas de <strong>${htmlSafe(metrics.current.rafagas)}</strong>, visibilidad de <strong>${htmlSafe(metrics.current.visibilidad)}</strong>, precipitación de referencia de <strong>${htmlSafe(metrics.current.precip)}</strong> y techo estimado de nubes en <strong>${htmlSafe(metrics.current.cloudBase)}</strong>.</p>
+        <h3>I. Resumen de decisión</h3>
+        <p>El presente boletín se emite para el punto geográfico <strong>${htmlSafe(cfg.locationLabel)}</strong>. Para el tramo evaluado, la condición meteorológica observada/proyectada indica <strong>${htmlSafe(metrics.current.condicion)}</strong>, temperatura de <strong>${htmlSafe(metrics.current.temp)}</strong>, humedad de <strong>${htmlSafe(metrics.current.humedad)}</strong>, viento de <strong>${htmlSafe(metrics.current.viento)}</strong>, ráfagas de <strong>${htmlSafe(metrics.current.rafagas)}</strong>, visibilidad de <strong>${htmlSafe(metrics.current.visibilidad)}</strong>, precipitación de referencia de <strong>${htmlSafe(metrics.current.precip)}</strong> y techo estimado de nubes en <strong>${htmlSafe(metrics.current.cloudBase)}</strong>.</p>
+        ${buildDecisionSummary(cfg, metrics)}
         <p>${htmlSafe(metrics.current.conclusion)}</p>
         ${cfg.notes ? `<p><strong>Contexto adicional:</strong> ${htmlSafe(cfg.notes)}</p>`:''}
       </div>
@@ -1324,14 +1805,17 @@
       </div>
 
       <div class="gr-section">
-        <h3>III. Situación meteorológica general</h3>
+        <h3>III. Enfoque aplicado al boletín</h3>
         <div>
-          <p>El escenario para el punto seleccionado se encuentra dominado por <strong>${htmlSafe(metrics.current.condicion)}</strong>, con sensación térmica de <strong>${htmlSafe(metrics.current.sensacion)}</strong>, techo estimado de nubes en <strong>${htmlSafe(metrics.current.cloudBase)}</strong>, precipitación de referencia de <strong>${htmlSafe(metrics.current.precip)}</strong>, presión atmosférica de <strong>${htmlSafe(metrics.current.pressure)}</strong> y visibilidad de <strong>${htmlSafe(metrics.current.visibilidad)}</strong>.</p>
+          <p><strong>Enfoque seleccionado:</strong> ${htmlSafe(focus.label)}.</p>
+          <p><strong>Orientación de lectura:</strong> ${htmlSafe(reportFocusHint(cfg))}</p>
+          ${buildDoctrineFrame(cfg, metrics)}
+          ${buildDoctrineReferenceTable(cfg, metrics)}
           <p>Los horarios astronómicos relevantes para planificación son <strong>CCCM ${htmlSafe(astroPlan.cccm)}</strong> y <strong>TCCV ${htmlSafe(astroPlan.tccv)}</strong>. La lectura operacional debe apoyarse en la evolución horaria o diaria del periodo solicitado, según corresponda.</p>
         </div>
       </div>
 
-      ${cfg.includeTables ? `<div class="gr-section"><h3>IV. ${cfg.dateFrom === cfg.dateTo ? 'Variables meteorológicas por hora' : 'Variables meteorológicas por día'}</h3>${buildVariablePeriodTable(cfg)}</div><div class="gr-section"><h3>V. Análisis por variables meteorológicas</h3><table class="gr-table"><thead><tr><th>Variable</th><th>Síntesis del comportamiento</th><th>Incidencias relevantes</th></tr></thead><tbody>${variableRows(metrics, cfg.variables, cfg)}</tbody></table></div>`:''}
+      ${cfg.includeTables ? `<div class="gr-section"><h3>${htmlSafe(analysisMeta.periodTitle)}</h3>${buildVariablePeriodTable(cfg)}</div><div class="gr-section"><h3>${htmlSafe(analysisMeta.analysisTitle)}</h3><table class="gr-table"><thead><tr><th>${htmlSafe(analysisMeta.headings[0])}</th><th>${htmlSafe(analysisMeta.headings[1])}</th><th>${htmlSafe(analysisMeta.headings[2])}</th></tr></thead><tbody>${variableRows(metrics, cfg.variables, cfg)}</tbody></table></div>`:''}
       ${cfg.includeTimeline ? `<div class="gr-section"><h3>VI. Ventanas operacionales</h3><p class="gr-small">La calificación se entrega por horario para facilitar la interpretación operacional del tramo. Cada ventana se estima a partir de viento, ráfagas, visibilidad, precipitación, nubosidad y techo, clasificando el horario como favorable, marginal o desfavorable.</p>${buildOperationalWindows(cfg, metrics)}</div><div class="gr-section"><h3>VII. Resumen por día</h3>${buildTimeline(cfg)}</div>`:''}
       ${cfg.includeAlerts ? `<div class="gr-section"><h3>VIII. Alertas oficiales de la zona de interés</h3>${getAlertsSummaryForPoint()}</div>`:''}
       ${cfg.includeRecs ? `<div class="gr-section"><h3>IX. Recomendaciones</h3><ol>${recs.map(r=>`<li>${htmlSafe(r)}</li>`).join('')}</ol></div>`:''}
@@ -1604,7 +2088,7 @@ body {
         .print-chart-wrapper { border: 1px solid var(--panel); padding: 5px; height: 150px; background: #fff; }
 
         @media print {
-            @page { size: auto; margin-top:2.2cm; margin-right:1cm; margin-bottom:1.7cm; margin-left:1cm; }
+            @page { size: A4; margin-top:2.5cm; margin-right:2.1cm; margin-bottom:1.9cm; margin-left:2.7cm; }
             body { background-color: var(--text) !important; color: var(--panel) !important; font-family: 'Arial Narrow', sans-serif !important; padding: 0 !important; -webkit-print-color-adjust: exact; }
 
             #splashScreen, .control-bar, .source-btn, .dmc-btn, #volcanoStatus, #alertContainer, .map-box, .extras-container, .day-card.past { display: none !important; }
@@ -2120,7 +2604,7 @@ input, select {
         .generated-report-wrap.show{display:block;}
         .generated-toolbar{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px 12px;background:var(--panel);border-bottom:1px solid var(--border);}
         .generated-toolbar button{border:1px solid var(--border);background:#fff;padding:8px 10px;cursor:pointer;font-weight:700;}
-        .generated-report{padding:18px;line-height:1.45;font-family:Arial,Helvetica,sans-serif;text-transform:none;}
+        .generated-report{padding:18px 22px 18px 30px;line-height:1.45;font-family:Arial,Helvetica,sans-serif;text-transform:none;max-width:17.2cm;margin:0 auto;}
         .generated-report p,.generated-report td,.generated-report li,.generated-report .gr-note,.generated-report .gr-small{ text-align:justify; }
         .gr-list-formal{margin:0;padding-left:30px;}
         .gr-list-formal.level-1{list-style-type:upper-roman;}
@@ -2183,7 +2667,7 @@ input, select {
           body.print-generated-report > *:not(#generatedReportWrap){display:none !important;}
           body.print-generated-report #generatedReportWrap{display:block !important;border:none !important;margin:0 !important;}
           body.print-generated-report #generatedReportWrap .generated-toolbar{display:none !important;}
-          body.print-generated-report #generatedReportWrap .generated-report{padding:0 0 0 3cm !important;}
+          body.print-generated-report #generatedReportWrap .generated-report{padding:0 !important;max-width:none !important;margin:0 !important;}
         }
 
 
@@ -2501,7 +2985,7 @@ input, select {
         .generated-report-wrap.show{display:block;}
         .generated-toolbar{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px 12px;background:var(--panel);border-bottom:1px solid var(--border);}
         .generated-toolbar button{border:1px solid var(--border);background:#fff;padding:8px 10px;cursor:pointer;font-weight:700;}
-        .generated-report{padding:18px;line-height:1.45;font-family:Arial,Helvetica,sans-serif;text-transform:none;}
+        .generated-report{padding:18px 22px 18px 30px;line-height:1.45;font-family:Arial,Helvetica,sans-serif;text-transform:none;max-width:17.2cm;margin:0 auto;}
         .generated-report *{text-transform:none;}
         .gr-header{border-bottom:2px solid #222;padding-bottom:16px;margin-bottom:26px;}
         .gr-header{padding-top:2px;}
@@ -2548,7 +3032,7 @@ input, select {
           body.print-generated-report > *:not(#generatedReportWrap){display:none !important;}
           body.print-generated-report #generatedReportWrap{display:block !important;border:none !important;margin:0 !important;}
           body.print-generated-report #generatedReportWrap .generated-toolbar{display:none !important;}
-          body.print-generated-report #generatedReportWrap .generated-report{padding:0 0 0 3cm !important;}
+          body.print-generated-report #generatedReportWrap .generated-report{padding:0 !important;max-width:none !important;margin:0 !important;}
         }
 
 </style>
@@ -3338,7 +3822,7 @@ input, select {
       </div>
       <div class="report-head-actions">
         <button type="button" class="report-mini-btn" onclick="loadLastReportConfig()">CARGAR ÚLTIMA CONFIGURACIÓN</button>
-        <button type="button" class="report-mini-btn" id="buildReportBtn" onclick="safeGenerateOperationalReport(event)">CONSTRUIR INFORME</button>
+        <button type="button" class="report-mini-btn" id="buildReportBtn" onclick="safeGenerateOperationalReport(event)">GENERAR BOLETÍN METEOROLÓGICO</button>
         <button class="report-close" type="button" onclick="closeReportBuilder()">CERRAR ✕</button>
       </div>
     </div>
@@ -3364,16 +3848,14 @@ input, select {
             </select>
           </div>
           <div class="report-field">
-            <label for="rbFocus">Enfoque</label>
+            <label for="rbFocus">Enfoque doctrinario / operacional</label>
             <select id="rbFocus">
-              <option>General</option>
-              <option selected>Operacional</option>
-              <option>Minero</option>
-              <option>Logístico</option>
-              <option>RPAS / drones</option>
-              <option>Seguridad</option>
-              <option>Aeronáutico</option>
-              <option>Patrullaje / terreno</option>
+              <option>Operacional</option>
+              <option>Observación en terreno</option>
+              <option>Impacto operacional</option>
+              <option selected>IPB / misión</option>
+              <option>RPAS / aeronáutico</option>
+              <option>Ejecutivo</option>
             </select>
           </div>
           <div class="report-field">
@@ -3520,11 +4002,11 @@ input, select {
         <h3>OPCIONES DEL INFORME</h3>
         <div class="report-checks">
           <label class="report-check"><input id="rbIncludeCharts" type="checkbox" checked> Incluir gráficos</label>
-          <label class="report-check"><input id="rbIncludeTables" type="checkbox" checked> Incluir tablas resumen</label>
-          <label class="report-check"><input id="rbIncludeTimeline" type="checkbox" checked> Incluir línea de tiempo</label>
-          <label class="report-check"><input id="rbIncludeAlerts" type="checkbox" checked> Incluir alertas SENAPRED</label>
+          <label class="report-check"><input id="rbIncludeTables" type="checkbox" checked> Incluir cuadros doctrinarios</label>
+          <label class="report-check"><input id="rbIncludeTimeline" type="checkbox" checked> Incluir ventana y resumen temporal</label>
+          <label class="report-check"><input id="rbIncludeAlerts" type="checkbox" checked> Incluir alertas oficiales</label>
           <label class="report-check"><input id="rbIncludeRecs" type="checkbox" checked> Incluir recomendaciones</label>
-          <label class="report-check"><input id="rbIncludeConclusions" type="checkbox" checked> Incluir conclusiones</label>
+          <label class="report-check"><input id="rbIncludeConclusions" type="checkbox" checked> Incluir apreciación final</label>
           <label class="report-check"><input id="rbIncludeMap" type="checkbox"> Incluir mapa / referencia geográfica</label>
           <label class="report-check"><input id="rbIncludeSemaforo" type="checkbox" checked> Incluir semáforo operacional</label>
           <label class="report-check"><input id="rbIncludeAero" type="checkbox"> Incluir AeroForecast / Anexo 3</label>
@@ -3539,7 +4021,7 @@ input, select {
 <div id="generatedReportWrap" class="generated-report-wrap">
   <div class="generated-toolbar">
     <div>
-      <strong>INFORME GENERADO</strong>
+      <strong>BOLETÍN METEOROLÓGICO GENERADO</strong>
       <div style="font-size:11px;color:var(--muted);">LISTO PARA REVISAR, IMPRIMIR O EXPORTAR A PDF.</div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -4676,24 +5158,11 @@ try {
     }
 
 
-    function __dmcOfficialBucket(tipo){
-        const t = String(tipo || '').toLowerCase();
-        if (t.includes('alarma')) return 'alarma';
-        if (t.includes('alerta')) return 'alerta';
-        return 'aviso';
-    }
-
     function __dmcEnsureAlertsOverlay(){
         try{
             __dmc.alertLayer = __dmc.alertLayer || L.layerGroup();
-            __dmc.alertLayerAviso = __dmc.alertLayerAviso || L.layerGroup();
-            __dmc.alertLayerAlerta = __dmc.alertLayerAlerta || L.layerGroup();
-            __dmc.alertLayerAlarma = __dmc.alertLayerAlarma || L.layerGroup();
             if (!__dmc._alertsAdded && __uav?.layersCtl) {
                 __uav.layersCtl.addOverlay(__dmc.alertLayer, 'DMC · ALERTAS OFICIALES');
-                __uav.layersCtl.addOverlay(__dmc.alertLayerAviso, '&nbsp;&nbsp;&nbsp;↳ DMC · AVISOS OFICIALES');
-                __uav.layersCtl.addOverlay(__dmc.alertLayerAlerta, '&nbsp;&nbsp;&nbsp;↳ DMC · ALERTAS OFICIALES');
-                __uav.layersCtl.addOverlay(__dmc.alertLayerAlarma, '&nbsp;&nbsp;&nbsp;↳ DMC · ALARMAS OFICIALES');
                 __dmc._alertsAdded = true;
             }
         }catch(_e){}
@@ -4843,9 +5312,6 @@ try {
             __dmcEnsureAlertsOverlay();
             if (!__dmc.alertLayer) return;
             __dmc.alertLayer.clearLayers();
-            __dmc.alertLayerAviso?.clearLayers?.();
-            __dmc.alertLayerAlerta?.clearLayers?.();
-            __dmc.alertLayerAlarma?.clearLayers?.();
 
             const pack = await __dmcEnsureOfficialAlertsLoaded();
             const items = __dmcOfficialNormalizeItems(pack);
@@ -4854,21 +5320,6 @@ try {
             window.__alertsState = window.__alertsState || {};
             window.__alertsState.items = items;
 
-            const bucketLayer = (tipo)=>{
-                const bucket = __dmcOfficialBucket(tipo);
-                if (bucket === 'alarma') return __dmc.alertLayerAlarma || __dmc.alertLayer;
-                if (bucket === 'alerta') return __dmc.alertLayerAlerta || __dmc.alertLayer;
-                return __dmc.alertLayerAviso || __dmc.alertLayer;
-            };
-            const addDualLayer = (factory, data, sty, popup, tipo)=>{
-                const mainObj = factory(data, sty).bindPopup(popup).addTo(__dmc.alertLayer);
-                const specific = bucketLayer(tipo);
-                if (specific && specific !== __dmc.alertLayer) {
-                    factory(data, sty).bindPopup(popup).addTo(specific);
-                }
-                return mainObj;
-            };
-
             items.forEach(it=>{
                 const sty = __dmcOfficialStyle(it.tipo);
                 const popup = __dmcOfficialPopup(it);
@@ -4876,7 +5327,7 @@ try {
                 if(String(it.tipoZonaAfecta || '').toLowerCase() === 'area'){
                     const pairs = String(it.dataZonaAfecta || '').split('|').map(s => s.split(',').map(Number)).filter(a => a.length===2 && Number.isFinite(a[0]) && Number.isFinite(a[1]));
                     if(pairs.length >= 3){
-                        addDualLayer((coords, style)=>L.polygon(coords, style), pairs, sty, popup, it.tipo);
+                        L.polygon(pairs, sty).bindPopup(popup).addTo(__dmc.alertLayer);
                     }
                     return;
                 }
@@ -4887,12 +5338,12 @@ try {
                         if(reg === 'ip' || reg === 'jf' || reg === 'an'){
                             const center = window['myCoordinates_' + reg];
                             const radius = window['myCoordinates_' + reg + '_radius'] || 90000;
-                            if(center) addDualLayer((latlng, style)=>L.circle(latlng, { ...style, radius }), center, sty, popup, it.tipo);
+                            if(center) L.circle(center, { ...sty, radius }).bindPopup(popup).addTo(__dmc.alertLayer);
                             return;
                         }
                         const coords = __dmcGetOfficialCoord(reg, 'regiones');
                         if(Array.isArray(coords) && coords.length){
-                            addDualLayer((latlngs, style)=>L.polygon(latlngs, style), coords, sty, popup, it.tipo);
+                            L.polygon(coords, sty).bindPopup(popup).addTo(__dmc.alertLayer);
                         }
                     });
                     return;
@@ -4903,7 +5354,7 @@ try {
                     zones.forEach(z=>{
                         const coords = __dmcGetOfficialCoord(z, 'zonas');
                         if(Array.isArray(coords) && coords.length){
-                            addDualLayer((latlngs, style)=>L.polygon(latlngs, style), coords, sty, popup, it.tipo);
+                            L.polygon(coords, sty).bindPopup(popup).addTo(__dmc.alertLayer);
                         }
                     });
                 }
