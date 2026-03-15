@@ -4676,11 +4676,24 @@ try {
     }
 
 
+    function __dmcOfficialBucket(tipo){
+        const t = String(tipo || '').toLowerCase();
+        if (t.includes('alarma')) return 'alarma';
+        if (t.includes('alerta')) return 'alerta';
+        return 'aviso';
+    }
+
     function __dmcEnsureAlertsOverlay(){
         try{
             __dmc.alertLayer = __dmc.alertLayer || L.layerGroup();
+            __dmc.alertLayerAviso = __dmc.alertLayerAviso || L.layerGroup();
+            __dmc.alertLayerAlerta = __dmc.alertLayerAlerta || L.layerGroup();
+            __dmc.alertLayerAlarma = __dmc.alertLayerAlarma || L.layerGroup();
             if (!__dmc._alertsAdded && __uav?.layersCtl) {
                 __uav.layersCtl.addOverlay(__dmc.alertLayer, 'DMC · ALERTAS OFICIALES');
+                __uav.layersCtl.addOverlay(__dmc.alertLayerAviso, '&nbsp;&nbsp;&nbsp;↳ DMC · AVISOS OFICIALES');
+                __uav.layersCtl.addOverlay(__dmc.alertLayerAlerta, '&nbsp;&nbsp;&nbsp;↳ DMC · ALERTAS OFICIALES');
+                __uav.layersCtl.addOverlay(__dmc.alertLayerAlarma, '&nbsp;&nbsp;&nbsp;↳ DMC · ALARMAS OFICIALES');
                 __dmc._alertsAdded = true;
             }
         }catch(_e){}
@@ -4830,6 +4843,9 @@ try {
             __dmcEnsureAlertsOverlay();
             if (!__dmc.alertLayer) return;
             __dmc.alertLayer.clearLayers();
+            __dmc.alertLayerAviso?.clearLayers?.();
+            __dmc.alertLayerAlerta?.clearLayers?.();
+            __dmc.alertLayerAlarma?.clearLayers?.();
 
             const pack = await __dmcEnsureOfficialAlertsLoaded();
             const items = __dmcOfficialNormalizeItems(pack);
@@ -4838,6 +4854,21 @@ try {
             window.__alertsState = window.__alertsState || {};
             window.__alertsState.items = items;
 
+            const bucketLayer = (tipo)=>{
+                const bucket = __dmcOfficialBucket(tipo);
+                if (bucket === 'alarma') return __dmc.alertLayerAlarma || __dmc.alertLayer;
+                if (bucket === 'alerta') return __dmc.alertLayerAlerta || __dmc.alertLayer;
+                return __dmc.alertLayerAviso || __dmc.alertLayer;
+            };
+            const addDualLayer = (factory, data, sty, popup, tipo)=>{
+                const mainObj = factory(data, sty).bindPopup(popup).addTo(__dmc.alertLayer);
+                const specific = bucketLayer(tipo);
+                if (specific && specific !== __dmc.alertLayer) {
+                    factory(data, sty).bindPopup(popup).addTo(specific);
+                }
+                return mainObj;
+            };
+
             items.forEach(it=>{
                 const sty = __dmcOfficialStyle(it.tipo);
                 const popup = __dmcOfficialPopup(it);
@@ -4845,7 +4876,7 @@ try {
                 if(String(it.tipoZonaAfecta || '').toLowerCase() === 'area'){
                     const pairs = String(it.dataZonaAfecta || '').split('|').map(s => s.split(',').map(Number)).filter(a => a.length===2 && Number.isFinite(a[0]) && Number.isFinite(a[1]));
                     if(pairs.length >= 3){
-                        L.polygon(pairs, sty).bindPopup(popup).addTo(__dmc.alertLayer);
+                        addDualLayer((coords, style)=>L.polygon(coords, style), pairs, sty, popup, it.tipo);
                     }
                     return;
                 }
@@ -4856,12 +4887,12 @@ try {
                         if(reg === 'ip' || reg === 'jf' || reg === 'an'){
                             const center = window['myCoordinates_' + reg];
                             const radius = window['myCoordinates_' + reg + '_radius'] || 90000;
-                            if(center) L.circle(center, { ...sty, radius }).bindPopup(popup).addTo(__dmc.alertLayer);
+                            if(center) addDualLayer((latlng, style)=>L.circle(latlng, { ...style, radius }), center, sty, popup, it.tipo);
                             return;
                         }
                         const coords = __dmcGetOfficialCoord(reg, 'regiones');
                         if(Array.isArray(coords) && coords.length){
-                            L.polygon(coords, sty).bindPopup(popup).addTo(__dmc.alertLayer);
+                            addDualLayer((latlngs, style)=>L.polygon(latlngs, style), coords, sty, popup, it.tipo);
                         }
                     });
                     return;
@@ -4872,7 +4903,7 @@ try {
                     zones.forEach(z=>{
                         const coords = __dmcGetOfficialCoord(z, 'zonas');
                         if(Array.isArray(coords) && coords.length){
-                            L.polygon(coords, sty).bindPopup(popup).addTo(__dmc.alertLayer);
+                            addDualLayer((latlngs, style)=>L.polygon(latlngs, style), coords, sty, popup, it.tipo);
                         }
                     });
                 }
