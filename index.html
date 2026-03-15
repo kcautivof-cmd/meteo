@@ -5802,8 +5802,6 @@ window.onload = async function() {
                 const data = await res.json();
 globalData = data;
                 window.__lastSourceLabel = data?.__source_label || usedSource;
-                window.__lastDmcDebug = data?.dmc_debug || data?.__dmc_debug || null;
-                window.__lastDmcMeta = data?.__dmc || null;
                 if (data?.__model_label) usedModel = data.__model_label;
 
                 renderHeader(name, country, usedModel, latitude, longitude);
@@ -5865,11 +5863,7 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
 
             // Coordenadas clickeables para copiar
             const coordSpan = `<span id="coordCopy" style="color: var(--text); cursor:pointer; text-decoration:underline;" title="Click para copiar">${latDms}, ${lonDms} 📋</span>`;
-            const dmcDbg = window.__lastDmcDebug || null;
-            const dmcMeta = window.__lastDmcMeta || null;
-            const dmcSnap = dmcMeta?.locality ? ` | PUNTO DMC: <span style="color: var(--text)">${escHtml(String(dmcMeta.locality).toUpperCase())}</span>${Number.isFinite(dmcMeta?.distance_km) ? ` <span style="color:var(--muted)">(${dmcMeta.distance_km.toFixed(1)} km)</span>` : ''}` : '';
-            const dmcDbgNote = dmcDbg ? ` | DMC DEBUG: <span style="color: var(--text)">scripts ${dmcDbg.scripts_loaded ?? dmcDbg.scripts_found ?? 0}${(dmcDbg.pronostico_rows!=null)?` · filas ${dmcDbg.pronostico_rows}`:''}</span>` : '';
-            document.getElementById('sourceInfo').innerHTML = `FUENTE: <span style="color: var(--text)">${(window.__lastSourceLabel||'OPEN-METEO')}</span> | MODELO: <span style="color: var(--text)">${model}</span> | COORD: ${coordSpan}${dmcSnap}${dmcDbgNote}`;
+            document.getElementById('sourceInfo').innerHTML = `FUENTE: <span style="color: var(--text)">${(window.__lastSourceLabel||'OPEN-METEO')}</span> | MODELO: <span style="color: var(--text)">${model}</span> | COORD: ${coordSpan}`;
 
             setTimeout(() => {
                 const el = document.getElementById('coordCopy');
@@ -5888,12 +5882,29 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
             }, 0);
         }
 
-        function calculateWeatherText(code, cloudCover, humidity, isDay) {
-            if (code >= 51) return decodeWMO(code);
-            if (humidity >= 95 && code <= 48) return "BRUMA / NIEBLA";
-            if (code <= 3 && cloudCover < 50) return isDay ? "DESPEJADO (SOLEADO)" : "DESPEJADO";
-            if (code <= 3 && cloudCover < 85) return "PARCIALMENTE NUBLADO";
-            return decodeWMO(code);
+        function calculateWeatherText(code, cloudCover, humidity, isDay, precipMm = null) {
+            const hasCode = code !== undefined && code !== null && code !== '' && !Number.isNaN(Number(code));
+            const nCode = hasCode ? Number(code) : null;
+            const nCloud = (cloudCover !== undefined && cloudCover !== null && cloudCover !== '' && !Number.isNaN(Number(cloudCover))) ? Number(cloudCover) : null;
+            const nHumidity = (humidity !== undefined && humidity !== null && humidity !== '' && !Number.isNaN(Number(humidity))) ? Number(humidity) : null;
+            const nPrecip = (precipMm !== undefined && precipMm !== null && precipMm !== '' && !Number.isNaN(Number(precipMm))) ? Number(precipMm) : null;
+
+            if (hasCode) {
+                if (nCode >= 51) return decodeWMO(nCode);
+                if (nHumidity !== null && nHumidity >= 95 && nCode <= 48) return "BRUMA / NIEBLA";
+                if (nCode <= 3 && nCloud !== null && nCloud < 50) return isDay ? "DESPEJADO (SOLEADO)" : "DESPEJADO";
+                if (nCode <= 3 && nCloud !== null && nCloud < 85) return "PARCIALMENTE NUBLADO";
+                const decoded = decodeWMO(nCode);
+                if (decoded !== 'SIN DATOS') return decoded;
+            }
+
+            if (nPrecip !== null && nPrecip >= 10) return 'PRECIPITACIÓN PROBABLE';
+            if (nPrecip !== null && nPrecip > 0) return 'PRECIPITACIÓN DÉBIL';
+            if (nHumidity !== null && nHumidity >= 95) return 'BRUMA / NIEBLA';
+            if (nCloud !== null && nCloud < 20) return isDay ? 'DESPEJADO (ESTIMADO)' : 'DESPEJADO';
+            if (nCloud !== null && nCloud < 60) return 'PARCIALMENTE NUBLADO';
+            if (nCloud !== null) return 'NUBLADO';
+            return 'CONDICIÓN ESTIMADA';
         }
 
         function getTodayIsoLocal(){
@@ -5999,6 +6010,13 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
             if (!src) return 'DATO NO IDENTIFICADO';
             return String(src).toUpperCase();
         }
+        function timelineSummaryText(daily, i){
+            return Array.isArray(daily.__summary_text) ? (daily.__summary_text[i] || '') : '';
+        }
+        function timelineWindMin(daily, i, fallbackVal){
+            const v = Array.isArray(daily.__wind_min_kmh) ? daily.__wind_min_kmh[i] : null;
+            return (v !== undefined && v !== null && v !== '') ? Math.round(v) : fallbackVal;
+        }
 
         function renderTimeline(data, lat, lon) {
             const container = document.getElementById('timelineBox');
@@ -6026,11 +6044,13 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
                 const sourceLabel = timelineSourceLabel(daily, i);
 
                 let weatherText = '';
+                const dmcSummary = timelineSummaryText(daily, i);
                 if(offset === 0) {
-                    weatherText = currentStatusText || calculateWeatherText(daily.weather_code?.[i], cloudAvg, humMax, 1);
+                    weatherText = dmcSummary || currentStatusText || calculateWeatherText(daily.weather_code?.[i], cloudAvg, humMax, 1, daily.precipitation_sum?.[i]);
                 } else {
-                    weatherText = calculateWeatherText(daily.weather_code?.[i], cloudAvg, humMax, 1);
+                    weatherText = dmcSummary || calculateWeatherText(daily.weather_code?.[i], cloudAvg, humMax, 1, daily.precipitation_sum?.[i]);
                 }
+                const shownWindMin = timelineWindMin(daily, i, minWind);
 
                 const div = document.createElement('div');
                 div.className = `day-card ${type}`;
@@ -6042,7 +6062,7 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
                     <div class="card-row"><span>SENS MAX/MIN:</span> <span>${safeVal(daily.apparent_temperature_max[i])}° / ${safeVal(daily.apparent_temperature_min[i])}°</span></div>
                     <div class="card-row"><span>HUMEDAD:</span> <span style="color:#3399ff; font-size:0.9em">${humMin}% - ${humMax}%</span></div>
                     <div class="card-row"><span>VIENTO MAX:</span> <span style="color:var(--orange)">${safeVal(daily.wind_speed_10m_max[i])} KM/H</span></div>
-                    <div class="card-row"><span>VIENTO MIN:</span> <span>${minWind} KM/H</span></div>
+                    <div class="card-row"><span>VIENTO MIN:</span> <span>${shownWindMin} KM/H</span></div>
                     <div class="card-row"><span>UV MAX:</span> <span style="color:yellow">${safeVal(daily.uv_index_max[i])}</span></div>
 
                     <div style="border-top:1px dashed var(--border); margin:4px 0"></div>
