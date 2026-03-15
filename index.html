@@ -5802,6 +5802,8 @@ window.onload = async function() {
                 const data = await res.json();
 globalData = data;
                 window.__lastSourceLabel = data?.__source_label || usedSource;
+                window.__lastDmcDebug = data?.dmc_debug || data?.__dmc_debug || null;
+                window.__lastDmcMeta = data?.__dmc || null;
                 if (data?.__model_label) usedModel = data.__model_label;
 
                 renderHeader(name, country, usedModel, latitude, longitude);
@@ -5863,7 +5865,11 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
 
             // Coordenadas clickeables para copiar
             const coordSpan = `<span id="coordCopy" style="color: var(--text); cursor:pointer; text-decoration:underline;" title="Click para copiar">${latDms}, ${lonDms} 📋</span>`;
-            document.getElementById('sourceInfo').innerHTML = `FUENTE: <span style="color: var(--text)">${(window.__lastSourceLabel||'OPEN-METEO')}</span> | MODELO: <span style="color: var(--text)">${model}</span> | COORD: ${coordSpan}`;
+            const dmcDbg = window.__lastDmcDebug || null;
+            const dmcMeta = window.__lastDmcMeta || null;
+            const dmcSnap = dmcMeta?.locality ? ` | PUNTO DMC: <span style="color: var(--text)">${escHtml(String(dmcMeta.locality).toUpperCase())}</span>${Number.isFinite(dmcMeta?.distance_km) ? ` <span style="color:var(--muted)">(${dmcMeta.distance_km.toFixed(1)} km)</span>` : ''}` : '';
+            const dmcDbgNote = dmcDbg ? ` | DMC DEBUG: <span style="color: var(--text)">scripts ${dmcDbg.scripts_loaded ?? dmcDbg.scripts_found ?? 0}${(dmcDbg.pronostico_rows!=null)?` · filas ${dmcDbg.pronostico_rows}`:''}</span>` : '';
+            document.getElementById('sourceInfo').innerHTML = `FUENTE: <span style="color: var(--text)">${(window.__lastSourceLabel||'OPEN-METEO')}</span> | MODELO: <span style="color: var(--text)">${model}</span> | COORD: ${coordSpan}${dmcSnap}${dmcDbgNote}`;
 
             setTimeout(() => {
                 const el = document.getElementById('coordCopy');
