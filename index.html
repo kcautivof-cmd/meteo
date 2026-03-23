@@ -469,14 +469,62 @@
 
   function getRelevantAlertItems(){
     const point = getCurrentPoint();
-    const pool = Array.isArray(window.__alertsState?.items) && window.__alertsState.items.length
+    const regionRaw = (typeof inferRegionByPoint === 'function') ? inferRegionByPoint(point.lat, point.lon) : null;
+    const regionNorm = regionRaw ? regionRaw.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'') : null;
+
+    // Pool SENAPRED
+    const senapredItems = Array.isArray(window.__alertsState?.items) && window.__alertsState.items.length
       ? window.__alertsState.items
       : Array.from(document.querySelectorAll('#alertsList .alert-item')).map(el=>({
-          title: el.querySelector('.alert-title')?.textContent?.trim() || 'ALERTA',
-          meta: el.querySelector('.alert-meta')?.textContent?.trim() || '',
+          titulo: el.querySelector('.alert-title')?.textContent?.trim() || 'ALERTA',
           contenido: el.textContent?.trim() || ''
         }));
-    return pool.filter(it => alertMatchesPoint(it, point));
+
+    // Pool DMC: usar __dmcAlertsItems si ya cargado, o intentar desde caché de la promesa
+    let dmcItems = Array.isArray(window.__dmcAlertsItems) ? window.__dmcAlertsItems : [];
+    if(!dmcItems.length){
+      try{
+        const dmc = window.__dmcMapLayers;
+        if(dmc?.__normalizeItems && window.AAA && Array.isArray(window.AAA) && window.AAA.length){
+          // Los scripts DMC ya fueron cargados previamente (por el mapa), reutilizar datos en memoria
+          dmcItems = dmc.__normalizeItems({ AAA: window.AAA });
+          window.__dmcAlertsItems = dmcItems; // cachear para próxima vez
+        }
+      }catch(_e){}
+    }
+
+    const pool = [...senapredItems, ...dmcItems];
+    const norm = s => String(s||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+
+    return pool.filter(it => {
+      // Items DMC (tienen textoZonaAfecta)
+      if(it.textoZonaAfecta !== undefined){
+        if(!regionNorm) return true;
+        const zona   = norm(it.textoZonaAfecta);
+        const titulo = norm(it.titulo||'');
+        return zona.includes(regionNorm) || titulo.includes(regionNorm);
+      }
+
+      // Items SENAPRED
+      const regs     = (typeof __alertsExtractRegions === 'function' ? __alertsExtractRegions(it) : []).map(x => norm(x));
+      const tituloUp = norm(it.titulo||it.title||'');
+      const hasExplicitRegs = regs.length > 0;
+      const hasNacional     = regs.some(r => r === 'NACIONAL');
+
+      if(hasExplicitRegs && !hasNacional){
+        if(regionNorm) return regs.some(r => r.includes(regionNorm) || regionNorm.includes(r));
+        return alertMatchesPoint(it, point);
+      }
+      if(hasNacional && regionNorm){
+        const specific = ['HUASCO','PASCUA','MAGALLANES','AYSEN','CHILOE','ROBINSON',
+          'AISEN','ANTOFAGASTA','VALPARAISO','ATACAMA','COQUIMBO','BIOBIO','MAULE',
+          'ARAUCANIA','METROPOLITANA','NUBLE','OHIGGINS','LOS RIOS','LOS LAGOS'];
+        const mentionsOther = specific.some(p =>
+          tituloUp.includes(p) && !tituloUp.includes(regionNorm) && !regionNorm.includes(p));
+        return !mentionsOther;
+      }
+      return alertMatchesPoint(it, point);
+    });
   }
 
   function getPrimaryRestriction(metrics, cfg){
@@ -851,15 +899,10 @@
 
   function buildDecisionSummary(cfg, metrics){
     const sem = classifySemaforo(metrics);
-    const sourceModel = getReportSourceModel();
-    const focus = getDoctrineFocus(cfg);
+    const restriction = getPrimaryRestriction(metrics, cfg);
     const rows = [
-      ['Condición operacional', sem.label],
-      ['Restricción dominante', getPrimaryRestriction(metrics, cfg)],
-      ['Enfoque aplicado', focus.label],
-      ['Propósito del cuadro', getDoctrineUseText(cfg)],
-      ['Base fuente/modelo', `${sourceModel.source} / ${sourceModel.model}`],
-      ['Lectura de empleo', reportFocusHint(cfg)]
+      ['Estado operacional', sem.label],
+      ['Restricción principal', restriction],
     ];
     return `<table class="gr-table"><tbody>${rows.map(r=>`<tr><th>${htmlSafe(r[0])}</th><td>${htmlSafe(r[1])}</td></tr>`).join('')}</tbody></table>`;
   }
@@ -1856,82 +1899,189 @@
   window.generateOperationalReport = function(){
     const cfg = readReportConfig();
     if(cfg.saveConfig) saveReportConfig(cfg);
-    const metrics = collectMetrics();
-    const point = getCurrentPoint();
+    const metrics   = collectMetrics();
+    const point     = getCurrentPoint();
     const astroPlan = getAstronomicalPlanningTimes(cfg.dateFrom, point.lat, point.lon);
-    const sem = classifySemaforo(metrics);
-    const recs = buildRecommendations(metrics, cfg);
-    const conclusion = buildConclusion(metrics, cfg);
-    const report = qs('generatedReport');
-    const wrap = qs('generatedReportWrap');
-
-
-    const analysisMeta = getAnalysisTableMeta(cfg);
-    const focus = getDoctrineFocus(cfg);
+    const sem       = classifySemaforo(metrics);
     const sourceModel = getReportSourceModel();
-    const html = `
+    const report    = qs('generatedReport');
+    const wrap      = qs('generatedReportWrap');
+    const cur       = metrics.current;
+
+    // ── Eliminar cualquier referencia doctrinaria interna del texto ──────
+    function stripDoctrine(html){
+      if(!html) return html;
+      // Quitar frases que empiecen con CDI:, MDI:, RDI:, "Base RDI", "Tabla 8", etc.
+      let s = html
+        .replace(/CDI[:/][^<.]*\./gi, '')
+        .replace(/MDI[:/][^<.]*\./gi, '')
+        .replace(/RDI[:/][^<.]*\./gi, '')
+        .replace(/Base RDI[^<.]*/gi, '')
+        .replace(/Base CDI[^<.]*/gi, '')
+        .replace(/Tabla\s*\d+[-‑–]?\d*[^<.]*/gi, '')
+        .replace(/para la lectura doctrinaria[^<.]*/gi, '')
+        .replace(/conversión porcentual[^<.]*/gi, '')
+        .replace(/No existe (tabla|banda) doctrinaria[^<.]*/gi, '')
+        .replace(/\bNBC\b[^<.]*/gi, '')
+        .replace(/\s{2,}/g, ' ')
+        .replace(/<td>\s*<\/td>/g, '<td>—</td>');
+      return s;
+    }
+
+    const h = (v) => htmlSafe(v);
+    const sv = (val) => (val && val !== '--' && val !== 'N/D') ? val : 'N/D';
+    const tblRow = (lbl, val) =>
+      `<tr><td style="width:36%;font-weight:600;padding:4px 10px 4px 0;color:#444;vertical-align:top;border-bottom:1px solid #eee;">${lbl}</td><td style="padding:4px 0;vertical-align:top;border-bottom:1px solid #eee;">${val}</td></tr>`;
+    const tbl = (rows) =>
+      `<table style="width:100%;border-collapse:collapse;font-size:11px;line-height:1.6;">${rows}</table>`;
+    const sec = (title, body) =>
+      `<div class="gr-section" style="margin-bottom:18px;page-break-inside:avoid;">
+        <h3 style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;border-bottom:2px solid #222;padding-bottom:3px;">${title}</h3>
+        ${body}
+      </div>`;
+
+    // ── ENCABEZADO (clásico limpio) ──────────────────────────────────────
+    const periodStr = cfg.dateFrom === cfg.dateTo
+      ? fmtDateCompactMDY(cfg.dateFrom)
+      : `${fmtDateCompactMDY(cfg.dateFrom)} – ${fmtDateCompactMDY(cfg.dateTo)}`;
+    const headerHtml = `
       ${buildLetterhead(cfg)}
       <div class="gr-header">
-        <h1 class="gr-title">${htmlSafe(cfg.title)}</h1>
+        <h1 class="gr-title">${h(cfg.title)}</h1>
         <div class="gr-header-meta">
           <div class="gr-header-left">
-            <p class="gr-subtitle"><strong>Ubicación:</strong> ${htmlSafe(cfg.locationLabel)}</p>
-            <p class="gr-subtitle"><strong>Periodo evaluado:</strong> ${htmlSafe(cfg.dateFrom===cfg.dateTo ? fmtDateCompactMDY(cfg.dateFrom) : `${fmtDateCompactMDY(cfg.dateFrom)} a ${fmtDateCompactMDY(cfg.dateTo)}`)}</p>
-            <p class="gr-subtitle"><strong>Fuente y modelo:</strong> ${htmlSafe(sourceModel.source)} / ${htmlSafe(sourceModel.model)}</p>
+            <p class="gr-subtitle"><strong>Ubicación:</strong> ${h(cfg.locationLabel)}</p>
+            <p class="gr-subtitle"><strong>Periodo evaluado:</strong> ${h(periodStr)}</p>
+            <p class="gr-subtitle"><strong>Fuente y modelo:</strong> ${h(sourceModel.source)} / ${h(sourceModel.model)}</p>
           </div>
           <div class="gr-header-right">
             ${cfg.includeSemaforo ? `<div class="gr-semaforo ${sem.cls}" style="margin-left:auto;">${sem.label}</div>` : ''}
-            <div class="gr-small" style="margin-top:10px;"><strong>Responsable:</strong> ${htmlSafe(cfg.responsible)}</div>
+            <div class="gr-small" style="margin-top:10px;"><strong>Responsable:</strong> ${h(cfg.responsible)}</div>
           </div>
         </div>
-      </div>
-      ${cfg.includeMap ? `<div class="gr-note" style="margin:10px 0 16px 0; text-align:justify;"><strong>Referencia geográfica:</strong> Punto analizado en ${htmlSafe(cfg.locationLabel)}.</div>` : ''}
+      </div>`;
 
-      <div class="gr-section">
-        <h3>I. Resumen de decisión</h3>
-        <p>El presente boletín se emite para el punto geográfico <strong>${htmlSafe(cfg.locationLabel)}</strong>. Para el tramo evaluado, la condición meteorológica observada/proyectada indica <strong>${htmlSafe(metrics.current.condicion)}</strong>, temperatura de <strong>${htmlSafe(metrics.current.temp)}</strong>, humedad de <strong>${htmlSafe(metrics.current.humedad)}</strong>, viento de <strong>${htmlSafe(metrics.current.viento)}</strong>, ráfagas de <strong>${htmlSafe(metrics.current.rafagas)}</strong>, visibilidad de <strong>${htmlSafe(metrics.current.visibilidad)}</strong>, precipitación de referencia de <strong>${htmlSafe(metrics.current.precip)}</strong> y techo estimado de nubes en <strong>${htmlSafe(metrics.current.cloudBase)}</strong>.</p>
-        ${buildDecisionSummary(cfg, metrics)}
-        <p>${htmlSafe(metrics.current.conclusion)}</p>
-        ${cfg.notes ? `<p><strong>Contexto adicional:</strong> ${htmlSafe(cfg.notes)}</p>`:''}
-      </div>
+    // ── I. DATOS DEL PERÍODO ────────────────────────────────────────────
+    const varHtml = cfg.includeTables
+      ? sec('I. Datos del Período', stripDoctrine(buildVariablePeriodTable(cfg))) : '';
 
-      <div class="gr-section">
-        <h3>II. ${(cfg.dateFrom === cfg.dateTo) ? 'Síntesis meteorológica de la jornada' : 'Síntesis meteorológica del periodo'}</h3>
-        ${buildIndicators(metrics, cfg)}
-      </div>
+    // ── II. RESUMEN DIARIO ──────────────────────────────────────────────
+    const timelineHtml = cfg.includeTimeline
+      ? sec('II. Resumen Diario', stripDoctrine(buildTimeline(cfg) + buildOperationalWindows(cfg, metrics))) : '';
 
-      <div class="gr-section">
-        <h3>III. Modo de análisis aplicado al boletín</h3>
-        <div>
-          <p><strong>Modo seleccionado:</strong> ${htmlSafe(focus.label)}.</p>
-          <p><strong>Orientación de lectura:</strong> ${htmlSafe(reportFocusHint(cfg))}</p>
-          ${buildDoctrineFrame(cfg, metrics)}
-          ${buildDoctrineReferenceTable(cfg, metrics)}
-          <p>Los horarios astronómicos relevantes para planificación son <strong>CCCM ${htmlSafe(astroPlan.cccm)}</strong> y <strong>TCCV ${htmlSafe(astroPlan.tccv)}</strong>. La lectura operacional debe apoyarse en la evolución horaria o diaria del periodo solicitado, según corresponda.</p>
-        </div>
-      </div>
+    // ── IV. ALERTAS ACTIVAS EN LA ZONA ───────────────────────────────────
+    // ── IV. ALERTAS ACTIVAS EN LA ZONA (misma lógica que getPrimaryRestriction) ──
+    let alertsHtml = '';
+    if(cfg.includeAlerts){
+      const regional = (typeof getRelevantAlertItems === 'function' ? getRelevantAlertItems() : []).slice(0,10);
 
-      ${buildDoctrineAuditMatrix(cfg)}
+      if(!regional.length){
+        alertsHtml = sec('III. Alertas Activas en la Zona',
+          '<p style="font-size:11px;color:#666;margin:0;">Sin alertas vigentes identificadas para esta zona.</p>');
+      } else {
+        const aRows = regional.map(it=>{
+          const titulo = (it.titulo||it.title||'ALERTA').toString().toUpperCase();
+          const nivel  = (typeof __alertsClassifyRisk==='function' ? __alertsClassifyRisk(it).label : '');
+          const zona   = (typeof __alertsExtractRegions==='function' ? __alertsExtractRegions(it) : []).join(', ') || 'NACIONAL';
+          const body   = (it.contenido||it.descripcion||it.summary||'').toString().trim().slice(0,220);
+          return `<tr style="vertical-align:top;">
+            <td style="padding:4px 10px 4px 0;font-weight:600;font-size:11px;border-bottom:1px solid #eee;">${h(titulo)}</td>
+            <td style="padding:4px 10px 4px 0;font-size:10px;color:#555;border-bottom:1px solid #eee;">${h(nivel)}</td>
+            <td style="padding:4px 0;font-size:10px;color:#555;border-bottom:1px solid #eee;">${h(zona)}</td>
+          </tr>${body ? `<tr><td colspan="3" style="font-size:10px;color:#777;padding:0 0 6px;">${h(body)}</td></tr>` : ''}`;
+        }).join('');
+        alertsHtml = sec('III. Alertas Activas en la Zona',
+          `<table style="width:100%;border-collapse:collapse;">
+            <thead><tr>
+              <th style="text-align:left;font-size:10px;font-weight:600;color:#444;padding:2px 10px 5px 0;border-bottom:2px solid #ccc;">ALERTA</th>
+              <th style="text-align:left;font-size:10px;font-weight:600;color:#444;padding:2px 10px 5px 0;border-bottom:2px solid #ccc;">NIVEL</th>
+              <th style="text-align:left;font-size:10px;font-weight:600;color:#444;padding:2px 0 5px;border-bottom:2px solid #ccc;">ZONA</th>
+            </tr></thead>
+            <tbody>${aRows}</tbody>
+          </table>`);
+      }
+    }
 
-      ${cfg.includeTables ? `<div class="gr-section"><h3>${htmlSafe(analysisMeta.periodTitle)}</h3>${buildVariablePeriodTable(cfg)}</div><div class="gr-section"><h3>${htmlSafe(analysisMeta.analysisTitle)}</h3><table class="gr-table"><thead><tr><th>${htmlSafe(analysisMeta.headings[0])}</th><th>${htmlSafe(analysisMeta.headings[1])}</th><th>${htmlSafe(analysisMeta.headings[2])}</th></tr></thead><tbody>${variableRows(metrics, cfg.variables, cfg)}</tbody></table></div>`:''}
-      ${cfg.includeTimeline ? `<div class="gr-section"><h3>VI. Ventanas operacionales</h3><p class="gr-small">La calificación se entrega por horario para facilitar la interpretación operacional del tramo. Cada ventana se estima a partir de viento, ráfagas, visibilidad, precipitación, nubosidad y techo, clasificando el horario como favorable, marginal o desfavorable.</p>${buildOperationalWindows(cfg, metrics)}</div><div class="gr-section"><h3>VII. Resumen por día</h3>${buildTimeline(cfg)}</div>`:''}
-      ${cfg.includeAlerts ? `<div class="gr-section"><h3>VIII. Alertas oficiales de la zona de interés</h3>${getAlertsSummaryForPoint()}</div>`:''}
-      ${cfg.includeRecs ? `<div class="gr-section"><h3>IX. Recomendaciones</h3><ol>${recs.map(r=>`<li>${htmlSafe(r)}</li>`).join('')}</ol></div>`:''}
-      ${cfg.includeConclusions ? `<div class="gr-section"><h3>X. Conclusiones</h3><p>${htmlSafe(conclusion)}</p><p style="margin-top:10px;">${htmlSafe(inferSynopticAnalysis(metrics, cfg))}</p></div>`:''}
-      ${cfg.includeCharts ? `<div class="gr-page-break-before">${chartsAnnexHtml(cfg)}</div>` : ''}
-      ${cfg.includeAero ? `<div class="gr-page-break-before">${buildAeroSection(cfg, metrics)}</div>` : ''}
-      ${buildSignatureDistributionBlock(cfg)}
-    `;
+    // ── IV. APRECIACIÓN METEOROLÓGICA ────────────────────────────────────
+    const restriction = getPrimaryRestriction(metrics, cfg);
+    const alertCount  = getRelevantAlertItems().length;
+    // Base del semáforo: qué lo disparó
+    const semBase = (() => {
+      const b = (cur.status + ' ' + metrics.aero.status + ' ' + cur.conclusion).toLowerCase();
+      if(/afecta|no apt|susp/.test(b))     return 'Estado operacional de la zona';
+      if(/riesgo alto/.test(b))             return 'Riesgo elevado detectado';
+      if(/desfavorable|critica/.test(b))    return 'Condición desfavorable en variables clave';
+      if(alertCount > 0)                    return `${alertCount} alerta(s) oficial(es) vigente(s) en la zona`;
+      return 'Análisis integrado de variables';
+    })();
+    const evalHtml = sec('IV. Apreciación Meteorológica', tbl(`
+      ${tblRow('Estado general', `<strong>${h(sem.label)}</strong> <span style="font-size:10px;color:#777;font-weight:400;">— ${h(semBase)}</span>`)}
+      ${tblRow('Restricción principal', h(sv(restriction)))}
+      ${alertCount > 0 ? tblRow('Alertas activas en zona', `${alertCount} vigente(s) — ver sección III`) : ''}
+      ${cur.conclusion && cur.conclusion !== 'Sin análisis disponible.' ? tblRow('Análisis', h(cur.conclusion)) : ''}
+      ${cfg.notes ? tblRow('Contexto adicional', h(cfg.notes)) : ''}
+    `));
+
+    // ── VI. RECOMENDACIONES ──────────────────────────────────────────────
+    let recsHtml = '';
+    if(cfg.includeRecs){
+      const rawRecs = buildRecommendations(metrics, cfg);
+      const skip = ['boletín','doctrinari','conversión','cartilla','CDI','MDI','RDI',
+                    'orientación de lectura','modo seleccionado','interpretación del boletín',
+                    'semáforo operacional','propósito','lectura de empleo'];
+      const filtered = rawRecs.filter(r =>
+        r.trim().length > 0 && !skip.some(s => r.toLowerCase().includes(s.toLowerCase())));
+      if(filtered.length){
+        recsHtml = sec('V. Recomendaciones',
+          `<ol style="margin:0;padding-left:18px;font-size:11px;line-height:1.7;">
+            ${filtered.map(r=>`<li style="margin-bottom:5px;">${h(r)}</li>`).join('')}
+          </ol>`);
+      }
+    }
+
+    // ── VII. CONCLUSIÓN ──────────────────────────────────────────────────
+    let conclusionHtml = '';
+    if(cfg.includeConclusions){
+      const conc  = buildConclusion(metrics, cfg);
+      const synop = inferSynopticAnalysis(metrics, cfg);
+      conclusionHtml = sec('VI. Conclusión',
+        `<div style="font-size:11px;line-height:1.7;">
+          <p style="margin:0 0 7px;">${h(conc)}</p>
+          ${synop ? `<p style="margin:0;">${stripDoctrine(h(synop))}</p>` : ''}
+        </div>`);
+    }
+
+    const chartsHtml = cfg.includeCharts ? `<div class="gr-page-break-before">${chartsAnnexHtml(cfg)}</div>` : '';
+    const aeroHtml   = cfg.includeAero   ? `<div class="gr-page-break-before">${buildAeroSection(cfg, metrics)}</div>` : '';
+    const sigHtml    = buildSignatureDistributionBlock(cfg);
+
+    const html = headerHtml + varHtml + timelineHtml + alertsHtml + evalHtml + recsHtml + conclusionHtml + chartsHtml + aeroHtml + sigHtml;
 
     if(report) report.innerHTML = html;
-    if(wrap) wrap.classList.add('show');
+    if(wrap)   wrap.classList.add('show');
     closeReportBuilder();
     setTimeout(()=>renderReportAnnexCharts(cfg), 60);
-    wrap?.scrollIntoView({behavior:'smooth',block:'start'});
+    wrap?.scrollIntoView({behavior:'smooth', block:'start'});
   };
 
-  window.safeGenerateOperationalReport = function(ev){
-    try{ if(ev && ev.preventDefault) ev.preventDefault(); if(ev && ev.stopPropagation) ev.stopPropagation();
+  window.safeGenerateOperationalReport = async function(ev){
+    try{
+      if(ev && ev.preventDefault) ev.preventDefault();
+      if(ev && ev.stopPropagation) ev.stopPropagation();
+
+      // Cargar datos DMC (AAA) siempre antes de generar, para tener alertas actualizadas
+      try{
+        const dmc = window.__dmcMapLayers;
+        if(dmc && typeof dmc.__ensureOfficialAlertsLoaded === 'function'){
+          const pack = await dmc.__ensureOfficialAlertsLoaded();
+          if(dmc.__normalizeItems && Array.isArray(pack?.AAA)){
+            window.__dmcAlertsItems = dmc.__normalizeItems(pack);
+          }
+        } else if(window.AAA && Array.isArray(window.AAA) && window.AAA.length && dmc?.__normalizeItems){
+          window.__dmcAlertsItems = dmc.__normalizeItems({ AAA: window.AAA });
+        }
+      }catch(_e){ console.warn('DMC preload para boletín falló:', _e); }
+
       if(typeof window.generateOperationalReport === 'function') return window.generateOperationalReport();
       throw new Error('generateOperationalReport no disponible');
     }catch(err){
@@ -2071,16 +2221,31 @@ body {
         .data-row { display: flex; justify-content: space-between; font-size: 0.9em; margin-bottom: 4px; color: var(--muted); border-bottom: 1px solid var(--panel); padding-bottom: 2px; }
         .data-row span:last-child { color: var(--text); font-weight: bold; }
 
+        /* ── STAT CELLS – diseño compacto profesional ── */
+        .stat-cell { background:var(--bg); border-left:2px solid var(--border); padding:4px 7px 3px; display:flex; flex-direction:column; gap:1px; min-width:0; }
+        .stat-cell.accent-cyan  { border-left-color:var(--cyan); }
+        .stat-cell.accent-red   { border-left-color:var(--red); }
+        .stat-cell.accent-orange{ border-left-color:var(--orange); }
+        .stat-cell.accent-dmc   { border-left-color:var(--muted); }
+        .sc-lbl { font-size:0.6em; color:var(--muted); letter-spacing:0.6px; line-height:1; text-transform:uppercase; }
+        .sc-val { font-size:0.92em; font-weight:700; color:var(--text); line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+        /* ── TARJETA DMC mini-row en cards ── */
+        .dmc-mini-row { display:grid; grid-template-columns:repeat(2,1fr); gap:2px; margin-top:2px; }
+        .dmc-mini-cell { background:var(--bg); border-left:2px solid var(--border); padding:2px 5px; display:flex; flex-direction:column; gap:0; }
+        .dmc-mini-cell .sc-lbl { font-size:0.58em; }
+        .dmc-mini-cell .sc-val { font-size:0.82em; }
+
         .sources-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }
         .source-btn { background: var(--panel); border: 1px solid var(--border); color: var(--text); padding: 8px; text-decoration: none; text-align: center; display: block; font-size: 10px; transition: 0.2s; cursor: pointer; }
         .source-btn:hover { border-color: var(--orange); color: var(--orange); background: var(--panel); }
 
         /* TIMELINE SCROLL */
-        .timeline-container { border: 1px solid var(--border); padding: 10px; overflow-x: auto; white-space: nowrap; background: var(--panel); margin-bottom: 10px; height: auto; }
-        .day-card { width: 230px; background: var(--panel); border: 1px solid var(--border); padding: 8px; display: inline-block; vertical-align: top; margin-right: 5px; }
-        .day-card.today { border: 2px solid var(--border); background: var(--panel); transform: scale(1.02); }
-        .day-card.past { border-top: 3px solid #555; opacity: 0.6; filter: grayscale(100%); }
-        .day-card.future { border-top: 3px solid var(--cyan); }
+        .timeline-container { border: 1px solid var(--border); padding: 8px; overflow-x: auto; white-space: nowrap; background: var(--panel); margin-bottom: 10px; height: auto; }
+        .day-card { width: 226px; background: var(--panel); border: 1px solid var(--border); border-top:3px solid var(--border); padding: 7px 8px; display: inline-block; vertical-align: top; margin-right: 4px; }
+        .day-card.today { border-top: 3px solid var(--text); background: var(--panel); transform: none; }
+        .day-card.past { border-top: 3px solid #aaa; opacity: 0.6; filter: grayscale(100%); }
+        .day-card.future { border-top: 3px solid var(--border); }
 
         .t-date { color: var(--orange); font-weight: bold; font-size: 1.1em; border-bottom: 1px solid #222; margin-bottom: 4px; text-align: center; }
         .t-weather-row { text-align:center; font-size:0.85em; color: var(--text); margin-bottom:5px; height:30px; white-space: normal; line-height:1; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border); }
@@ -2141,20 +2306,24 @@ body {
         .badge.green{ border-color:#2a7a2a; }
 
         .alerts-controls{
-            display:flex;
-            gap:6px;
+            display:grid;
+            grid-template-columns: 1fr 1fr 1fr auto;
+            gap:5px;
             align-items:center;
             margin-bottom:6px;
-            flex-wrap:wrap;
+        }
+        .alerts-controls.dmc-mode{
+            grid-template-columns: 1fr 1fr 1fr auto;
         }
         .alerts-select{
-            flex:1;
-            min-width: 140px;
+            width:100%;
             padding:4px 6px;
             border:1px solid var(--border);
             background: var(--bg);
             color: var(--text);
             font-size:10px;
+            font-family:'Consolas',monospace;
+            text-transform:uppercase;
         }
         .badge.risk-high{ border-color:#b10000; background: rgba(177,0,0,0.08); }
         .badge.risk-med{ border-color:#b35a00; background: rgba(179,90,0,0.08); }
@@ -3427,9 +3596,13 @@ input, select {
         </div>
 
         <div class="control-bar">
-            <div>
-                <span>UBICACIÓN:</span>
-                <input type="text" id="cityInput" value="" placeholder="Ciudad, País">
+            <div style="position:relative;">
+                <span>BÚSQUEDA:</span>
+                <input type="text" id="cityInput" value="" placeholder="Lugar, base, coordenadas..." autocomplete="off"
+                    style="width:220px;"
+                    oninput="__geoAutocomplete(this.value)"
+                    onkeydown="__geoKeyNav(event)">
+                <div id="geoDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:9999;background:var(--bg);border:1px solid var(--border);max-height:260px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.12);"></div>
             </div>
 
             <div style="display:flex; gap:6px; align-items:center; flex-wrap:nowrap;">
@@ -3456,84 +3629,144 @@ input, select {
 
                                 <span>FUENTE:</span>
                 <select id="sourceSelect" onchange="syncSourceModelSelection(); executeSearch()">
-                    <option value="auto" selected>AUTO</option>
+                    <option value="dmc_accu" selected>DMC / ACCUWEATHER</option>
                     <option value="openmeteo">OPEN-METEO</option>
-                    <option value="meteoblue">METEOBLUE</option>
-                    <option value="pirate">PIRATE WEATHER</option>
-                    <option value="dmc">DMC</option>
                 </select>
 
                                 <span>MODELO:</span>
                 <select id="modelSelect" onchange="executeSearch()">
-                    <option value="ecmwf_ifs04">ECMWF (EUROPA - RECOMENDADO)</option>
-                    <option value="best_match" selected>AUTO (OPTIMIZADO)</option>
-                    <option value="gfs_seamless">GFS (NOAA - USA)</option>
+                    <option value="best_match" selected>AUTO</option>
+                    <option value="ecmwf_ifs04">ECMWF IFS</option>
+                    <option value="gfs_seamless">GFS NOAA</option>
                     <option value="wrf_dmc">WRF DMC</option>
                 </select>
             </div>
         </div>
 
         <div id="alertContainer" class="panel">
-            <span class="panel-title">ALERTAS OFICIALES (SENAPRED)</span>
+            <span class="panel-title">ALERTAS OFICIALES</span>
             <div id="alertsMeta" style="font-size:10px; color:var(--muted); margin-bottom:6px;">
                 CARGANDO ALERTAS... | ÚLTIMA ACTUALIZACIÓN: <span id="lastUpdateUTC">--:-- UTC</span>
             </div>
-            
+
             <div class="alerts-controls">
-                <select id="alertsFilterRegion" class="alerts-select" title="Filtrar por región">
+                <!-- Selector de fuente siempre visible -->
+                <select id="alertsSource" class="alerts-select" title="Fuente de alertas" onchange="__alertsSwitchSource(this.value)" style="font-weight:700;">
+                    <option value="senapred" selected>SENAPRED</option>
+                    <option value="dmc">DMC OFICIAL</option>
+                </select>
+
+                <!-- Filtros SENAPRED -->
+                <span id="alertsCtrlSenapred" style="display:contents;">
+                    <select id="alertsFilterRegion" class="alerts-select" title="Filtrar por región">
+                        <option value="__all__">REGIÓN: TODAS</option>
+                    </select>
+                    <select id="alertsFilterType" class="alerts-select" title="Filtrar por tipo">
+                        <option value="__all__">TIPO: TODOS</option>
+                        <option value="SIGMET">SIGMET</option>
+                        <option value="VOLCANICO">VOLCÁNICO</option>
+                        <option value="TORMENTAS">TORMENTAS</option>
+                        <option value="OTROS">OTROS</option>
+                    </select>
+                </span>
+
+                <!-- Filtros DMC (ocultos por defecto) -->
+                <select id="alertsFilterNivel" class="alerts-select" title="Filtrar por nivel DMC" style="display:none;">
+                    <option value="__all__">NIVEL: TODOS</option>
+                    <option value="AVISO">AVISO</option>
+                    <option value="ALERTA">ALERTA</option>
+                    <option value="ALARMA">ALARMA</option>
+                </select>
+                <select id="alertsFilterDmcRegion" class="alerts-select" title="Filtrar por región DMC" style="display:none;">
                     <option value="__all__">REGIÓN: TODAS</option>
                 </select>
-                <select id="alertsFilterType" class="alerts-select" title="Filtrar por tipo">
-                    <option value="__all__">TIPO: TODOS</option>
-                    <option value="SIGMET">SIGMET</option>
-                    <option value="VOLCANICO">VOLCÁNICO</option>
-                    <option value="TORMENTAS">TORMENTAS</option>
-                    <option value="OTROS">OTROS</option>
-                </select>
+
+                <button id="alertsRefreshBtn" onclick="__alertsRefreshActive()" style="padding:3px 8px;font-size:10px;font-family:'Consolas',monospace;border:1px solid var(--border);background:var(--panel);color:var(--text);cursor:pointer;white-space:nowrap;" title="Actualizar">↻</button>
             </div>
 
             <div id="alertsList" class="alerts-list"></div>
         </div>
 
 <div class="main-grid">
-            <div class="panel">
-                <span class="panel-title">REPORTE SITUACIONAL: <span id="lblCity" style="color: var(--text)">--</span></span>
+            <div class="panel" style="padding:0;overflow:hidden;">
+                <span class="panel-title" style="margin:0;padding:6px 12px;">REPORTE SITUACIONAL: <span id="lblCity" style="color:var(--text)">--</span></span>
 
-                <div class="surface-data">
-                    <div>
-                        <span style="color:var(--muted); font-size:0.8em">CONDICIÓN ACTUAL</span>
-                        <span class="current-weather-text" id="valWeatherDesc">--</span>
-                        <span class="big-value" id="valTemp">--°</span>
-
-                        <div class="data-row"><span>SENSACIÓN:</span> <span id="valApparent">--°</span></div>
-                        <div class="data-row"><span>HUMEDAD:</span> <span id="valHum">--%</span></div>
-                        <div class="data-row"><span>VIENTO:</span> <span id="valWind">--</span></div>
+                <!-- HERO BLOCK -->
+                <div style="display:grid;grid-template-columns:auto 1fr;align-items:center;gap:0;padding:14px 16px 10px;border-bottom:1px solid var(--border);">
+                    <!-- Temp grande -->
+                    <div style="padding-right:20px;border-right:1px solid var(--border);margin-right:20px;display:flex;flex-direction:column;align-items:flex-start;">
+                        <span id="valTemp" style="font-size:3.8em;font-weight:300;color:var(--text);line-height:1;letter-spacing:-2px;">--°</span>
+                        <span id="valWeatherDesc" style="font-size:0.82em;font-weight:700;color:var(--muted);margin-top:4px;letter-spacing:0.5px;">--</span>
                     </div>
-                    <div>
-                        <span style="color:var(--muted); font-size:0.8em">AERONÁUTICA & ASTRONOMÍA</span>
-
-                        <div class="twilight-display" style="border-color:var(--yellow)">
-                            <span class="tw-label" style="color:var(--yellow)">TECHO NUBES (ESTIMADO)</span>
-                            <span class="tw-time" id="valCloudBase" style="color: var(--text); font-size:1.1em">-- M / -- FT</span>
+                    <!-- Métricas secundarias en 2 cols -->
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:3px;">
+                            <span style="color:var(--muted);font-size:0.72em;letter-spacing:0.4px;">SENSACIÓN</span>
+                            <span id="valApparent" style="font-size:1em;font-weight:700;color:var(--text);">--°</span>
                         </div>
-
-                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; margin-top:5px;">
-                            <div class="twilight-display">
-                                <span class="tw-label">INICIO (CCCM)</span>
-                                <span class="tw-time" id="valCccm">--:--</span>
-                            </div>
-                            <div class="twilight-display">
-                                <span class="tw-label">TÉRMINO (TCCV)</span>
-                                <span class="tw-time" id="valTccv" style="color:var(--orange)">--:--</span>
-                            </div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:3px;">
+                            <span style="color:var(--muted);font-size:0.72em;letter-spacing:0.4px;">HUMEDAD</span>
+                            <span id="valHum" style="font-size:1em;font-weight:700;color:var(--text);">--%</span>
+                        </div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:3px;">
+                            <span style="color:var(--muted);font-size:0.72em;letter-spacing:0.4px;">VIENTO</span>
+                            <span id="valWind" style="font-size:1em;font-weight:700;color:var(--text);">--</span>
+                        </div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:3px;">
+                            <span style="color:var(--muted);font-size:0.72em;letter-spacing:0.4px;">RÁFAGAS</span>
+                            <span id="valGust" style="font-size:1em;font-weight:700;color:var(--text);">--</span>
+                        </div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:1px;">
+                            <span style="color:var(--muted);font-size:0.72em;letter-spacing:0.4px;">VISIBILIDAD</span>
+                            <span id="valVis" style="font-size:1em;font-weight:700;color:var(--text);">--</span>
+                        </div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:1px;">
+                            <span style="color:var(--muted);font-size:0.72em;letter-spacing:0.4px;">ÍND. UV</span>
+                            <span id="valUv" style="font-size:1em;font-weight:700;color:var(--text);">--</span>
                         </div>
                     </div>
                 </div>
 
-                <div style="margin-top:10px; padding-top:5px; border-top:1px solid var(--border); display:flex; justify-content:space-between; font-size:0.9em;">
-                    <span>VISIBILIDAD: <span id="valVis" style="color: var(--text); font-weight:bold">--</span></span>
-                    <span>RÁFAGAS: <span id="valGust" style="color:var(--red); font-weight:bold">--</span></span>
-                    <span>UV: <span id="valUv" style="color:yellow; font-weight:bold">--</span></span>
+                <!-- FRANJA AERONÁUTICA -->
+                <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:0;border-bottom:1px solid var(--border);">
+                    <div style="padding:6px 12px;border-right:1px solid var(--border);">
+                        <div style="color:var(--muted);font-size:0.62em;letter-spacing:0.5px;margin-bottom:2px;">TECHO DE NUBES (ESTIMADO)</div>
+                        <div id="valCloudBase" style="font-size:0.9em;font-weight:700;color:var(--text);">-- M / -- FT</div>
+                    </div>
+                    <div style="padding:6px 12px;border-right:1px solid var(--border);">
+                        <div style="color:var(--muted);font-size:0.62em;letter-spacing:0.5px;margin-bottom:2px;">CCCM (INICIO)</div>
+                        <div id="valCccm" style="font-size:0.9em;font-weight:700;color:var(--text);">--:--</div>
+                    </div>
+                    <div style="padding:6px 12px;">
+                        <div style="color:var(--muted);font-size:0.62em;letter-spacing:0.5px;margin-bottom:2px;">TCCV (TÉRMINO)</div>
+                        <div id="valTccv" style="font-size:0.9em;font-weight:700;color:var(--text);">--:--</div>
+                    </div>
+                </div>
+
+                <!-- FRANJA DMC -->
+                <div id="dmcRefBlock" style="padding:6px 12px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+                        <span style="color:var(--muted);font-size:0.62em;letter-spacing:0.7px;font-weight:700;">ESTACIÓN OFICIAL DMC</span>
+                        <span id="valDmcStation" style="font-size:0.72em;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%;text-align:right;">--</span>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--border);">
+                        <div style="padding:5px 8px;border-right:1px solid var(--border);">
+                            <div style="color:var(--muted);font-size:0.6em;letter-spacing:0.5px;margin-bottom:2px;">HORA DATO</div>
+                            <div id="valDmcHora" style="font-size:0.9em;font-weight:700;color:var(--text);">--</div>
+                        </div>
+                        <div style="padding:5px 8px;border-right:1px solid var(--border);">
+                            <div style="color:var(--muted);font-size:0.6em;letter-spacing:0.5px;margin-bottom:2px;">OBSERVADO</div>
+                            <div id="valDmcObs" style="font-size:0.9em;font-weight:700;color:var(--text);">--</div>
+                        </div>
+                        <div style="padding:5px 8px;border-right:1px solid var(--border);">
+                            <div style="color:var(--muted);font-size:0.6em;letter-spacing:0.5px;margin-bottom:2px;">PRONOSTICADO</div>
+                            <div id="valDmcProno" style="font-size:0.9em;font-weight:700;color:var(--text);">--</div>
+                        </div>
+                        <div style="padding:5px 8px;">
+                            <div style="color:var(--muted);font-size:0.6em;letter-spacing:0.5px;margin-bottom:2px;">DIFERENCIA</div>
+                            <div id="valDmcDiff" style="font-size:0.9em;font-weight:700;color:var(--text);">--</div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -3697,7 +3930,7 @@ input, select {
     <div style="font-weight:700;letter-spacing:1px;font-size:12px;">✈ AeroForecast</div>
     <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
       <select id="uavSource" onchange="loadUAVForecast()" style="font-size:11px;padding:2px 6px;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:3px;">
-        <option value="dmc_accu" selected>🛡️ DMC / AccuWeather</option>
+        <option value="dmc_accu" selected>🛡️ DMC + AccuWeather (recomendado)</option>
         <option value="accuweather">🎯 AccuWeather</option>
         <option value="openmeteo">🌐 Open-Meteo</option>
       </select>
@@ -3806,6 +4039,16 @@ input, select {
         <input id="threshKp" type="number" min="0" max="9" step="1" value="4" style="width:46px;text-align:center;font-size:15px;font-weight:700;border:none;background:transparent;color:var(--text);outline:none;" onchange="loadUAVForecast()">
         <div style="font-size:8px;color:var(--muted);">índice</div>
       </div>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:5px 3px;text-align:center;">
+        <div style="font-size:8px;color:var(--muted);margin-bottom:1px;">TEMP MÍN</div>
+        <input id="threshTempMin" type="number" min="-40" max="10" step="1" value="-10" style="width:46px;text-align:center;font-size:15px;font-weight:700;border:none;background:transparent;color:var(--text);outline:none;" onchange="loadUAVForecast()">
+        <div style="font-size:8px;color:var(--muted);">°C</div>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:5px 3px;text-align:center;">
+        <div style="font-size:8px;color:var(--muted);margin-bottom:1px;">TEMP MÁX</div>
+        <input id="threshTempMax" type="number" min="20" max="60" step="1" value="40" style="width:46px;text-align:center;font-size:15px;font-weight:700;border:none;background:transparent;color:var(--text);outline:none;" onchange="loadUAVForecast()">
+        <div style="font-size:8px;color:var(--muted);">°C</div>
+      </div>
     </div>
     <button onclick="loadUAVForecast()" style="margin-top:6px;width:100%;padding:7px 0;font-weight:700;font-size:11px;letter-spacing:1px;border:1px solid var(--border);background:var(--panel2);color:var(--text);cursor:pointer;border-radius:3px;">🔄 EVALUAR VENTANA DE VUELO</button>
   </div>
@@ -3814,7 +4057,7 @@ input, select {
       <div style="font-weight:700;font-size:11px;letter-spacing:.8px;">📅 PRONÓSTICO VUELO · 15 DÍAS</div>
       <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;">
         <select id="uav15source" onchange="loadUAV15Day()" style="font-size:10px;padding:2px 5px;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:3px;cursor:pointer;">
-          <option value="dmc_accu" selected>🛡️ DMC / AccuWeather</option>
+          <option value="dmc_accu" selected>🛡️ DMC + AccuWeather (recomendado)</option>
           <option value="accuweather">🎯 AccuWeather</option>
           <option value="openmeteo">🌐 Open-Meteo</option>
         </select>
@@ -4168,14 +4411,43 @@ function __alertsClassifyRisk(it){
     const raw = clean(it.riesgo || it.nivel || it.level || it.color || it.severity || "");
     const hay = (raw + " " + (it.titulo||it.title||"")).toLowerCase();
 
-    // Mapeo típico Chile/SENAPRED
-    if(hay.includes("roja") || hay.includes("extrema") || hay.includes("alto")) return { label:"ALTO", cls:"risk-high" };
-    if(hay.includes("naranja") || hay.includes("moderad")) return { label:"MEDIO", cls:"risk-med" };
-    if(hay.includes("amarilla") || hay.includes("bajo")) return { label:"BAJO", cls:"risk-low" };
-    if(hay.includes("verde") || hay.includes("temprana") || hay.includes("inform")) return { label:"INFO", cls:"risk-info" };
+    // Mapeo explícito DMC: alarma > alerta > aviso
+    if(hay.includes("alarma") || hay.includes("roja") || hay.includes("extrema")) return { label:"ALARMA", cls:"risk-high" };
+    if(hay.includes("alerta") || hay.includes("naranja") || hay.includes("moderad")) return { label:"ALERTA", cls:"risk-med" };
+    if(hay.includes("aviso") || hay.includes("amarilla") || hay.includes("bajo") || hay.includes("temprana")) return { label:"AVISO", cls:"risk-low" };
+    if(hay.includes("verde") || hay.includes("inform")) return { label:"INFO", cls:"risk-info" };
 
-    // Fallback: si el Worker ya trae algo útil, lo mostramos pero con estilo neutro
     return raw ? { label: raw.toUpperCase(), cls:"" } : { label:"", cls:"" };
+}
+
+let __alertsNivelActivo = '__all__';
+
+function __alertsSetNivel(val){
+    __alertsNivelActivo = val;
+    const btns = {
+        '__all__': 'btnNivelAll',
+        'AVISO':   'btnNivelAviso',
+        'ALERTA':  'btnNivelAler',
+        'ALARMA':  'btnNivelAlarm'
+    };
+    Object.entries(btns).forEach(([k, id]) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const active = (k === val);
+        el.style.background = active ? 'var(--text)' : 'var(--panel)';
+        el.style.color       = active ? 'var(--bg)'   : 'var(--text)';
+        el.style.borderColor = active ? 'var(--text)'  : 'var(--border)';
+        el.style.fontWeight  = active ? '700' : 'normal';
+    });
+    __alertsRender();
+}
+
+function __alertsClassifyNivel(it){
+    const risk = __alertsClassifyRisk(it);
+    if(risk.label === "ALARMA") return "ALARMA";
+    if(risk.label === "ALERTA") return "ALERTA";
+    if(risk.label === "AVISO")  return "AVISO";
+    return "OTROS";
 }
 
 function __alertsClassifyType(it){
@@ -4327,19 +4599,10 @@ function __alertsPopulateRegionFilter(items){
 }
 
 function __alertsApplyFilters(items){
-    const rSel = document.getElementById("alertsFilterRegion");
-    const tSel = document.getElementById("alertsFilterType");
-    const regionVal = rSel ? rSel.value : "__all__";
-    const typeVal = tSel ? tSel.value : "__all__";
-
+    const nivelVal = __alertsNivelActivo || '__all__';
     return items.filter(it=>{
-        const t = __alertsClassifyType(it);
-        const regs = __alertsExtractRegions(it).map(x=>(x||"NACIONAL").toUpperCase());
-
-        const okType = (typeVal==="__all__") ? true : (t === typeVal);
-        const okReg  = (regionVal==="__all__") ? true : regs.includes(regionVal);
-
-        return okType && okReg;
+        const niv = __alertsClassifyNivel(it);
+        return (nivelVal === '__all__') ? true : (niv === nivelVal);
     });
 }
 
@@ -4449,7 +4712,9 @@ async function fetchAlerts(){
 
         meta.textContent =
             `FUENTE: SENAPRED (WORKER) | ${count} ALERTAS | ACTUALIZADO: ` +
-            `${updated && !isNaN(updated.getTime()) ? updated.toLocaleString('es-CL',{hour12:false}) : "N/D"}`;
+            `${updated && !isNaN(updated.getTime())
+                ? updated.toLocaleString('es-CL',{hour12:false})
+                : new Date().toLocaleTimeString('es-CL',{hour12:false,hour:'2-digit',minute:'2-digit'}) + ' (HORA LOCAL)' }`;
 
         
         try{ __setLastUpdateUTC(); }catch(e){}
@@ -4480,6 +4745,7 @@ async function fetchAlerts(){
         // listeners (solo una vez)
         const rSel = document.getElementById("alertsFilterRegion");
         const tSel = document.getElementById("alertsFilterType");
+        const nSel = document.getElementById("alertsFilterNivel");
         if(rSel && !rSel.__bound){
             rSel.addEventListener("change", __alertsRender);
             rSel.__bound = true;
@@ -4487,6 +4753,10 @@ async function fetchAlerts(){
         if(tSel && !tSel.__bound){
             tSel.addEventListener("change", __alertsRender);
             tSel.__bound = true;
+        }
+        if(nSel && !nSel.__bound){
+            nSel.addEventListener("change", __alertsRender);
+            nSel.__bound = true;
         }
 
     }catch(e){
@@ -4497,8 +4767,181 @@ async function fetchAlerts(){
     }
 }
 
+// ── ALERTAS DUAL: SENAPRED / DMC ──────────────────────────────────────
+let __alertsActiveSource = 'senapred';
 
-        // ARCHIVO CLIMÁTICO (AÑOS PASADOS)
+function __alertsSwitchSource(src){
+    __alertsActiveSource = src;
+    const ctrl       = document.querySelector('.alerts-controls');
+    const regSel     = document.getElementById('alertsFilterRegion');
+    const typeSel    = document.getElementById('alertsFilterType');
+    const nivSel     = document.getElementById('alertsFilterNivel');
+    const dmcRegSel  = document.getElementById('alertsFilterDmcRegion');
+
+    if(src === 'dmc'){
+        if(ctrl) ctrl.style.gridTemplateColumns = '1fr 1fr 1fr auto';
+        if(regSel)    regSel.style.display    = 'none';
+        if(typeSel)   typeSel.style.display   = 'none';
+        if(nivSel){
+            nivSel.style.display = '';
+            if(!nivSel.__bound){
+                nivSel.addEventListener('change', __alertsRenderDMC);
+                nivSel.__bound = true;
+            }
+        }
+        if(dmcRegSel){
+            dmcRegSel.style.display = '';
+            if(!dmcRegSel.__bound){
+                dmcRegSel.addEventListener('change', __alertsRenderDMC);
+                dmcRegSel.__bound = true;
+            }
+        }
+        __alertsLoadDMC();
+    } else {
+        if(ctrl) ctrl.style.gridTemplateColumns = '1fr 1fr 1fr auto';
+        if(regSel)    regSel.style.display    = '';
+        if(typeSel)   typeSel.style.display   = '';
+        if(nivSel)    nivSel.style.display    = 'none';
+        if(dmcRegSel) dmcRegSel.style.display = 'none';
+        fetchAlerts();
+    }
+}
+
+function __alertsRefreshActive(){
+    if(__alertsActiveSource === 'dmc'){
+        // Forzar re-descarga real reseteando la caché de promesa
+        try{ window.__dmcMapLayers.__resetAlertsCache && window.__dmcMapLayers.__resetAlertsCache(); }catch(_e){}
+        __alertsLoadDMC();
+    } else {
+        fetchAlerts();
+    }
+}
+
+async function __alertsLoadDMC(){
+    const meta = document.getElementById('alertsMeta');
+    const list = document.getElementById('alertsList');
+    const btn  = document.getElementById('alertsRefreshBtn');
+    if(!meta || !list) return;
+
+    // Feedback visual — mínimo 800ms visible igual que SENAPRED
+    meta.textContent = 'ACTUALIZANDO ALERTAS DMC...';
+    if(btn){ btn.disabled = true; btn.style.opacity = '0.5'; }
+
+    try{
+        const [pack] = await Promise.all([
+            window.__dmcMapLayers.__ensureOfficialAlertsLoaded(),
+            new Promise(r => setTimeout(r, 800))
+        ]);
+        const items = window.__dmcMapLayers.__normalizeItems(pack);
+        window.__dmcAlertsItems = items;
+
+        // Poblar filtro de regiones DMC desde textoZonaAfecta
+        const dmcRegSel = document.getElementById('alertsFilterDmcRegion');
+        if(dmcRegSel){
+            const prev = dmcRegSel.value;
+            const regSet = new Set();
+            items.forEach(it=>{
+                const z = clean(it.textoZonaAfecta || it.region || '');
+                if(z){
+                    const parts = z.split(',');
+                    parts.forEach(p=>{
+                        const sub = p.split(/\)(?=[A-ZÁÉÍÓÚÑÜ])/);
+                        sub.forEach((s,idx)=>{
+                            const seg = (idx < sub.length-1) ? s+')' : s;
+                            const t = seg.trim().toUpperCase();
+                            if(t && t.length<80) regSet.add(t);
+                        });
+                    });
+                }
+            });
+            const regions = Array.from(regSet).sort();
+            dmcRegSel.innerHTML = `<option value="__all__">REGIÓN: TODAS</option>` +
+                regions.map(r=>`<option value="${r}"${r===prev?' selected':''}>${r}</option>`).join('');
+        }
+
+        const total = items.length;
+        const av = pack.Avisos||0, al = pack.Alertas||0, arm = pack.Alarmas||0;
+        meta.textContent = `FUENTE: DMC OFICIAL (METEOCHILE) | ${total} ALERTAS | AVISO: ${av} · ALERTA: ${al} · ALARMA: ${arm} | ${new Date().toLocaleTimeString('es-CL',{hour12:false,hour:'2-digit',minute:'2-digit'})} (HORA LOCAL)`;
+        __alertsRenderDMC();
+    }catch(e){
+        console.error(e);
+        meta.textContent = 'ERROR: NO SE PUDIERON CARGAR ALERTAS DMC.';
+        list.innerHTML = `<div class="alert-item"><div class="alert-title">ERROR CARGANDO DATOS DMC</div><div class="alert-meta"><span>${String(e)}</span><span>—</span></div></div>`;
+    } finally {
+        if(btn){ btn.textContent = '↻'; btn.disabled = false; btn.style.opacity = ''; }
+    }
+}
+
+function __alertsRenderDMC(){
+    const list = document.getElementById('alertsList');
+    if(!list) return;
+    const items  = window.__dmcAlertsItems || [];
+    const nivel  = document.getElementById('alertsFilterNivel')?.value     || '__all__';
+    const region = document.getElementById('alertsFilterDmcRegion')?.value || '__all__';
+
+    const filtered = items.filter(it=>{
+        const t    = String(it.tipo || '').toLowerCase();
+        const zona = clean(it.textoZonaAfecta || it.region || '').toUpperCase();
+        const okNivel  = nivel  === '__all__' ? true
+            : nivel === 'ALARMA' ? t.includes('alarma')
+            : nivel === 'ALERTA' ? t.includes('alerta') && !t.includes('alarma')
+            : !t.includes('alerta') && !t.includes('alarma');
+        const okRegion = region === '__all__' ? true : (()=>{
+            const z = clean(it.textoZonaAfecta || it.region || '');
+            const parts = z.split(',');
+            const expanded = [];
+            parts.forEach(p=>{
+                const sub = p.split(/\)(?=[A-ZÁÉÍÓÚÑÜ])/);
+                sub.forEach((s,idx)=>{
+                    const seg = (idx < sub.length-1) ? s+')' : s;
+                    expanded.push(seg.trim().toUpperCase());
+                });
+            });
+            return expanded.some(t => t === region);
+        })();
+        return okNivel && okRegion;
+    });
+
+    if(!filtered.length){
+        list.innerHTML = `<div class="alert-item"><div class="alert-title">SIN ALERTAS DMC (FILTRO ACTUAL)</div><div class="alert-meta"><span>—</span><span>—</span></div></div>`;
+        return;
+    }
+
+    const riskCls = (tipo)=>{
+        const t = String(tipo||'').toLowerCase();
+        if(t.includes('alarma')) return 'risk-high';
+        if(t.includes('alerta')) return 'risk-med';
+        return 'risk-low';
+    };
+
+    list.innerHTML = filtered.map(it=>{
+        const tipo   = clean(it.tipo   || '').toUpperCase();
+        const titulo = clean(it.titulo || '').toUpperCase() || tipo;
+        const desde  = clean(it.desde  || '');
+        const hasta  = clean(it.hasta  || '');
+        const zona   = clean(it.textoZonaAfecta || '');
+        const cond   = clean(it.condicionSinoptica || '');
+        const href   = it.url || '';
+        const cls    = riskCls(it.tipo);
+        return `
+        <div class="alert-item">
+            <div class="alert-top">
+                <div class="alert-title">${titulo}</div>
+                <div class="alert-badges">
+                    <span class="badge ${cls}">${tipo}</span>
+                    ${zona ? `<span class="badge" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;">${zona.slice(0,40)}</span>` : ''}
+                </div>
+            </div>
+            ${cond  ? `<div style="font-size:10px;color:var(--muted);line-height:1.3;">${cond}</div>`  : ''}
+            <div class="alert-meta">
+                <span>${desde ? 'DESDE: '+desde : ''}${hasta ? ' · HASTA: '+hasta : ''}</span>
+                <span>DMC OFICIAL</span>
+            </div>
+            ${href ? `<div style="display:flex;gap:8px;margin-top:4px;"><div class="alert-link" onclick="window.open('${href}','_blank')">VER EN DMC ↗</div></div>` : ''}
+        </div>`;
+    }).join('');
+}
+// ── /ALERTAS DUAL ──────────────────────────────────────────────────────
         let archiveData = null;
         let archiveKey = null;
 
@@ -5230,9 +5673,18 @@ try {
 
     function __dmcEnsureAlertsOverlay(){
         try{
-            __dmc.alertLayer = __dmc.alertLayer || L.layerGroup();
+            __dmc.alertLayerAviso  = __dmc.alertLayerAviso  || L.layerGroup();
+            __dmc.alertLayerAlerta = __dmc.alertLayerAlerta || L.layerGroup();
+            __dmc.alertLayerAlarma = __dmc.alertLayerAlarma || L.layerGroup();
+            __dmc.alertLayer = __dmc.alertLayer || L.layerGroup([
+                __dmc.alertLayerAviso,
+                __dmc.alertLayerAlerta,
+                __dmc.alertLayerAlarma
+            ]);
             if (!__dmc._alertsAdded && __uav?.layersCtl) {
-                __uav.layersCtl.addOverlay(__dmc.alertLayer, 'DMC · ALERTAS OFICIALES');
+                __uav.layersCtl.addOverlay(__dmc.alertLayerAviso,  'DMC · ALERTAS — AVISO');
+                __uav.layersCtl.addOverlay(__dmc.alertLayerAlerta, 'DMC · ALERTAS — ALERTA');
+                __uav.layersCtl.addOverlay(__dmc.alertLayerAlarma, 'DMC · ALERTAS — ALARMA');
                 __dmc._alertsAdded = true;
             }
         }catch(_e){}
@@ -5376,12 +5828,18 @@ try {
             official: true
         }));
     }
+    // Exponer inmediatamente para uso global
+    window.__dmcMapLayers.__ensureOfficialAlertsLoaded = __dmcEnsureOfficialAlertsLoaded;
+    window.__dmcMapLayers.__normalizeItems = __dmcOfficialNormalizeItems;
+    window.__dmcMapLayers.__resetAlertsCache = function(){ __dmcOfficialAlertsPromise = null; };
 
     async function __dmcRefreshAlertsLayer(){
         try{
             __dmcEnsureAlertsOverlay();
-            if (!__dmc.alertLayer) return;
-            __dmc.alertLayer.clearLayers();
+            if (!__dmc.alertLayerAviso) return;
+            __dmc.alertLayerAviso.clearLayers();
+            __dmc.alertLayerAlerta.clearLayers();
+            __dmc.alertLayerAlarma.clearLayers();
 
             const pack = await __dmcEnsureOfficialAlertsLoaded();
             const items = __dmcOfficialNormalizeItems(pack);
@@ -5393,11 +5851,15 @@ try {
             items.forEach(it=>{
                 const sty = __dmcOfficialStyle(it.tipo);
                 const popup = __dmcOfficialPopup(it);
+                const tipoLow = String(it.tipo || '').toLowerCase();
+                const targetLayer = tipoLow.includes('alarma') ? __dmc.alertLayerAlarma
+                                  : tipoLow.includes('alerta') ? __dmc.alertLayerAlerta
+                                  : __dmc.alertLayerAviso;
 
                 if(String(it.tipoZonaAfecta || '').toLowerCase() === 'area'){
                     const pairs = String(it.dataZonaAfecta || '').split('|').map(s => s.split(',').map(Number)).filter(a => a.length===2 && Number.isFinite(a[0]) && Number.isFinite(a[1]));
                     if(pairs.length >= 3){
-                        L.polygon(pairs, sty).bindPopup(popup).addTo(__dmc.alertLayer);
+                        L.polygon(pairs, sty).bindPopup(popup).addTo(targetLayer);
                     }
                     return;
                 }
@@ -5408,12 +5870,12 @@ try {
                         if(reg === 'ip' || reg === 'jf' || reg === 'an'){
                             const center = window['myCoordinates_' + reg];
                             const radius = window['myCoordinates_' + reg + '_radius'] || 90000;
-                            if(center) L.circle(center, { ...sty, radius }).bindPopup(popup).addTo(__dmc.alertLayer);
+                            if(center) L.circle(center, { ...sty, radius }).bindPopup(popup).addTo(targetLayer);
                             return;
                         }
                         const coords = __dmcGetOfficialCoord(reg, 'regiones');
                         if(Array.isArray(coords) && coords.length){
-                            L.polygon(coords, sty).bindPopup(popup).addTo(__dmc.alertLayer);
+                            L.polygon(coords, sty).bindPopup(popup).addTo(targetLayer);
                         }
                     });
                     return;
@@ -5424,7 +5886,7 @@ try {
                     zones.forEach(z=>{
                         const coords = __dmcGetOfficialCoord(z, 'zonas');
                         if(Array.isArray(coords) && coords.length){
-                            L.polygon(coords, sty).bindPopup(popup).addTo(__dmc.alertLayer);
+                            L.polygon(coords, sty).bindPopup(popup).addTo(targetLayer);
                         }
                     });
                 }
@@ -6174,7 +6636,152 @@ function __dqDailyMinFromHourly(js, field){
 window.onload = async function() {
   /* uiRange eliminado */
  await executeSearch(); onTimeControlsChanged(); try{ __syncMenuVisibility(); }catch(e){}; try{ await fetchAlerts(); }catch(e){} };
-        document.getElementById('cityInput').addEventListener('keypress', (e) => { if(e.key === 'Enter') executeSearch(); });
+        document.getElementById('cityInput').addEventListener('keypress', (e) => { if(e.key === 'Enter'){ __geoDropdownClose(); executeSearch(); } });
+
+        // ── GEOCOMPLETE INTELIGENTE ────────────────────────────────────────
+        let __geoTimer = null;
+        let __geoResults = [];
+        let __geoIdx = -1;
+
+        async function __geoAutocomplete(q){
+            q = (q || '').trim();
+            const dd = document.getElementById('geoDropdown');
+            if(!dd) return;
+            if(q.length < 2){ __geoDropdownClose(); return; }
+
+            clearTimeout(__geoTimer);
+            __geoTimer = setTimeout(async ()=>{
+                // Mostrar spinner
+                dd.style.display = 'block';
+                dd.innerHTML = `<div style="padding:6px 10px;color:var(--muted);font-size:10px;">Buscando...</div>`;
+
+                try{
+                    // Búsqueda en paralelo: Open-Meteo geocoding + Nominatim OSM
+                    const [omRes, nomRes] = await Promise.allSettled([
+                        fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=8&language=es&format=json`).then(r=>r.ok?r.json():null),
+                        fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=8&addressdetails=1&accept-language=es`, {headers:{'Accept-Language':'es'}}).then(r=>r.ok?r.json():null)
+                    ]);
+
+                    const items = [];
+                    const seen = new Set();
+
+                    // Open-Meteo results (lat/lon precisos, buena cobertura global)
+                    const om = omRes.status==='fulfilled' ? omRes.value : null;
+                    if(om?.results){
+                        om.results.forEach(r=>{
+                            const key = `${r.latitude?.toFixed(3)},${r.longitude?.toFixed(3)}`;
+                            if(seen.has(key)) return; seen.add(key);
+                            const parts = [r.name, r.admin1, r.country].filter(Boolean);
+                            items.push({
+                                label: parts.join(', '),
+                                sublabel: `${r.latitude?.toFixed(4)}, ${r.longitude?.toFixed(4)}`,
+                                lat: r.latitude, lon: r.longitude,
+                                name: r.name, country: r.country || ''
+                            });
+                        });
+                    }
+
+                    // Nominatim OSM results (mejor para lugares menores, coordenadas, bases, etc.)
+                    const nom = nomRes.status==='fulfilled' ? nomRes.value : null;
+                    if(Array.isArray(nom)){
+                        nom.forEach(r=>{
+                            const lat = parseFloat(r.lat), lon = parseFloat(r.lon);
+                            if(!Number.isFinite(lat)||!Number.isFinite(lon)) return;
+                            const key = `${lat.toFixed(3)},${lon.toFixed(3)}`;
+                            if(seen.has(key)) return; seen.add(key);
+                            const addr = r.address || {};
+                            const name = r.display_name?.split(',')[0] || q;
+                            const country = addr.country || '';
+                            const region = addr.state || addr.region || addr.county || '';
+                            const parts = [name, region, country].filter(Boolean);
+                            const typeLabel = r.type ? r.type.replace(/_/g,' ').toUpperCase() : '';
+                            items.push({
+                                label: parts.join(', '),
+                                sublabel: typeLabel ? `${typeLabel} · ${lat.toFixed(4)}, ${lon.toFixed(4)}` : `${lat.toFixed(4)}, ${lon.toFixed(4)}`,
+                                lat, lon,
+                                name: name, country
+                            });
+                        });
+                    }
+
+                    __geoResults = items;
+                    __geoIdx = -1;
+
+                    if(!items.length){
+                        dd.innerHTML = `<div style="padding:6px 10px;color:var(--muted);font-size:10px;">Sin resultados. Prueba con otro nombre o coordenadas.</div>`;
+                        return;
+                    }
+
+                    dd.innerHTML = items.map((it, i)=>`
+                        <div class="geo-opt" data-idx="${i}"
+                            style="padding:5px 10px;cursor:pointer;border-bottom:1px solid var(--border);user-select:none;"
+                            onmousedown="__geoSelect(${i})"
+                            onmouseover="__geoHover(${i})">
+                            <div style="font-size:10px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${it.label}</div>
+                            <div style="font-size:9px;color:var(--muted);margin-top:1px;">${it.sublabel}</div>
+                        </div>`).join('');
+
+                }catch(e){
+                    dd.innerHTML = `<div style="padding:6px 10px;color:var(--muted);font-size:10px;">Error de búsqueda.</div>`;
+                }
+            }, 280);
+        }
+
+        function __geoHover(i){
+            __geoIdx = i;
+            document.querySelectorAll('.geo-opt').forEach((el,j)=>{
+                el.style.background = j===i ? 'var(--panel2)' : '';
+            });
+        }
+
+        function __geoSelect(i){
+            const it = __geoResults[i];
+            if(!it) return;
+            const inp = document.getElementById('cityInput');
+            if(inp) inp.value = it.label;
+            __geoDropdownClose();
+            // Aplicar coordenadas directamente
+            lastLat = it.lat; lastLon = it.lon;
+            const manualCk = document.getElementById('useManualCoords');
+            if(manualCk) manualCk.checked = true;
+            if(typeof decimalToDMS === 'function'){
+                const latEl = document.getElementById('latDms');
+                const lonEl = document.getElementById('lonDms');
+                if(latEl) latEl.value = decimalToDMS(it.lat, 'lat');
+                if(lonEl) lonEl.value = decimalToDMS(it.lon, 'lon');
+            }
+            executeSearch();
+        }
+
+        function __geoKeyNav(e){
+            const dd = document.getElementById('geoDropdown');
+            if(!dd || dd.style.display==='none') return;
+            if(e.key==='ArrowDown'){
+                e.preventDefault();
+                __geoHover(Math.min(__geoIdx+1, __geoResults.length-1));
+            } else if(e.key==='ArrowUp'){
+                e.preventDefault();
+                __geoHover(Math.max(__geoIdx-1, 0));
+            } else if(e.key==='Enter'){
+                e.preventDefault();
+                if(__geoIdx >= 0) __geoSelect(__geoIdx);
+                else { __geoDropdownClose(); executeSearch(); }
+            } else if(e.key==='Escape'){
+                __geoDropdownClose();
+            }
+        }
+
+        function __geoDropdownClose(){
+            const dd = document.getElementById('geoDropdown');
+            if(dd) dd.style.display = 'none';
+            __geoResults = []; __geoIdx = -1;
+        }
+
+        // Cerrar dropdown al hacer click fuera
+        document.addEventListener('click', e=>{
+            if(!e.target.closest('#cityInput') && !e.target.closest('#geoDropdown')) __geoDropdownClose();
+        });
+        // ── /GEOCOMPLETE ──────────────────────────────────────────────────
 
         function parseDMS(input, kind /* 'lat' | 'lon' */) {
             if (!input) return null;
@@ -6357,8 +6964,28 @@ window.onload = async function() {
 
                 const data = await res.json();
 globalData = data;
-                window.__lastSourceLabel = data?.__source_label || usedSource;
+                window.__lastSourceLabel = data?.__source_label || data?.__source || usedSource;
                 if (data?.__model_label) usedModel = data.__model_label;
+                // Construir etiqueta legible de fuente
+                if(!data?.__source_label){
+                    const srcSel = (document.getElementById('sourceSelect')?.value || 'dmc_accu');
+                    if(srcSel === 'dmc_accu') window.__lastSourceLabel = 'DMC / ACCUWEATHER';
+                    else if(srcSel === 'dmc') window.__lastSourceLabel = 'DMC (WRF)';
+                    else if(srcSel === 'openmeteo') window.__lastSourceLabel = 'OPEN-METEO';
+                    else window.__lastSourceLabel = usedSource;
+                }
+
+                // Fetch DMC oficial en paralelo para datos de estación de referencia
+                try {
+                    const _dmcBase = (WORKER_BASE_URL || '').replace(/\/$/, '');
+                    const _dmcUrl = `${_dmcBase}/dmc/current?lat=${latitude}&lon=${longitude}`;
+                    const _dmcRes = await fetch(_dmcUrl, { cache: 'no-store' });
+                    if (_dmcRes.ok) {
+                        window.__dmcCurrentData = await _dmcRes.json();
+                    } else {
+                        window.__dmcCurrentData = null;
+                    }
+                } catch(_e) { window.__dmcCurrentData = null; }
 
                 renderHeader(name, country, usedModel, latitude, longitude);
                 renderCurrent(data, latitude, longitude);
@@ -6557,14 +7184,92 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
             val('valVis', (cur.visibility/1000).toFixed(1), " KM");
             val('valGust', cur.wind_gusts_10m, " KM/H");
             val('valUv', cur.uv_index, "");
+
+            // === BLOQUE DMC OFICIAL ===
+            try {
+                const _set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+                const dmcData = window.__dmcCurrentData || {};
+                const offSt = dmcData.official_station || data.official_station || {};
+                const summ  = dmcData.official_recent_summary || data.official_recent_summary || {};
+                const stObj = summ.station || offSt;
+                const latest = summ.latest || {};
+
+                // Nombre estación
+                const stName = (stObj.ciudad || stObj.nombre || stObj.name || '').trim();
+                _set('valDmcStation', stName || '--');
+
+                // Hora del dato
+                let horaStr = '--';
+                if (summ.latest_time) {
+                    const rawT = String(summ.latest_time).replace(' ', 'T');
+                    const dT = new Date(rawT);
+                    if (!isNaN(dT.getTime())) {
+                        const hh = String(dT.getHours()).padStart(2,'0');
+                        const mm = String(dT.getMinutes()).padStart(2,'0');
+                        horaStr = `${hh}:${mm}h`;
+                    } else {
+                        horaStr = String(summ.latest_time).slice(11,16);
+                    }
+                }
+                _set('valDmcHora', horaStr);
+
+                // Temperatura observada
+                let obsTemp = NaN;
+                const tempKeys = ['temperatura_c','temp_c','temperatura','temp','air_temp','t2m'];
+                for (const k of tempKeys) {
+                    const raw = latest[k];
+                    if (raw !== undefined && raw !== null) {
+                        const n = parseFloat(String(raw).replace(/[^0-9.\-]/g,''));
+                        if (Number.isFinite(n)) { obsTemp = n; break; }
+                    }
+                }
+                if (!Number.isFinite(obsTemp) && Array.isArray(summ.rows) && summ.rows.length) {
+                    const lastRow = summ.rows[summ.rows.length - 1];
+                    for (const k of tempKeys) {
+                        const raw = lastRow[k];
+                        if (raw !== undefined && raw !== null) {
+                            const n = parseFloat(String(raw).replace(/[^0-9.\-]/g,''));
+                            if (Number.isFinite(n)) { obsTemp = n; break; }
+                        }
+                    }
+                }
+                const obsStr = Number.isFinite(obsTemp) ? obsTemp.toFixed(1) + '°' : '--';
+                _set('valDmcObs', obsStr);
+
+                // Pronosticado
+                const pronoTemp = cur.temperature_2m;
+                const pronoStr = Number.isFinite(pronoTemp) ? Math.round(pronoTemp) + '°' : '--';
+                _set('valDmcProno', pronoStr);
+
+                // Diferencia
+                if (Number.isFinite(obsTemp) && Number.isFinite(pronoTemp)) {
+                    const diff = obsTemp - pronoTemp;
+                    const sign = diff > 0 ? '+' : '';
+                    const elDiff = document.getElementById('valDmcDiff');
+                    if (elDiff) {
+                        elDiff.textContent = sign + diff.toFixed(1) + '°';
+                        elDiff.style.color = Math.abs(diff) >= 3 ? 'var(--orange)' : 'var(--text)';
+                    }
+                } else {
+                    _set('valDmcDiff', '--');
+                }
+            } catch(_e) {}
         }
 
         function safeVal(v) { return (v !== undefined && v !== null) ? Math.round(v) : '-'; }
         function escHtml(v){ return String(v ?? '').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
         function timelineSourceLabel(daily, i){
             const src = Array.isArray(daily.__source_day) ? daily.__source_day[i] : null;
-            if (!src) return 'DATO NO IDENTIFICADO';
-            return String(src).toUpperCase();
+            if(src && src !== 'unknown') return String(src).toUpperCase();
+            // Usa etiqueta global de la búsqueda actual
+            const global = window.__lastSourceLabel || '';
+            if(global) return global.toUpperCase();
+            // Fallback basado en el selector activo
+            const sel = document.getElementById('sourceSelect')?.value || 'dmc_accu';
+            if(sel === 'dmc_accu') return 'DMC / ACCUWEATHER';
+            if(sel === 'dmc')      return 'DMC (WRF)';
+            if(sel === 'openmeteo') return 'OPEN-METEO';
+            return 'DMC / ACCUWEATHER';
         }
         function timelineSummaryText(daily, i){
             // FIX: deduplica y filtra vacíos en el array de periodos
@@ -6582,6 +7287,22 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
         function timelineWindMin(daily, i, fallbackVal){
             const v = Array.isArray(daily.__wind_min_kmh) ? daily.__wind_min_kmh[i] : null;
             return (v !== undefined && v !== null && v !== '') ? Math.round(v) : fallbackVal;
+        }
+        function timelineGustMax(daily, hourly, i, fallbackVal){
+            const direct = Array.isArray(daily.wind_gusts_10m_max) ? daily.wind_gusts_10m_max[i] : null;
+            if (direct !== undefined && direct !== null && direct !== '') return Math.round(Number(direct));
+            const day = Array.isArray(daily.time) ? daily.time[i] : null;
+            const hTimes = Array.isArray(hourly.time) ? hourly.time : [];
+            const hGusts = Array.isArray(hourly.wind_gusts_10m) ? hourly.wind_gusts_10m : [];
+            if (!day || !hTimes.length || !hGusts.length) return fallbackVal;
+            let best = null;
+            for (let k = 0; k < hTimes.length; k++) {
+                if (String(hTimes[k] || '').slice(0, 10) !== day) continue;
+                const val = Number(hGusts[k]);
+                if (!Number.isFinite(val)) continue;
+                if (best === null || val > best) best = val;
+            }
+            return best === null ? fallbackVal : Math.round(best);
         }
 
         function renderTimeline(data, lat, lon) {
@@ -6617,34 +7338,124 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
                     weatherText = dmcSummary || calculateWeatherText(daily.weather_code?.[i], cloudAvg, humMax, 1, daily.precipitation_sum?.[i]);
                 }
                 const shownWindMin = timelineWindMin(daily, i, minWind);
+                const shownGustMax = timelineGustMax(daily, hourly, i, daily.wind_speed_10m_max?.[i]);
 
                 const div = document.createElement('div');
                 div.className = `day-card ${type}`;
+
+                // ── Bloque DMC para TODAS las tarjetas ──
+                let dmcCardHtml = '';
+                try {
+                    const _dmcD  = window.__dmcCurrentData || {};
+                    const _offSt = _dmcD.official_station || data.official_station || {};
+                    const _summ  = _dmcD.official_recent_summary || data.official_recent_summary || {};
+                    const _stObj = _summ.station || _offSt;
+                    const _stName= (_stObj.ciudad || _stObj.nombre || _stObj.name || '').trim();
+                    const _st    = _stName ? escHtml(_stName.length > 32 ? _stName.slice(0,30)+'…' : _stName) : '--';
+
+                    // Temperatura pronosticada del día i (desde daily)
+                    const _tMax  = daily.temperature_2m_max?.[i];
+                    const _tMin  = daily.temperature_2m_min?.[i];
+                    const _pronoStr = (Number.isFinite(_tMax) && Number.isFinite(_tMin))
+                        ? `${Math.round(_tMax)}° / ${Math.round(_tMin)}°` : '--';
+
+                    if (offset === 0) {
+                        // Tarjeta HOY: también muestra dato observado y diferencia
+                        const _latest = _summ.latest || {};
+                        let _hora = '--';
+                        if (_summ.latest_time) {
+                            const _dT = new Date(String(_summ.latest_time).replace(' ','T'));
+                            if (!isNaN(_dT.getTime())) {
+                                _hora = String(_dT.getHours()).padStart(2,'0') + ':' + String(_dT.getMinutes()).padStart(2,'0') + 'h';
+                            }
+                        }
+                        let _obsTemp = NaN;
+                        const _tKeys = ['temperatura_c','temp_c','temperatura','temp','air_temp','t2m'];
+                        for (const _k of _tKeys) {
+                            const _n = parseFloat(String(_latest[_k] ?? '').replace(/[^0-9.\-]/g,''));
+                            if (Number.isFinite(_n)) { _obsTemp = _n; break; }
+                        }
+                        if (!Number.isFinite(_obsTemp) && Array.isArray(_summ.rows) && _summ.rows.length) {
+                            const _lr = _summ.rows[_summ.rows.length - 1];
+                            for (const _k of _tKeys) {
+                                const _n = parseFloat(String(_lr[_k] ?? '').replace(/[^0-9.\-]/g,''));
+                                if (Number.isFinite(_n)) { _obsTemp = _n; break; }
+                            }
+                        }
+                        const _obsStr   = Number.isFinite(_obsTemp) ? _obsTemp.toFixed(1)+'°' : '--';
+                        const _curProno = data?.current?.temperature_2m;
+                        const _curPronoStr = Number.isFinite(_curProno) ? Math.round(_curProno)+'°' : '--';
+                        let _diffStr = '--', _diffAccent = 'accent-dmc';
+                        if (Number.isFinite(_obsTemp) && Number.isFinite(_curProno)) {
+                            const _d = _obsTemp - _curProno;
+                            _diffStr = (_d > 0 ? '+' : '') + _d.toFixed(1) + '°';
+                            _diffAccent = Math.abs(_d) >= 3 ? 'accent-red' : 'accent-dmc';
+                        }
+                        dmcCardHtml = `
+                    <div style="border-top:1px solid var(--border);margin:5px 0 3px;padding-top:3px;">
+                      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;">
+                        <span style="color:var(--muted);font-size:0.58em;letter-spacing:0.7px;font-weight:700;">▸ ESTACIÓN DMC</span>
+                        <span style="font-size:0.58em;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%;">${_st}</span>
+                      </div>
+                      <div class="dmc-mini-row">
+                        <div class="dmc-mini-cell accent-dmc"><span class="sc-lbl">HORA</span><span class="sc-val">${_hora}</span></div>
+                        <div class="dmc-mini-cell accent-cyan"><span class="sc-lbl">OBS DMC</span><span class="sc-val">${_obsStr}</span></div>
+                        <div class="dmc-mini-cell accent-dmc"><span class="sc-lbl">PRONOS.</span><span class="sc-val">${_curPronoStr}</span></div>
+                        <div class="dmc-mini-cell ${_diffAccent}"><span class="sc-lbl">DIF.</span><span class="sc-val">${_diffStr}</span></div>
+                      </div>
+                    </div>`;
+                    } else {
+                        // Tarjetas FUTURAS: pronóstico completo (temp, viento, humedad, ráfagas)
+                        const _tMaxF = daily.temperature_2m_max?.[i];
+                        const _tMinF = daily.temperature_2m_min?.[i];
+                        const _windF = daily.wind_speed_10m_max?.[i];
+                        const _gustF = shownGustMax;
+                        const _precipF = daily.precipitation_sum?.[i];
+                        const _sensMaxF = daily.apparent_temperature_max?.[i];
+                        const _tMaxStr = Number.isFinite(_tMaxF) ? Math.round(_tMaxF)+'°' : '--';
+                        const _tMinStr = Number.isFinite(_tMinF) ? Math.round(_tMinF)+'°' : '--';
+                        const _windStr = Number.isFinite(_windF) ? Math.round(_windF)+' km/h' : '--';
+                        const _gustStr = Number.isFinite(Number(_gustF)) ? Math.round(Number(_gustF))+' km/h' : '--';
+                        const _precipStr = Number.isFinite(_precipF) ? _precipF.toFixed(1)+' mm' : '0 mm';
+                        const _sensStr = Number.isFinite(_sensMaxF) ? Math.round(_sensMaxF)+'°' : '--';
+                        dmcCardHtml = `
+                    <div style="border-top:1px solid var(--border);margin:5px 0 3px;padding-top:3px;">
+                      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">
+                        <span style="color:var(--muted);font-size:0.58em;letter-spacing:0.7px;font-weight:700;">▸ PRONÓSTICO DMC</span>
+                        <span style="font-size:0.58em;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%;">${_st}</span>
+                      </div>
+                      <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;border:1px solid var(--border);">
+                        <div style="padding:2px 5px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);"><span class="sc-lbl">T° MÁX</span><span class="sc-val">${_tMaxStr}</span></div>
+                        <div style="padding:2px 5px;border-bottom:1px solid var(--border);"><span class="sc-lbl">T° MÍN</span><span class="sc-val">${_tMinStr}</span></div>
+                        <div style="padding:2px 5px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);"><span class="sc-lbl">VIENTO MÁX</span><span class="sc-val">${_windStr}</span></div>
+                        <div style="padding:2px 5px;border-bottom:1px solid var(--border);"><span class="sc-lbl">RÁFAGAS</span><span class="sc-val">${_gustStr}</span></div>
+                        <div style="padding:2px 5px;border-right:1px solid var(--border);"><span class="sc-lbl">SENS. MÁX</span><span class="sc-val">${_sensStr}</span></div>
+                        <div style="padding:2px 5px;"><span class="sc-lbl">PRECIP.</span><span class="sc-val">${_precipStr}</span></div>
+                      </div>
+                    </div>`;
+                    }
+                } catch(_e) {}
+
                 div.innerHTML = `
                     <div class="t-date">${dayStr}</div>
-                    <div style="text-align:center;color:var(--muted);font-size:0.9em;border-bottom:1px solid var(--border);margin-bottom:5px;">${dateNum}</div>
-                    <div class="t-weather-row" style="color:${weatherText.includes('SOLEADO')||weatherText.includes('DESPEJADO')?'var(--text)':'#fff'}">${weatherText}</div>
+                    <div style="text-align:center;color:var(--muted);font-size:0.85em;border-bottom:1px solid var(--border);margin-bottom:4px;padding-bottom:2px;">${dateNum}</div>
+                    <div class="t-weather-row">${weatherText}</div>
                     <div class="card-row"><span>T° MAX/MIN:</span> <span>${safeVal(daily.temperature_2m_max[i])}° / ${safeVal(daily.temperature_2m_min[i])}°</span></div>
                     <div class="card-row"><span>SENS MAX/MIN:</span> <span>${safeVal(daily.apparent_temperature_max[i])}° / ${safeVal(daily.apparent_temperature_min[i])}°</span></div>
-                    <div class="card-row"><span>HUMEDAD:</span> <span style="color:#3399ff; font-size:0.9em">${humMin}% - ${humMax}%</span></div>
-                    <div class="card-row"><span>VIENTO MAX:</span> <span style="color:var(--orange)">${safeVal(daily.wind_speed_10m_max[i])} KM/H</span></div>
-                    <div class="card-row"><span>VIENTO MIN:</span> <span>${shownWindMin} KM/H</span></div>
-                    <div class="card-row"><span>UV MAX:</span> <span style="color:yellow">${safeVal(daily.uv_index_max[i])}</span></div>
-
-                    <div style="border-top:1px dashed var(--border); margin:4px 0"></div>
-
+                    <div class="card-row"><span>HUMEDAD:</span> <span>${humMin}% – ${humMax}%</span></div>
+                    <div class="card-row"><span>VIENTO MIN/MAX:</span> <span>${shownWindMin} / ${safeVal(daily.wind_speed_10m_max[i])} KM/H</span></div>
+                    <div class="card-row"><span>RÁFAGAS:</span> <span>${safeVal(shownGustMax)} KM/H</span></div>
+                    <div class="card-row"><span>UV MÁX:</span> <span>${safeVal(daily.uv_index_max[i])}</span></div>
+                    <div style="border-top:1px dashed var(--border);margin:3px 0 2px;"></div>
                     <div class="card-row"><span>ICCM <span class="peak-time">(${maxIccmTime})</span>:</span> <span>${maxIccm}%</span></div>
                     <div class="card-row"><span>TCCV <span class="peak-time">(${maxTccvTime})</span>:</span> <span>${maxTccv}%</span></div>
-
-                    <div class="card-row"><span>CCCM:</span> <span style="color:var(--cyan)">${astroDay.c}</span></div>
-                    <div class="card-row"><span>TCCV:</span> <span style="color:var(--orange)">${astroDay.t}</span></div>
-
-                    <div style="border-top:1px dashed var(--border); margin:4px 0"></div>
-
-                    <div class="card-row"><span>FASE:</span> <span style="font-size:0.8em">${moon.phase}</span></div>
+                    <div class="card-row"><span>CCCM:</span> <span>${astroDay.c}</span></div>
+                    <div class="card-row"><span>TCCV:</span> <span>${astroDay.t}</span></div>
+                    <div style="border-top:1px dashed var(--border);margin:3px 0 2px;"></div>
+                    <div class="card-row"><span>FASE LUNAR:</span> <span style="font-size:0.8em">${moon.phase}</span></div>
                     <div class="card-row"><span>ILUMINACIÓN:</span> <span>${moon.illum}%</span></div>
-                    <div class="card-row"><span>FUENTE:</span> <span style="font-size:0.84em">${escHtml(sourceLabel)}</span></div>
-
+                    <div class="card-row"><span>FUENTE:</span> <span style="font-size:0.78em">${escHtml(sourceLabel)}</span></div>
+                    ${dmcCardHtml}
                     <div class="op-status">${statusText}</div>
                 `;
                 container.appendChild(div);
@@ -8585,17 +9396,24 @@ document.addEventListener("DOMContentLoaded", () => {
 // ANEXO 3 – AeroForecast  (Open-Meteo + AccuWeather + NOAA Kp)
 // ================================================================
 const UAV_PRESETS={
-  mini2:{wind:38,gusts:46,precip:30,cloud:90,vis:3,kp:3},mini4:{wind:43,gusts:52,precip:30,cloud:90,vis:3,kp:3},
-  air2s:{wind:38,gusts:46,precip:30,cloud:90,vis:3,kp:3},mavic3:{wind:43,gusts:52,precip:30,cloud:90,vis:3,kp:3},
-  phantom4:{wind:36,gusts:43,precip:20,cloud:80,vis:3,kp:3},matrice:{wind:54,gusts:65,precip:50,cloud:95,vis:2,kp:4},
-  m30t:{wind:43,gusts:54,precip:50,cloud:95,vis:2,kp:4},autel:{wind:43,gusts:52,precip:30,cloud:90,vis:3,kp:3},
-  skydio:{wind:50,gusts:60,precip:40,cloud:95,vis:2,kp:4},custom:{wind:38,gusts:45,precip:30,cloud:90,vis:3,kp:4}
+  mini2:{wind:38,gusts:46,precip:30,cloud:90,vis:3,kp:3,tmin:-10,tmax:40},
+  mini4:{wind:43,gusts:52,precip:30,cloud:90,vis:3,kp:3,tmin:-10,tmax:40},
+  air2s:{wind:38,gusts:46,precip:30,cloud:90,vis:3,kp:3,tmin:-10,tmax:40},
+  mavic3:{wind:43,gusts:52,precip:30,cloud:90,vis:3,kp:3,tmin:-10,tmax:40},
+  phantom4:{wind:36,gusts:43,precip:20,cloud:80,vis:3,kp:3,tmin:-10,tmax:40},
+  matrice:{wind:54,gusts:65,precip:50,cloud:95,vis:2,kp:4,tmin:-20,tmax:50},
+  m30t:{wind:43,gusts:54,precip:50,cloud:95,vis:2,kp:4,tmin:-20,tmax:50},
+  autel:{wind:43,gusts:52,precip:30,cloud:90,vis:3,kp:3,tmin:-10,tmax:40},
+  skydio:{wind:50,gusts:60,precip:40,cloud:95,vis:2,kp:4,tmin:-10,tmax:40},
+  custom:{wind:38,gusts:45,precip:30,cloud:90,vis:3,kp:4,tmin:-10,tmax:40}
 };
 function applyDronePreset(){
   const p=UAV_PRESETS[document.getElementById('uavDronePreset').value];if(!p)return;
   document.getElementById('threshWind').value=p.wind;document.getElementById('threshGusts').value=p.gusts;
   document.getElementById('threshPrecip').value=p.precip;document.getElementById('threshCloud').value=p.cloud;
   document.getElementById('threshVis').value=p.vis;document.getElementById('threshKp').value=p.kp;
+  if(document.getElementById('threshTempMin')) document.getElementById('threshTempMin').value=p.tmin??-10;
+  if(document.getElementById('threshTempMax')) document.getElementById('threshTempMax').value=p.tmax??40;
   loadUAVForecast();
 }
 function _ua(d){return['↑','↗','→','↘','↓','↙','←','↖'][Math.round(d/45)%8];}
@@ -8628,6 +9446,34 @@ function _uApply(d){
   _ub('uavWindCell',_ubg(wind,tW,'max'));_ub('uavWindDirCell',_ubg(wind,tW,'max'));_ub('uavGustsCell',_ubg(gusts,tG,'max'));
   _ub('uavPrecipCell',_ubg(precip,tP,'max'));_ub('uavCloudCell',_ubg(cloud,tC,'max'));_ub('uavVisCell',_ubg(visKm,tV,'min'));
   _ub('uavKpCell',isNaN(kpVal)?'#f0f0f0':_ubg(kpVal,tK,'max'));
+
+  const tTmin = +document.getElementById('threshTempMin')?.value||-10;
+  const tTmax = +document.getElementById('threshTempMax')?.value||40;
+
+  // Temperatura: umbrales configurables TEMP MÍN / TEMP MÁX
+  (function(){
+    if(temp==null){_ub('uavTempCell','#f0f0f0');return;}
+    const ok=temp>=tTmin&&temp<=tTmax;
+    const margin=ok&&(temp<tTmin+5||temp>tTmax-5);
+    _ub('uavTempCell',!ok?'#ff5e5e':margin?'#ffe566':'#5ae65a');
+  })();
+
+  // Sensación: mismos límites de temperatura (afectada por viento)
+  (function(){
+    if(feels==null){_ub('uavFeelsCell','#f0f0f0');return;}
+    const ok=feels>=tTmin&&feels<=tTmax;
+    const margin=ok&&(feels<tTmin+5||feels>tTmax-5);
+    _ub('uavFeelsCell',!ok?'#ff5e5e':margin?'#ffe566':'#5ae65a');
+  })();
+
+  // Condición: usa umbrales de lluvia y nubosidad ya configurados
+  (function(){
+    const wxBad=/torment|nieve|granizo/.test((wx?.t||'').toLowerCase());
+    const wxWarn=/lluv|chubasc|niebla|lloviz/.test((wx?.t||'').toLowerCase());
+    const bad=wxBad||(precip!=null&&precip>tP)||(cloud!=null&&cloud>tC);
+    const warn=wxWarn||(precip!=null&&precip>tP*0.55)||(cloud!=null&&cloud>tC*0.85);
+    _ub('uavCondCell',bad?'#ff5e5e':warn?'#ffe566':'#5ae65a');
+  })();
   const kpOk=isNaN(kpVal)||kpVal<=tK;
   const ok=((wind==null||wind<=tW)&&(gusts==null||gusts<=tG)&&(precip==null||precip<=tP)&&(cloud==null||cloud<=tC)&&(visKm==null||visKm>=tV)&&kpOk);
   const reasons=[];
@@ -8662,42 +9508,194 @@ async function _uAW(lat,lon){
   return{wind:cc?.Wind?.Speed?.Metric?.Value??null,gusts:cc?.WindGust?.Speed?.Metric?.Value??null,wDir:cc?.Wind?.Direction?.Degrees??0,precip,cloud:cc?.CloudCover??null,visKm:cc?.Visibility?.Metric?.Value??null,feels:cc?.RealFeelTemperature?.Metric?.Value??null,temp:cc?.Temperature?.Metric?.Value??null,wx:_uae(cc?.WeatherIcon??1,cc?.WeatherText||null),sunrise:sun.sr,sunset:sun.ss,src:'AccuWeather (Core) + NOAA Kp'};
 }
 async function _uDMAW(lat,lon){
+  // BEST BLEND: Estación DMC observada (viento/temp reales) + AccuWeather (nubosidad/lluvia/vis) + WRF DMC (pronóstico)
   const base=(typeof WORKER_BASE_URL==='string'?WORKER_BASE_URL:'').replace(/\/$/,'');
   if(!base)throw new Error('WORKER_BASE_URL no definida');
   const la=encodeURIComponent(lat),lo=encodeURIComponent(lon);
-  const[dmcRaw,pC,pH,sun]=await Promise.all([
-    workerFetchJSON(base+'/dmc/forecast?lat='+la+'&lon='+lo),
+  const sun=await _uSun(lat,lon);
+
+  const[dmcRaw,pC,pH]=await Promise.all([
+    workerFetchJSON(base+'/dmc/current?lat='+la+'&lon='+lo).catch(()=>null),
     workerFetchJSON(base+'/accu/current?lat='+la+'&lon='+lo).catch(()=>null),
-    workerFetchJSON(base+'/accu/hourly12?lat='+la+'&lon='+lo).catch(()=>null),
-    _uSun(lat,lon)
+    workerFetchJSON(base+'/accu/hourly12?lat='+la+'&lon='+lo).catch(()=>null)
   ]);
-  const dmc=dmcRaw?.__dmc||dmcRaw?.dmc||dmcRaw||{};
-  const cur=dmcRaw?.current||dmc?.current||{};
-  const day=dmcRaw?.daily||dmc?.daily||{};
-  const h=dmcRaw?.hourly||dmc?.hourly||{};
-  const cc=pC?.data||null;
-  const h12=Array.isArray(pH?.data)?pH.data:Array.isArray(pH)?pH:[];
-  const firstSummary=Array.isArray(day?.__summary_text?.[0])?day.__summary_text[0][0]:(Array.isArray(day?.summary_text?.[0])?day.summary_text[0][0]:(Array.isArray(day?.summary_text)?day.summary_text[0]:null));
-  const dmcPrecip=_uPick(h12?.[0]?.PrecipitationProbability,Array.isArray(h?.precipitation_probability)?h.precipitation_probability[0]:null,_uDmcPrecipPct(Array.isArray(day?.precipitation_sum)?day.precipitation_sum[0]:null));
-  const dmcCloud=_uPick(Array.isArray(h?.cloud_cover)?h.cloud_cover[0]:null,cur?.cloud_cover);
-  const dmcVis=_uPick(Array.isArray(h?.visibility)?(h.visibility[0]!=null?Number(h.visibility[0])/1000:null):null,cur?.visibility!=null?Number(cur.visibility)/1000:null);
-  const windDay0=Array.isArray(day?.wind_speed_10m_max)?day.wind_speed_10m_max[0]:null;
-  const gustDay0=Array.isArray(day?.wind_gusts_10m_max)?day.wind_gusts_10m_max[0]:null;
+
+  // Estación observada (más precisa para viento y temperatura)
+  const summ  = dmcRaw?.official_recent_summary || {};
+  const latest= summ.latest || {};
+  const cur   = dmcRaw?.current || {};
+  const day   = dmcRaw?.daily || {};
+  const h     = dmcRaw?.hourly || {};
+  const stName= (summ.station?.ciudad||summ.station?.nombre||dmcRaw?.official_station?.ciudad||'Estación DMC').trim();
+
+  // AccuWeather current
+  const cc  = pC?.data || null;
+  const h12 = Array.isArray(pH?.data)?pH.data:Array.isArray(pH)?pH:[];
+
+  // ── TODOS LOS CAMPOS POSIBLES DE LA ESTACIÓN ──────────────────────────
+  // Helper: extrae número de cualquier campo con múltiples claves posibles
+  const obsNum = (...keys) => {
+    for(const k of keys){
+      const n = parseFloat(String(latest[k]??'').replace(/[^0-9.\-]/g,''));
+      if(Number.isFinite(n)) return n;
+    }
+    return NaN;
+  };
+
+  // VIENTO
+  const windObs = obsNum('velocidad_viento_kmh','viento_kmh','wind_speed_kmh','wind_speed','viento','wspd_kmh');
+  const gustObs = obsNum('rafaga_kmh','racha_kmh','gust_kmh','rafaga','racha','wgst_kmh');
+  const wDirObs = obsNum('direccion_viento','wind_direction','dir_viento','wdir');
+
+  // TEMPERATURA
+  const obsTemp = obsNum('temperatura_c','temp_c','temperatura','temp','air_temp','t2m','ta');
+
+  // HUMEDAD
+  const humObs  = obsNum('humedad_relativa','humedad','hr','humidity','rh','hr_pct');
+
+  // PUNTO DE ROCÍO
+  const dewObs  = obsNum('punto_rocio','dew_point','td','rocio','dewpoint');
+
+  // PRESIÓN
+  const presObs = obsNum('presion_qff','presion_qfe','presion','pressure','qff','qfe','mslp_hpa');
+
+  // PRECIPITACIÓN (mm observados)
+  const precipMmObs = obsNum('precipitacion_mm','precip_mm','pp_mm','precipitacion','rain_mm','precip');
+  const precipObsPct = Number.isFinite(precipMmObs) ? _uDmcPrecipPct(precipMmObs) : null;
+
+  // NUBOSIDAD (octas → %)
+  const octasRaw = obsNum('nubosidad_octas','octas','cloud_octas','nubosidad','n_octas');
+  const cloudObs = Number.isFinite(octasRaw) ? Math.round((octasRaw/8)*100) : NaN;
+
+  // VISIBILIDAD
+  const visObsRaw = obsNum('visibilidad_km','visibilidad_m','visibility_m','visibility','vis_km','vis_m','vis');
+  const visObs    = Number.isFinite(visObsRaw) ? (visObsRaw > 100 ? visObsRaw/1000 : visObsRaw) : NaN;
+
+  // Fallbacks WRF DMC
+  const windWRF = Array.isArray(h?.wind_speed_10m)?h.wind_speed_10m[0]:null;
+  const gustWRF = Array.isArray(h?.wind_gusts_10m)?h.wind_gusts_10m[0]:(Array.isArray(day?.wind_gusts_10m_max)?day.wind_gusts_10m_max[0]:null);
+  const wDirWRF = Array.isArray(h?.wind_direction_10m)?h.wind_direction_10m[0]:(cur?.wind_direction_10m??null);
+  const tempWRF = cur?.temperature_2m??null;
+
+  // Final: obs > WRF > AccuWeather
+  const wind  = _uPick(Number.isFinite(windObs)?windObs:null, windWRF, cc?.Wind?.Speed?.Metric?.Value);
+  const gusts = _uPick(Number.isFinite(gustObs)?gustObs:null, gustWRF, cc?.WindGust?.Speed?.Metric?.Value, wind);
+  const wDir  = _uPick(Number.isFinite(wDirObs)?wDirObs:null, wDirWRF, cc?.Wind?.Direction?.Degrees, 0);
+  const temp  = _uPick(Number.isFinite(obsTemp)?obsTemp:null, tempWRF, cc?.Temperature?.Metric?.Value);
+
+  // NUBOSIDAD: obs > AccuWeather > WRF
+  const cloud = _uPick(
+    Number.isFinite(cloudObs)?cloudObs:null,
+    cc?.CloudCover,
+    Array.isArray(h?.cloud_cover)?h.cloud_cover[0]:null,
+    cur?.cloud_cover
+  );
+
+  // VISIBILIDAD: obs > AccuWeather > WRF
+  const visKm = _uPick(
+    Number.isFinite(visObs)?visObs:null,
+    cc?.Visibility?.Metric?.Value,
+    cur?.visibility!=null?Number(cur.visibility)/1000:null
+  );
+
+  // PRECIPITACIÓN: obs > AccuWeather > WRF
+  const precip = _uPick(
+    precipObsPct,
+    h12?.[0]?.PrecipitationProbability,
+    _uDmcPrecipPct(Array.isArray(day?.precipitation_sum)?day.precipitation_sum[0]:null),
+    cc?.HasPrecipitation?80:0
+  );
+
+  // SENSACIÓN: obs derivada (si hay hum+temp) > AccuWeather > WRF
+  const feels = _uPick(cc?.RealFeelTemperature?.Metric?.Value, cur?.apparent_temperature);
+
+  const firstSummary=Array.isArray(day?.__summary_text?.[0])?day.__summary_text[0][0]:(Array.isArray(day?.summary_text)?day.summary_text[0]:null);
+
+  // Hora del dato observado
+  let horaObs='';
+  if(summ.latest_time){
+    const d=new Date(String(summ.latest_time).replace(' ','T'));
+    if(!isNaN(d.getTime())) horaObs=' · Obs '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+'h';
+  }
+
+  // Datos extra de estación para nota (humedad, presión, rocío)
+  const extras=[];
+  if(Number.isFinite(humObs))  extras.push('HR '+Math.round(humObs)+'%');
+  if(Number.isFinite(presObs)) extras.push(Math.round(presObs)+' hPa');
+  if(Number.isFinite(dewObs))  extras.push('Td '+dewObs.toFixed(1)+'°C');
+  const extraStr = extras.length ? ' · '+extras.join(' · ') : '';
+
   return{
-    wind:_uPick(cc?.Wind?.Speed?.Metric?.Value,cur?.wind_speed_10m,windDay0!=null?Number(windDay0)*0.75:null),
-    gusts:_uPick(cc?.WindGust?.Speed?.Metric?.Value,cur?.wind_gusts_10m,gustDay0,windDay0),
-    wDir:_uPick(cc?.Wind?.Direction?.Degrees,cur?.wind_direction_10m,0),
-    precip:dmcPrecip,
-    cloud:_uPick(cc?.CloudCover,dmcCloud),
-    visKm:_uPick(cc?.Visibility?.Metric?.Value,dmcVis),
-    feels:_uPick(cc?.RealFeelTemperature?.Metric?.Value,cur?.apparent_temperature,Array.isArray(day?.apparent_temperature_max)?day.apparent_temperature_max[0]:null),
-    temp:_uPick(cc?.Temperature?.Metric?.Value,cur?.temperature_2m,Array.isArray(day?.temperature_2m_max)?day.temperature_2m_max[0]:null),
-    wx:_uTextToWx(firstSummary,cur?.weather_code),
-    sunrise:sun.sr,
-    sunset:sun.ss,
-    src:'DMC oficial / AccuWeather / NOAA Kp'
+    wind, gusts, wDir,
+    precip, cloud, visKm,
+    feels, temp,
+    wx:_uTextToWx(firstSummary, cur?.weather_code),
+    sunrise:sun.sr, sunset:sun.ss,
+    src:`DMC Estaciones + AccuWeather + NOAA Kp · ${stName}${horaObs}${extraStr}`
   };
 }
+async function _uDMCObs(lat,lon){
+  // Usa datos observados reales de la estación DMC más cercana
+  // Fuente: /dmc/current?lat=&lon= → official_recent_summary.latest
+  const base=(typeof WORKER_BASE_URL==='string'?WORKER_BASE_URL:'').replace(/\/$/,'');
+  const sun=await _uSun(lat,lon);
+
+  // Intentar usar caché ya cargada (executeSearch la llena)
+  let dmcData = window.__dmcCurrentData || null;
+  if(!dmcData && base){
+    try{
+      const r=await fetch(base+'/dmc/current?lat='+encodeURIComponent(lat)+'&lon='+encodeURIComponent(lon),{cache:'no-store'});
+      if(r.ok) dmcData = await r.json();
+    }catch(_e){}
+  }
+
+  const summ  = dmcData?.official_recent_summary || {};
+  const st    = summ.station || dmcData?.official_station || {};
+  const latest= summ.latest || {};
+  const cur   = dmcData?.current || {};
+
+  // Extraer temperatura observada
+  const tKeys=['temperatura_c','temp_c','temperatura','temp','air_temp','t2m'];
+  let obsTemp=NaN;
+  for(const k of tKeys){ const n=parseFloat(String(latest[k]??'').replace(/[^0-9.\-]/g,'')); if(Number.isFinite(n)){obsTemp=n;break;} }
+  if(!Number.isFinite(obsTemp)) obsTemp=cur.temperature_2m??NaN;
+
+  // Viento observado (preferir latest, fallback current)
+  const windObs  = parseFloat(String(latest.velocidad_viento_kmh??latest.viento_kmh??latest.wind_speed_kmh??'').replace(/[^0-9.\-]/g,''));
+  const gustObs  = parseFloat(String(latest.rafaga_kmh??latest.racha_kmh??latest.gust_kmh??'').replace(/[^0-9.\-]/g,''));
+  const wDirObs  = parseFloat(String(latest.direccion_viento??latest.wind_direction??'').replace(/[^0-9.\-]/g,''));
+  const humObs   = parseFloat(String(latest.humedad_relativa??latest.hr??latest.humidity??'').replace(/[^0-9.\-]/g,''));
+  const presObs  = parseFloat(String(latest.presion_qfe??latest.presion_qff??latest.presion??'').replace(/[^0-9.\-]/g,''));
+
+  const wind  = Number.isFinite(windObs) ? windObs : (cur.wind_speed_10m??null);
+  const gusts = Number.isFinite(gustObs) ? gustObs : (cur.wind_gusts_10m??wind);
+  const wDir  = Number.isFinite(wDirObs) ? wDirObs : (cur.wind_direction_10m??0);
+
+  // Visibilidad y nubosidad desde current (no suelen estar en latest)
+  const visKm = cur.visibility!=null ? Number(cur.visibility)/1000 : null;
+  const cloud  = cur.cloud_cover??null;
+  const precip = cur.precipitation_probability??0;
+  const feels  = cur.apparent_temperature??null;
+
+  // Nombre estación
+  const stName = (st.ciudad||st.nombre||st.name||'Estación DMC').trim();
+  // Hora del dato
+  let horaObs='—';
+  if(summ.latest_time){
+    const d=new Date(String(summ.latest_time).replace(' ','T'));
+    if(!isNaN(d.getTime())) horaObs=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+'h';
+  }
+
+  return{
+    wind, gusts, wDir,
+    precip, cloud, visKm,
+    feels, temp:Number.isFinite(obsTemp)?obsTemp:null,
+    wx:_uw(cur.weather_code??0),
+    sunrise:sun.sr, sunset:sun.ss,
+    src:`DMC Estación "${stName}" · Obs ${horaObs} · NOAA Kp`
+  };
+}
+
 async function loadUAVForecast(){
   const st=document.getElementById('uavStatus');if(!st)return;
   st.textContent='EVALUANDO CONDICIONES...';st.style.background='#888';st.style.color='#fff';
@@ -8706,7 +9704,7 @@ async function loadUAVForecast(){
   if(co){lat=co.lat;lon=co.lon;}else if(typeof lastLat==='number'&&lastLat){lat=lastLat;lon=lastLon;}
   const kpP=_uKp();const src=document.getElementById('uavSource')?.value||'dmc_accu';
   try{
-    const loader = src==='accuweather' ? _uAW : (src==='openmeteo' ? _uOM : _uDMAW);
+    const loader = src==='accuweather' ? _uAW : src==='openmeteo' ? _uOM : _uDMAW;
     const data=await loader(lat,lon);
     data.kpVal=await kpP;
     _uApply(data);
