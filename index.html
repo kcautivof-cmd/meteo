@@ -3791,7 +3791,18 @@ input, select {
         </div>
 
         <div class="panel">
-            <span class="panel-title">LÍNEA DE TIEMPO</span>
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px;">
+                <span class="panel-title" style="margin-bottom:0;">LÍNEA DE TIEMPO</span>
+                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
+                    <button id="btnCopiarExcel"
+                        onclick="excelCopiarPronostico(this)"
+                        title="Extrae datos del rango de fechas seleccionado para pegar en Excel (Ctrl+V)"
+                        style="padding:4px 10px;font-size:10px;font-weight:700;letter-spacing:0.8px;border:1px solid var(--border);background:var(--panel2,#1e2130);color:var(--text);cursor:pointer;border-radius:3px;white-space:nowrap;transition:background 0.15s,border-color 0.15s;">
+                        EXTRAER DATOS
+                    </button>
+                    <div id="excelZonaHint" style="font-size:9px;color:var(--muted,#8899aa);letter-spacing:0.5px;white-space:nowrap;text-align:right;pointer-events:none;min-height:12px;"></div>
+                </div>
+            </div>
             <div class="timeline-container" id="timelineBox"></div>
         </div>
 
@@ -7188,70 +7199,22 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
             // === BLOQUE DMC OFICIAL ===
             try {
                 const _set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-                const dmcData = window.__dmcCurrentData || {};
-                const offSt = dmcData.official_station || data.official_station || {};
-                const summ  = dmcData.official_recent_summary || data.official_recent_summary || {};
-                const stObj = summ.station || offSt;
-                const latest = summ.latest || {};
-
-                // Nombre estación
-                const stName = (stObj.ciudad || stObj.nombre || stObj.name || '').trim();
-                _set('valDmcStation', stName || '--');
-
-                // Hora del dato
-                let horaStr = '--';
-                if (summ.latest_time) {
-                    const rawT = String(summ.latest_time).replace(' ', 'T');
-                    const dT = new Date(rawT);
-                    if (!isNaN(dT.getTime())) {
-                        const hh = String(dT.getHours()).padStart(2,'0');
-                        const mm = String(dT.getMinutes()).padStart(2,'0');
-                        horaStr = `${hh}:${mm}h`;
-                    } else {
-                        horaStr = String(summ.latest_time).slice(11,16);
-                    }
-                }
-                _set('valDmcHora', horaStr);
-
-                // Temperatura observada
-                let obsTemp = NaN;
-                const tempKeys = ['temperatura_c','temp_c','temperatura','temp','air_temp','t2m'];
-                for (const k of tempKeys) {
-                    const raw = latest[k];
-                    if (raw !== undefined && raw !== null) {
-                        const n = parseFloat(String(raw).replace(/[^0-9.\-]/g,''));
-                        if (Number.isFinite(n)) { obsTemp = n; break; }
-                    }
-                }
-                if (!Number.isFinite(obsTemp) && Array.isArray(summ.rows) && summ.rows.length) {
-                    const lastRow = summ.rows[summ.rows.length - 1];
-                    for (const k of tempKeys) {
-                        const raw = lastRow[k];
-                        if (raw !== undefined && raw !== null) {
-                            const n = parseFloat(String(raw).replace(/[^0-9.\-]/g,''));
-                            if (Number.isFinite(n)) { obsTemp = n; break; }
-                        }
-                    }
-                }
-                const obsStr = Number.isFinite(obsTemp) ? obsTemp.toFixed(1) + '°' : '--';
-                _set('valDmcObs', obsStr);
-
-                // Pronosticado
-                const pronoTemp = cur.temperature_2m;
-                const pronoStr = Number.isFinite(pronoTemp) ? Math.round(pronoTemp) + '°' : '--';
-                _set('valDmcProno', pronoStr);
-
-                // Diferencia
-                if (Number.isFinite(obsTemp) && Number.isFinite(pronoTemp)) {
-                    const diff = obsTemp - pronoTemp;
-                    const sign = diff > 0 ? '+' : '';
-                    const elDiff = document.getElementById('valDmcDiff');
-                    if (elDiff) {
-                        elDiff.textContent = sign + diff.toFixed(1) + '°';
+                const obs = getDmcObservedBundle();
+                _set('valDmcStation', obs.stationName || '--');
+                _set('valDmcHora', obs.hora || '--');
+                _set('valDmcObs', Number.isFinite(obs.obsTemp) ? obs.obsTemp.toFixed(1) + '°' : '--');
+                const pronoTemp = Number(obs.current?.temperature_2m);
+                _set('valDmcProno', Number.isFinite(pronoTemp) ? Math.round(pronoTemp) + '°' : '--');
+                const elDiff = document.getElementById('valDmcDiff');
+                if (elDiff) {
+                    if (Number.isFinite(obs.obsTemp) && Number.isFinite(pronoTemp)) {
+                        const diff = obs.obsTemp - pronoTemp;
+                        elDiff.textContent = (diff > 0 ? '+' : '') + diff.toFixed(1) + '°';
                         elDiff.style.color = Math.abs(diff) >= 3 ? 'var(--orange)' : 'var(--text)';
+                    } else {
+                        elDiff.textContent = '--';
+                        elDiff.style.color = 'var(--text)';
                     }
-                } else {
-                    _set('valDmcDiff', '--');
                 }
             } catch(_e) {}
         }
@@ -7305,6 +7268,99 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
             return best === null ? fallbackVal : Math.round(best);
         }
 
+
+        function timelineOfficialPreviewForDate(iso){
+            try{
+                const sel = (document.getElementById('sourceSelect')?.value || 'dmc_accu').toLowerCase();
+                if (!['dmc','dmc_accu','wrf_dmc'].includes(sel)) return null;
+                const dmc = window.__dmcCurrentData || {};
+                const arr = Array.isArray(dmc.forecast_preview) ? dmc.forecast_preview : [];
+                if (!arr.length) return null;
+                return arr.find(it => String(it?.date || '').slice(0,10) === String(iso || '').slice(0,10)) || null;
+            }catch(_e){ return null; }
+        }
+        function timelineOfficialValue(iso, key, fallbackVal){
+            const it = timelineOfficialPreviewForDate(iso);
+            if (!it) return fallbackVal;
+            const map = {
+                temperature_2m_max: ['tmax','temperature_2m_max'],
+                temperature_2m_min: ['tmin','temperature_2m_min'],
+                wind_speed_10m_max: ['wind_max_kmh','wind_speed_10m_max'],
+                wind_gusts_10m_max: ['gust_max_kmh','wind_gusts_10m_max'],
+                precipitation_sum: ['precip_mm','precipitation_sum'],
+                apparent_temperature_max: ['feelslike_max_c','apparent_temperature_max'],
+                weather_text: ['summary','weather_text','weather'],
+                weather_code: ['weather_code']
+            };
+            const keys = map[key] || [key];
+            for (const k of keys){
+                const v = it?.[k];
+                if (v !== undefined && v !== null && v !== '') return v;
+            }
+            return fallbackVal;
+        }
+        function getDmcObservedBundle(){
+            try{
+                const dmc = window.__dmcCurrentData || {};
+                const summ = dmc.official_recent_summary || {};
+                const latest = summ.latest || {};
+                const rows = Array.isArray(summ.rows) ? summ.rows : [];
+                const lastRow = rows.length ? rows[rows.length - 1] : {};
+                const cur = dmc.current || {};
+                const today = dmc.today || {};
+                const st = summ.station || dmc.official_station || {};
+                const stationName = (st.ciudad || st.nombre || st.name || '').trim() || '--';
+                const parseNum = (obj, keys=[]) => {
+                    for(const k of keys){
+                        const raw = obj?.[k];
+                        if(raw === undefined || raw === null || raw === '') continue;
+                        const n = parseFloat(String(raw).replace(/[^0-9.\-]/g,''));
+                        if(Number.isFinite(n)) return n;
+                    }
+                    return NaN;
+                };
+                const pick = (...vals) => vals.find(v => v !== undefined && v !== null && v !== '' && !(typeof v === 'number' && Number.isNaN(v)));
+                const obsTemp = pick(
+                    parseNum(latest, ['temperatura_c','temp_c','temperatura','temp','air_temp','t2m','ta']),
+                    parseNum(lastRow, ['temperatura_c','temp_c','temperatura','temp','air_temp','t2m','ta']),
+                    Number(cur.temperature_2m)
+                );
+                const obsWind = pick(
+                    parseNum(latest, ['velocidad_viento_kmh','viento_kmh','wind_speed_kmh','wind_speed','viento','wspd_kmh']),
+                    parseNum(lastRow, ['velocidad_viento_kmh','viento_kmh','wind_speed_kmh','wind_speed','viento','wspd_kmh']),
+                    Number(cur.wind_speed_10m)
+                );
+                const obsGust = pick(
+                    parseNum(latest, ['rafaga_kmh','racha_kmh','gust_kmh','rafaga','racha','wgst_kmh']),
+                    parseNum(lastRow, ['rafaga_kmh','racha_kmh','gust_kmh','rafaga','racha','wgst_kmh']),
+                    Number(cur.wind_gusts_10m)
+                );
+                const obsHum = pick(
+                    parseNum(latest, ['humedad_relativa','humedad','hr','humidity','rh','hr_pct']),
+                    parseNum(lastRow, ['humedad_relativa','humedad','hr','humidity','rh','hr_pct']),
+                    Number(cur.relative_humidity_2m)
+                );
+                const obsPres = pick(
+                    parseNum(latest, ['presion_qff','presion_qfe','presion','pressure','qff','qfe','mslp_hpa']),
+                    parseNum(lastRow, ['presion_qff','presion_qfe','presion','pressure','qff','qfe','mslp_hpa']),
+                    Number(cur.surface_pressure)
+                );
+                const obsPrecip = pick(
+                    parseNum(latest, ['precipitacion_mm','precip_mm','pp_mm','precipitacion','rain_mm','precip']),
+                    parseNum(lastRow, ['precipitacion_mm','precip_mm','pp_mm','precipitacion','rain_mm','precip']),
+                    Number(today.precipitation_sum)
+                );
+                let hora='--';
+                if(summ.latest_time){
+                    const dt = new Date(String(summ.latest_time).replace(' ','T'));
+                    if(!isNaN(dt.getTime())) hora = String(dt.getHours()).padStart(2,'0')+':'+String(dt.getMinutes()).padStart(2,'0')+'h';
+                    else hora = String(summ.latest_time).slice(11,16) || '--';
+                }
+                return { stationName, hora, obsTemp, obsWind, obsGust, obsHum, obsPres, obsPrecip, current: cur, today };
+            }catch(_e){
+                return { stationName:'--', hora:'--', obsTemp:NaN, obsWind:NaN, obsGust:NaN, obsHum:NaN, obsPres:NaN, obsPrecip:NaN, current:{}, today:{} };
+            }
+        }
         function renderTimeline(data, lat, lon) {
             const container = document.getElementById('timelineBox');
             container.innerHTML = "";
@@ -7333,9 +7389,9 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
                 let weatherText = '';
                 const dmcSummary = timelineSummaryText(daily, i);
                 if(offset === 0) {
-                    weatherText = dmcSummary || currentStatusText || calculateWeatherText(daily.weather_code?.[i], cloudAvg, humMax, 1, daily.precipitation_sum?.[i]);
+                    weatherText = dmcSummary || timelineOfficialValue(t, 'weather_text', null) || currentStatusText || calculateWeatherText(timelineOfficialValue(t, 'weather_code', daily.weather_code?.[i]), cloudAvg, humMax, 1, timelineOfficialValue(t, 'precipitation_sum', daily.precipitation_sum?.[i]));
                 } else {
-                    weatherText = dmcSummary || calculateWeatherText(daily.weather_code?.[i], cloudAvg, humMax, 1, daily.precipitation_sum?.[i]);
+                    weatherText = dmcSummary || timelineOfficialValue(t, 'weather_text', null) || calculateWeatherText(timelineOfficialValue(t, 'weather_code', daily.weather_code?.[i]), cloudAvg, humMax, 1, timelineOfficialValue(t, 'precipitation_sum', daily.precipitation_sum?.[i]));
                 }
                 const shownWindMin = timelineWindMin(daily, i, minWind);
                 const shownGustMax = timelineGustMax(daily, hourly, i, daily.wind_speed_10m_max?.[i]);
@@ -7346,44 +7402,15 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
                 // ── Bloque DMC para TODAS las tarjetas ──
                 let dmcCardHtml = '';
                 try {
-                    const _dmcD  = window.__dmcCurrentData || {};
-                    const _offSt = _dmcD.official_station || data.official_station || {};
-                    const _summ  = _dmcD.official_recent_summary || data.official_recent_summary || {};
-                    const _stObj = _summ.station || _offSt;
-                    const _stName= (_stObj.ciudad || _stObj.nombre || _stObj.name || '').trim();
+                    const _obsB = getDmcObservedBundle();
+                    const _stName= _obsB.stationName || '--';
                     const _st    = _stName ? escHtml(_stName.length > 32 ? _stName.slice(0,30)+'…' : _stName) : '--';
-
-                    // Temperatura pronosticada del día i (desde daily)
-                    const _tMax  = daily.temperature_2m_max?.[i];
-                    const _tMin  = daily.temperature_2m_min?.[i];
-                    const _pronoStr = (Number.isFinite(_tMax) && Number.isFinite(_tMin))
-                        ? `${Math.round(_tMax)}° / ${Math.round(_tMin)}°` : '--';
 
                     if (offset === 0) {
                         // Tarjeta HOY: también muestra dato observado y diferencia
-                        const _latest = _summ.latest || {};
-                        let _hora = '--';
-                        if (_summ.latest_time) {
-                            const _dT = new Date(String(_summ.latest_time).replace(' ','T'));
-                            if (!isNaN(_dT.getTime())) {
-                                _hora = String(_dT.getHours()).padStart(2,'0') + ':' + String(_dT.getMinutes()).padStart(2,'0') + 'h';
-                            }
-                        }
-                        let _obsTemp = NaN;
-                        const _tKeys = ['temperatura_c','temp_c','temperatura','temp','air_temp','t2m'];
-                        for (const _k of _tKeys) {
-                            const _n = parseFloat(String(_latest[_k] ?? '').replace(/[^0-9.\-]/g,''));
-                            if (Number.isFinite(_n)) { _obsTemp = _n; break; }
-                        }
-                        if (!Number.isFinite(_obsTemp) && Array.isArray(_summ.rows) && _summ.rows.length) {
-                            const _lr = _summ.rows[_summ.rows.length - 1];
-                            for (const _k of _tKeys) {
-                                const _n = parseFloat(String(_lr[_k] ?? '').replace(/[^0-9.\-]/g,''));
-                                if (Number.isFinite(_n)) { _obsTemp = _n; break; }
-                            }
-                        }
+                        const _obsTemp = Number(_obsB.obsTemp);
                         const _obsStr   = Number.isFinite(_obsTemp) ? _obsTemp.toFixed(1)+'°' : '--';
-                        const _curProno = data?.current?.temperature_2m;
+                        const _curProno = Number(_obsB.current?.temperature_2m ?? data?.current?.temperature_2m);
                         const _curPronoStr = Number.isFinite(_curProno) ? Math.round(_curProno)+'°' : '--';
                         let _diffStr = '--', _diffAccent = 'accent-dmc';
                         if (Number.isFinite(_obsTemp) && Number.isFinite(_curProno)) {
@@ -7391,6 +7418,8 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
                             _diffStr = (_d > 0 ? '+' : '') + _d.toFixed(1) + '°';
                             _diffAccent = Math.abs(_d) >= 3 ? 'accent-red' : 'accent-dmc';
                         }
+                        const _windObsStr = Number.isFinite(Number(_obsB.obsWind)) ? Math.round(Number(_obsB.obsWind))+' km/h' : '--';
+                        const _gustObsStr = Number.isFinite(Number(_obsB.obsGust)) ? Math.round(Number(_obsB.obsGust))+' km/h' : '--';
                         dmcCardHtml = `
                     <div style="border-top:1px solid var(--border);margin:5px 0 3px;padding-top:3px;">
                       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;">
@@ -7398,20 +7427,24 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
                         <span style="font-size:0.58em;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%;">${_st}</span>
                       </div>
                       <div class="dmc-mini-row">
-                        <div class="dmc-mini-cell accent-dmc"><span class="sc-lbl">HORA</span><span class="sc-val">${_hora}</span></div>
+                        <div class="dmc-mini-cell accent-dmc"><span class="sc-lbl">HORA</span><span class="sc-val">${_obsB.hora || '--'}</span></div>
                         <div class="dmc-mini-cell accent-cyan"><span class="sc-lbl">OBS DMC</span><span class="sc-val">${_obsStr}</span></div>
                         <div class="dmc-mini-cell accent-dmc"><span class="sc-lbl">PRONOS.</span><span class="sc-val">${_curPronoStr}</span></div>
                         <div class="dmc-mini-cell ${_diffAccent}"><span class="sc-lbl">DIF.</span><span class="sc-val">${_diffStr}</span></div>
                       </div>
+                      <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;border:1px solid var(--border);border-top:none;">
+                        <div style="padding:2px 5px;border-right:1px solid var(--border);"><span class="sc-lbl">VTO OBS</span><span class="sc-val">${_windObsStr}</span></div>
+                        <div style="padding:2px 5px;"><span class="sc-lbl">RÁF OBS</span><span class="sc-val">${_gustObsStr}</span></div>
+                      </div>
                     </div>`;
                     } else {
                         // Tarjetas FUTURAS: pronóstico completo (temp, viento, humedad, ráfagas)
-                        const _tMaxF = daily.temperature_2m_max?.[i];
-                        const _tMinF = daily.temperature_2m_min?.[i];
-                        const _windF = daily.wind_speed_10m_max?.[i];
-                        const _gustF = shownGustMax;
-                        const _precipF = daily.precipitation_sum?.[i];
-                        const _sensMaxF = daily.apparent_temperature_max?.[i];
+                        const _tMaxF = Number(timelineOfficialValue(t, 'temperature_2m_max', daily.temperature_2m_max?.[i]));
+                        const _tMinF = Number(timelineOfficialValue(t, 'temperature_2m_min', daily.temperature_2m_min?.[i]));
+                        const _windF = Number(timelineOfficialValue(t, 'wind_speed_10m_max', daily.wind_speed_10m_max?.[i]));
+                        const _gustF = Number(timelineOfficialValue(t, 'wind_gusts_10m_max', shownGustMax));
+                        const _precipF = Number(timelineOfficialValue(t, 'precipitation_sum', daily.precipitation_sum?.[i]));
+                        const _sensMaxF = Number(timelineOfficialValue(t, 'apparent_temperature_max', daily.apparent_temperature_max?.[i]));
                         const _tMaxStr = Number.isFinite(_tMaxF) ? Math.round(_tMaxF)+'°' : '--';
                         const _tMinStr = Number.isFinite(_tMinF) ? Math.round(_tMinF)+'°' : '--';
                         const _windStr = Number.isFinite(_windF) ? Math.round(_windF)+' km/h' : '--';
@@ -8574,50 +8607,88 @@ if (smoothMode === "ma3") series = movingAverage(series, 3);
                 const lat = lastLat ?? -20.214;
                 const lon = lastLon ?? -70.152;
 
-                const key = JSON.stringify({lat,lon,from,to,variable});
-                if (forceArchive || !archiveData || archiveKey !== key) {
-                    try {
-                        // Indicador en header
-                        const sm = document.getElementById('statusMsg');
-                        if (sm) { sm.innerText = "CARGANDO ARCHIVO CLIMÁTICO..."; sm.style.color = "yellow"; }
+                const sourceSel = (document.getElementById('sourceSelect')?.value || 'dmc_accu').toLowerCase();
+                const dmcPreview = Array.isArray(window.__dmcCurrentData?.forecast_preview) ? window.__dmcCurrentData.forecast_preview : [];
+                const forecastMap = new Map(labelsFull.map((d, idx) => [String(d).slice(0,10), seriesFull[idx]]));
+                const previewMap = new Map(dmcPreview.map(it => [String(it?.date || '').slice(0,10), it || {}]));
 
-                        const out = await fetchArchiveDaily(lat, lon, from, to, variable);
-                        archiveData = out;
-                        archiveKey = key;
-
-                        if (sm) { sm.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS"; sm.style.color = "var(--text)"; }
-                    } catch (e) {
-                        console.error(e);
-                        // Auto-corregir fechas y reintentar silenciosamente
-                        const _safe2 = new Date(); _safe2.setDate(_safe2.getDate() - 5);
-                        const _s2 = _safe2.toISOString().slice(0,10);
-                        const _fe = document.getElementById('archFrom');
-                        const _te = document.getElementById('archTo');
-                        const _ufe = document.getElementById('uiArchFrom');
-                        const _ute = document.getElementById('uiArchTo');
-                        if (_te) _te.value = _s2;
-                        if (_ute) _ute.value = _s2;
-                        const _sf = new Date(_safe2); _sf.setFullYear(_sf.getFullYear()-5);
-                        const _sfs = _sf.toISOString().slice(0,10);
-                        if (_fe && (!_fe.value || _fe.value >= _s2)) { _fe.value = _sfs; if(_ufe) _ufe.value = _sfs; }
-                        archiveData = null; archiveKey = null;
-                        try {
-                            const _r = await fetchArchiveDaily(lat, lon, _fe?.value||_sfs, _s2, variable);
-                            archiveData = _r;
-                            archiveKey = JSON.stringify({lat,lon,from:_fe?.value||_sfs,to:_s2,variable});
-                        } catch(e2) { console.error("Archivo: reintento fallido", e2); }
+                function _isoLocal(d){
+                    const y = d.getFullYear();
+                    const m = String(d.getMonth()+1).padStart(2,'0');
+                    const dd = String(d.getDate()).padStart(2,'0');
+                    return `${y}-${m}-${dd}`;
+                }
+                function _dateRangeIso(a, b){
+                    const out = [];
+                    const d = new Date(String(a) + 'T00:00:00');
+                    const e = new Date(String(b) + 'T00:00:00');
+                    while (d <= e && out.length < 4000){
+                        out.push(_isoLocal(d));
+                        d.setDate(d.getDate() + 1);
                     }
+                    return out;
+                }
+                function _previewValueForDate(ds){
+                    const it = previewMap.get(ds) || null;
+                    if (!it) return undefined;
+                    if (variable === 'temp') return it.tmax ?? it.temperature_2m_max;
+                    if (variable === 'wind') return it.wind_max_kmh ?? it.wind_speed_10m_max;
+                    if (variable === 'precip') return it.precip_mm ?? it.precipitation_sum;
+                    return undefined;
                 }
 
-                if (archiveData && archiveData.dates && archiveData.values) {
-                    labels = archiveData.dates.slice();
-                    series = archiveData.values.slice();
+                const todayIso = (() => {
+                    const n = new Date();
+                    return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;
+                })();
+                const yest = new Date(todayIso + 'T00:00:00');
+                yest.setDate(yest.getDate() - 1);
+                const yestIso = _isoLocal(yest);
+
+                const needArchive = from && to && from <= yestIso;
+                const archiveTo = needArchive ? (to < todayIso ? to : yestIso) : null;
+
+                if (needArchive) {
+                    const key = JSON.stringify({lat,lon,from,to:archiveTo,variable});
+                    if (forceArchive || !archiveData || archiveKey !== key) {
+                        try {
+                            const sm = document.getElementById('statusMsg');
+                            if (sm) { sm.innerText = "CARGANDO ARCHIVO CLIMÁTICO..."; sm.style.color = "yellow"; }
+                            archiveData = await fetchArchiveDaily(lat, lon, from, archiveTo, variable);
+                            archiveKey = key;
+                            if (sm) { sm.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS"; sm.style.color = "var(--text)"; }
+                        } catch (e) {
+                            console.error("Archivo climático:", e);
+                            archiveData = { dates: [], values: [], yLabel };
+                            archiveKey = key;
+                            const sm = document.getElementById('statusMsg');
+                            if (sm) { sm.innerText = "ARCHIVO CLIMÁTICO NO DISPONIBLE PARA ESE RANGO"; sm.style.color = "#ffcc66"; }
+                        }
+                    }
+                } else {
+                    archiveData = { dates: [], values: [], yLabel };
+                    archiveKey = JSON.stringify({lat,lon,from,to,variable,kind:'forecast_only'});
+                }
+
+                const archiveMap = new Map();
+                if (archiveData && Array.isArray(archiveData.dates) && Array.isArray(archiveData.values)) {
+                    archiveData.dates.forEach((d, idx) => archiveMap.set(String(d).slice(0,10), archiveData.values[idx]));
                     yLabel = archiveData.yLabel || yLabel;
-                    // para precipitación, usa barras
-                    if (variable === "precip") { chartType = "bar"; fill=false; color="var(--text)"; }
                 }
 
-                // agregación
+                const reqDates = (from && to) ? _dateRangeIso(from, to) : labels;
+                labels = reqDates.slice();
+                series = reqDates.map(ds => {
+                    if (archiveMap.has(ds)) return archiveMap.get(ds);
+                    if (['dmc','dmc_accu','wrf_dmc'].includes(sourceSel)) {
+                        const pv = _previewValueForDate(ds);
+                        if (pv !== undefined && pv !== null && pv !== '') return pv;
+                    }
+                    return forecastMap.has(ds) ? forecastMap.get(ds) : null;
+                });
+
+                if (variable === "precip") { chartType = "bar"; fill = false; color = "var(--text)"; }
+
                 if (agg === "monthly" || agg === "yearly") {
                     const ag = aggregateDailyToMonthly(labels, series, agg);
                     labels = ag.labels;
@@ -10659,6 +10730,456 @@ async function abrirMetarTaf(){
   .report-form-grid-2,.report-checks{grid-template-columns:1fr!important;}
 }
 </style>
+
+
+<script>
+/* =====================================================================
+   EXCEL EXPORT — rango de fechas seleccionable
+   Copia TSV para pegar en Excel
+   ===================================================================== */
+
+/* ── Detecta zona activa y celda destino ── */
+function excelDetectarZona() {
+  const lbl = (
+    document.getElementById('lblCity')?.textContent ||
+    document.getElementById('cityInput')?.value || ''
+  ).toUpperCase().trim();
+
+  const zonas = [
+    { key: 'PARAJALLA', celda: 'C8'  },
+    { key: 'COLCHANE',  celda: 'C23' },
+    { key: 'CANCOSA',   celda: 'C38' },
+    { key: 'UJINA',     celda: 'C53' }
+  ];
+
+  for (const z of zonas) {
+    if (lbl.includes(z.key)) return z;
+  }
+  return { key: lbl || 'ZONA ACTUAL', celda: null };
+}
+
+function excelActualizarHint(txt) {
+  const hint = document.getElementById('excelZonaHint');
+  if (!hint) return;
+  if (txt) {
+    hint.textContent = txt;
+    return;
+  }
+  const z = excelDetectarZona();
+  hint.textContent = z.celda
+    ? `▸ pegar en ${z.celda} (${z.key})`
+    : '▸ rango exportado';
+}
+
+/* ── Helpers ── */
+const _rnd  = v => {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.round(n) : '-';
+};
+
+const _dec1 = v => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n.toFixed(1) : '0.0';
+};
+
+function _localIso(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function _rangeDateList(fromIso, toIso, maxDays = 31) {
+  const out = [];
+  const d = new Date(fromIso + 'T00:00:00');
+  const end = new Date(toIso + 'T00:00:00');
+
+  while (d <= end && out.length < maxDays) {
+    out.push(_localIso(d));
+    d.setDate(d.getDate() + 1);
+  }
+  return out;
+}
+
+/* Estadísticas horarias del día ISO dado */
+function _hStats(hourly, iso) {
+  let wMin = 9999, wMax = 0, gMin = 9999, gMax = -1, hSum = 0, hCnt = 0;
+
+  (hourly.time || []).forEach((ht, k) => {
+    if (String(ht).slice(0, 10) !== iso) return;
+
+    const w = Number(hourly.wind_speed_10m?.[k]);
+    if (Number.isFinite(w)) {
+      if (w < wMin) wMin = w;
+      if (w > wMax) wMax = w;
+    }
+
+    const g = Number(hourly.wind_gusts_10m?.[k]);
+    if (Number.isFinite(g)) {
+      if (g < gMin) gMin = g;
+      if (g > gMax) gMax = g;
+    }
+
+    const h = Number(hourly.relative_humidity_2m?.[k]);
+    if (Number.isFinite(h)) {
+      hSum += h;
+      hCnt++;
+    }
+  });
+
+  return {
+    wMin: wMin === 9999 ? 0 : Math.round(wMin),
+    wMax: Math.round(wMax),
+    gMin: gMin === 9999 ? 0 : Math.round(gMin),
+    gMax: gMax === -1 ? 0 : Math.round(gMax),
+    humMedia: hCnt > 0 ? Math.round(hSum / hCnt) : '-'
+  };
+}
+
+/* Ráfaga máxima */
+function _gustMax(daily, hourly, i, iso) {
+  const d = Array.isArray(daily.wind_gusts_10m_max) ? daily.wind_gusts_10m_max[i] : undefined;
+  if (d !== undefined && d !== null && d !== '') return Math.round(Number(d));
+  return _hStats(hourly, iso).gMax;
+}
+
+/* Viento mínimo */
+function _windMin(daily, i, fallback) {
+  const v = Array.isArray(daily.__wind_min_kmh) ? daily.__wind_min_kmh[i] : undefined;
+  return (v !== undefined && v !== null && v !== '') ? Math.round(Number(v)) : fallback;
+}
+
+/* Nubosidad */
+const _WMO = {
+  0:'despejado', 1:'mayormente despejado', 2:'parcialmente nublado', 3:'nublado',
+  45:'niebla', 48:'niebla escarchada',
+  51:'llovizna ligera', 53:'llovizna moderada', 55:'llovizna densa',
+  61:'lluvia ligera', 63:'lluvia moderada', 65:'lluvia fuerte',
+  71:'nevada ligera', 73:'nevada moderada', 75:'nevada fuerte',
+  80:'chubascos ligeros', 81:'chubascos moderados', 82:'chubascos violentos',
+  95:'tormenta eléctrica', 96:'tormenta c/ granizo', 99:'tormenta severa'
+};
+
+function _nubosidad(daily, hourly, i, iso) {
+  const raw = Array.isArray(daily.__summary_text) ? daily.__summary_text[i] : null;
+  if (raw) {
+    const arr = Array.isArray(raw) ? raw : [raw];
+    const seen = new Set();
+    const out = [];
+    arr.forEach(t => {
+      const c = (t || '').trim().toLowerCase();
+      if (c && !seen.has(c)) {
+        seen.add(c);
+        out.push(c);
+      }
+    });
+    if (out.length) return out.join(', ');
+  }
+
+  const code = daily.weather_code?.[i];
+  let cloud = 50, humMax = 0;
+
+  if (Array.isArray(hourly.time)) {
+    let cs = 0, cc = 0;
+    hourly.time.forEach((ht, k) => {
+      if (String(ht).slice(0, 10) !== iso) return;
+      const c = hourly.cloud_cover?.[k];
+      if (c !== undefined) {
+        cs += Number(c);
+        cc++;
+      }
+      const h = Number(hourly.relative_humidity_2m?.[k]);
+      if (Number.isFinite(h) && h > humMax) humMax = h;
+    });
+    if (cc > 0) cloud = cs / cc;
+  }
+
+  const precip = Number(daily.precipitation_sum?.[i]);
+  const nCode = Number.isFinite(Number(code)) ? Number(code) : null;
+
+  if (nCode !== null) {
+    if (nCode >= 51) return _WMO[nCode] || 'lluvia';
+    if (humMax >= 95 && nCode <= 48) return 'bruma / niebla';
+    if (nCode <= 3 && cloud < 50) return 'despejado (soleado)';
+    if (nCode <= 3 && cloud < 85) return 'parcialmente nublado';
+    const dec = _WMO[nCode];
+    if (dec) return dec;
+  }
+
+  if (Number.isFinite(precip) && precip >= 10) return 'precipitación probable';
+  if (Number.isFinite(precip) && precip > 0) return 'precipitación débil';
+  if (humMax >= 95) return 'bruma / niebla';
+  if (cloud < 20) return 'despejado (estimado)';
+  if (cloud < 60) return 'parcialmente nublado';
+  return 'nublado';
+}
+
+/* Fase lunar */
+function _moon(iso) {
+  const date = new Date(iso + 'T12:00:00');
+  const lp   = 2551443;
+  const nm   = new Date(1970, 0, 7, 20, 35, 0);
+  const ps   = ((date.getTime() - nm.getTime()) / 1000) % lp;
+  const days = Math.floor(ps / 86400);
+  const illum = Math.round((ps / lp) * 100);
+
+  let phase = 'LUNA NUEVA';
+  if      (days < 2)    phase = 'LUNA NUEVA';
+  else if (days < 7)    phase = 'CRECIENTE';
+  else if (days === 7)  phase = 'CUARTO CREC.';
+  else if (days < 14)   phase = 'GIBOSA CREC.';
+  else if (days === 14) phase = 'LUNA LLENA';
+  else if (days < 21)   phase = 'GIBOSA MENG.';
+  else if (days === 21) phase = 'CUARTO MENG.';
+  else                  phase = 'MENGUANTE';
+
+  return { phase, illum };
+}
+
+/* Astronomía */
+function _astro(iso, lat, lon) {
+  try {
+    if (window.SunCalc) {
+      const d = new Date(iso + 'T12:00:00');
+      const t = window.SunCalc.getTimes(d, lat, lon);
+      const fmt = dt => {
+        if (!dt || isNaN(dt.getTime())) return '--:--';
+        return String(dt.getHours()).padStart(2, '0') + ':' + String(dt.getMinutes()).padStart(2, '0');
+      };
+      return { iccm: fmt(t.dawn), tccv: fmt(t.dusk) };
+    }
+  } catch(e) {}
+  return { iccm: '--:--', tccv: '--:--' };
+}
+
+/* Copiar TSV */
+function _copiarTSV(btn, tsv) {
+  const orig = btn.innerHTML;
+
+  const ok = () => {
+    btn.innerHTML = 'DATOS EXTRAÍDOS';
+    btn.style.background = 'rgba(34,197,94,0.18)';
+    btn.style.borderColor = 'rgba(34,197,94,0.5)';
+    setTimeout(() => {
+      btn.innerHTML = orig;
+      btn.style.background = '';
+      btn.style.borderColor = '';
+    }, 2400);
+  };
+
+  navigator.clipboard.writeText(tsv).then(ok).catch(() => {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = tsv;
+      ta.style.cssText = 'position:fixed;left:-9999px;opacity:0;';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      ok();
+    } catch(e) {
+      window.__excelTSV = tsv;
+      alert('No se pudo copiar automáticamente. Datos en consola: window.__excelTSV');
+    }
+  });
+}
+
+/* Selector de rango */
+function _pedirRangoFechas() {
+  const hoy = new Date();
+  const manana = new Date();
+  manana.setDate(hoy.getDate() + 1);
+
+  const mananaIso = _localIso(manana);
+
+  const from = prompt('Ingrese fecha DESDE (YYYY-MM-DD)', mananaIso);
+  if (from === null) return null;
+
+  const to = prompt('Ingrese fecha HASTA (YYYY-MM-DD)', from);
+  if (to === null) return null;
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
+    alert('Formato inválido. Use YYYY-MM-DD');
+    return null;
+  }
+
+  const d1 = new Date(from + 'T00:00:00');
+  const d2 = new Date(to + 'T00:00:00');
+
+  if (d1 > d2) {
+    alert('La fecha DESDE no puede ser mayor que HASTA.');
+    return null;
+  }
+
+  const diffDays = Math.floor((d2 - d1) / 86400000) + 1;
+  if (diffDays > 31) {
+    alert('El rango máximo permitido es 31 días.');
+    return null;
+  }
+
+  return { from, to, total: diffDays };
+}
+
+/* FUNCIÓN PRINCIPAL */
+function excelCopiarPronostico(btn) {
+  const sourceSel = (document.getElementById('sourceSelect')?.value || 'dmc_accu').toLowerCase();
+
+  if (sourceSel === 'openmeteo') {
+    alert('⚠️ EXTRAER DATOS está reservado para DMC / AccuWeather o DMC (WRF). Cambie la fuente y vuelva a intentar.');
+    return;
+  }
+
+  const baseData =
+    window.__temp7dForecast ||
+    window.__forecastJson ||
+    window.__meteoData ||
+    window.globalData ||
+    {};
+
+  const dmcPack = window.__dmcCurrentData || {};
+  const baseDaily = baseData.daily || {};
+  const baseHourly = baseData.hourly || {};
+  const officialDaily = dmcPack.daily || {};
+  const officialHourly = dmcPack.hourly || {};
+  const officialPreview = Array.isArray(dmcPack.forecast_preview) ? dmcPack.forecast_preview : [];
+
+  const useOfficial = ['dmc', 'dmc_accu', 'wrf_dmc'].includes(sourceSel);
+  const activeDaily = useOfficial && Array.isArray(officialDaily.time) && officialDaily.time.length ? officialDaily : baseDaily;
+  const activeHourly = useOfficial && Object.keys(officialHourly).length ? officialHourly : baseHourly;
+  const times = Array.isArray(activeDaily.time) ? activeDaily.time : [];
+
+  if (!times.length && !officialPreview.length) {
+    alert('⚠️ No hay datos diarios DMC/AccuWeather disponibles para exportar.');
+    return;
+  }
+
+  const rango = _pedirRangoFechas();
+  if (!rango) return;
+
+  let lat = -20.214, lon = -70.152;
+  try {
+    if (typeof lastLat === 'number' && lastLat !== null) {
+      lat = lastLat;
+      lon = lastLon;
+    } else {
+      const pLat = parseDMS(document.getElementById('latDms')?.value || '', 'lat');
+      const pLon = parseDMS(document.getElementById('lonDms')?.value || '', 'lon');
+      if (Number.isFinite(pLat) && Number.isFinite(pLon)) {
+        lat = pLat;
+        lon = pLon;
+      }
+    }
+  } catch(e) {}
+
+  const requestedDays = _rangeDateList(rango.from, rango.to, 31);
+  const indexByIso = Object.fromEntries((times || []).map((t, idx) => [String(t).slice(0,10), idx]));
+  const previewByIso = Object.fromEntries(officialPreview.map((it) => [String(it?.date || '').slice(0,10), it || {}]));
+  const R = Array.from({ length: 14 }, () => []);
+
+  function pickRaw(officialArr, baseArr, i) {
+    const vo = Array.isArray(officialArr) ? officialArr[i] : undefined;
+    if (vo !== undefined && vo !== null && vo !== '') return vo;
+    return Array.isArray(baseArr) ? baseArr[i] : undefined;
+  }
+  function pickFmt(officialArr, baseArr, i, dec = false) {
+    const v = pickRaw(officialArr, baseArr, i);
+    return dec ? _dec1(v) : _rnd(v);
+  }
+  function previewVal(iso, keys, fallback) {
+    const item = previewByIso[String(iso).slice(0,10)];
+    if (item) {
+      for (const k of keys) {
+        const v = item?.[k];
+        if (v !== undefined && v !== null && v !== '') return v;
+      }
+    }
+    return fallback;
+  }
+
+  for (const iso of requestedDays) {
+    const i = indexByIso[iso] != null ? indexByIso[iso] : -1;
+    const hasPreview = !!previewByIso[iso];
+
+    if (i < 0 && !hasPreview) {
+      R.forEach(row => row.push('-'));
+      continue;
+    }
+
+    const st = _hStats(activeHourly, iso);
+    const moon = _moon(iso);
+    const astro = _astro(iso, lat, lon);
+
+    const windMaxRaw = previewVal(iso, ['wind_max_kmh', 'wind_speed_10m_max'], i >= 0 ? pickRaw(activeDaily.wind_speed_10m_max, baseDaily.wind_speed_10m_max, i) : undefined);
+    const windMax = _rnd(windMaxRaw);
+
+    const windMin = i >= 0 ? _windMin(activeDaily, i, st.wMin) : st.wMin;
+
+    const gustMaxRaw = previewVal(iso, ['gust_max_kmh', 'wind_gusts_10m_max'], i >= 0 ? pickRaw(activeDaily.wind_gusts_10m_max, baseDaily.wind_gusts_10m_max, i) : undefined);
+    const gustMax = (gustMaxRaw !== undefined && gustMaxRaw !== null && gustMaxRaw !== '')
+      ? Math.round(Number(gustMaxRaw))
+      : _hStats(activeHourly, iso).gMax;
+    const gustMin = st.gMin;
+
+    const humOfficial = i >= 0 ? pickRaw(activeDaily.relative_humidity_2m_mean, baseDaily.relative_humidity_2m_mean, i) : undefined;
+
+    let nubTxt = '';
+    if (hasPreview) {
+      nubTxt = String(previewVal(iso, ['summary', 'weather_text', 'weather'], '') || '').trim().toLowerCase();
+    }
+    if (!nubTxt && i >= 0) {
+      const rawOfficialSummary = Array.isArray(activeDaily.__summary_text) ? activeDaily.__summary_text[i] : null;
+      if (rawOfficialSummary) {
+        const arr = Array.isArray(rawOfficialSummary) ? rawOfficialSummary : [rawOfficialSummary];
+        const seen = new Set();
+        const out = [];
+        arr.forEach(t => {
+          const c = String(t || '').trim().toLowerCase();
+          if (c && !seen.has(c)) {
+            seen.add(c);
+            out.push(c);
+          }
+        });
+        nubTxt = out.join(', ');
+      }
+    }
+    if (!nubTxt && i >= 0) nubTxt = _nubosidad(activeDaily, activeHourly, i, iso);
+    if (!nubTxt) nubTxt = '--';
+
+    const tmax = previewVal(iso, ['tmax', 'temperature_2m_max'], i >= 0 ? pickRaw(activeDaily.temperature_2m_max, baseDaily.temperature_2m_max, i) : undefined);
+    const tmin = previewVal(iso, ['tmin', 'temperature_2m_min'], i >= 0 ? pickRaw(activeDaily.temperature_2m_min, baseDaily.temperature_2m_min, i) : undefined);
+    const appMax = previewVal(iso, ['feelslike_max_c', 'apparent_temperature_max'], i >= 0 ? pickRaw(activeDaily.apparent_temperature_max, baseDaily.apparent_temperature_max, i) : undefined);
+    const appMin = i >= 0 ? pickRaw(activeDaily.apparent_temperature_min, baseDaily.apparent_temperature_min, i) : undefined;
+    const uvMax = i >= 0 ? pickRaw(activeDaily.uv_index_max, baseDaily.uv_index_max, i) : undefined;
+    const precip = previewVal(iso, ['precip_mm', 'precipitation_sum'], i >= 0 ? pickRaw(activeDaily.precipitation_sum, baseDaily.precipitation_sum, i) : undefined);
+
+    R[0].push(_rnd(tmax));
+    R[1].push(_rnd(tmin));
+    R[2].push(_rnd(appMax));
+    R[3].push(_rnd(appMin));
+    R[4].push(nubTxt);
+    R[5].push(_rnd(uvMax));
+    R[6].push(_dec1(precip));
+    R[7].push((humOfficial !== undefined && humOfficial !== null && humOfficial !== '') ? _rnd(humOfficial) : st.humMedia);
+    R[8].push(`${windMin} - ${windMax}`);
+    R[9].push(`${gustMin} - ${gustMax}`);
+    R[10].push(moon.illum);
+    R[11].push(moon.phase);
+    R[12].push(astro.iccm);
+    R[13].push(astro.tccv);
+  }
+
+  const tsv = R.map(row => row.join('\t')).join('\n');
+  _copiarTSV(btn, tsv);
+
+  const zona = excelDetectarZona();
+  const base = zona.celda ? `▸ pegar en ${zona.celda} (${zona.key})` : '▸ rango exportado';
+  excelActualizarHint(`${base} · ${rango.from} a ${rango.to} · ${rango.total} día(s) · DMC/ACCU`);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  excelActualizarHint();
+});
+</script>
 
 </body>
 </html>
