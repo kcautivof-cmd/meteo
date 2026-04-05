@@ -13930,5 +13930,399 @@ async function robustGenerate(ev){
 })();
 </script>
 
+
+<script>
+(function(){
+  function byId(id){ return document.getElementById(id); }
+  function num(v){ if(v===null||v===undefined||v==='') return NaN; const s=String(v).replace(',', '.').replace(/[^0-9+\-.]/g,''); const n=parseFloat(s); return Number.isFinite(n)?n:NaN; }
+  function pad2(n){ return String(n).padStart(2,'0'); }
+  function fmt0(v,u=''){ return Number.isFinite(v) ? `${Math.round(v)}${u}` : 'N/D'; }
+  function fmt1(v,u=''){ return Number.isFinite(v) ? `${(Math.round(v*10)/10).toFixed(1).replace('.',',')}${u}` : 'N/D'; }
+  function todayIso(){ const d=new Date(); return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
+  function normalizeIso(v){
+    if(!v) return todayIso();
+    const s=String(v).trim();
+    if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    const m=s.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+    if(m) return `${m[3]}-${m[2]}-${m[1]}`;
+    return todayIso();
+  }
+  function longDateEs(iso, hhmm){
+    const d=new Date(`${iso}T${hhmm||'08:00'}:00`);
+    const dias=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+    const meses=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    return Number.isNaN(d.getTime()) ? `${iso} – ${hhmm} hrs.` : `${dias[d.getDay()]} ${pad2(d.getDate())} de ${meses[d.getMonth()]} de ${d.getFullYear()} – ${hhmm} hrs.`;
+  }
+  function weatherText(code, cloud, hum, precip){
+    const c=num(code), cl=num(cloud), h=num(hum), p=num(precip);
+    if(Number.isFinite(p) && p > 0.4) return 'inestabilidad con probabilidad de precipitación';
+    if(Number.isFinite(cl) && cl >= 87) return 'cielo cubierto';
+    if(Number.isFinite(cl) && cl >= 62) return 'nubosidad parcial a abundante';
+    if(Number.isFinite(cl) && cl >= 25) return 'nubosidad parcial';
+    if(Number.isFinite(h) && h >= 90) return 'ambiente húmedo con nubosidad baja';
+    if(Number.isFinite(c) && c >= 1 && c <= 5) return 'condición variable';
+    return 'condiciones variables';
+  }
+  function dirText(v){
+    const d=((Math.round(Number(v))%360)+360)%360;
+    const dirs=['N','NE','E','SE','S','SO','O','NO'];
+    return `${d}° (${dirs[Math.round(d/45)%8]})`;
+  }
+  function fakeZero(v){ return Number.isFinite(v) && Math.abs(v) < 0.0001; }
+  function getLatLon(){
+    let lat=NaN, lon=NaN;
+    try{
+      if(typeof parseDMS==='function'){
+        lat=parseDMS(byId('latDms')?.value||'', 'lat');
+        lon=parseDMS(byId('lonDms')?.value||'', 'lon');
+      }
+    }catch(_e){}
+    if(!Number.isFinite(lat) && Number.isFinite(window.lastLat)) lat=window.lastLat;
+    if(!Number.isFinite(lon) && Number.isFinite(window.lastLon)) lon=window.lastLon;
+    return {lat,lon};
+  }
+  async function fetchJson(url){
+    try{
+      const headers={"Accept":"application/json"};
+      if(window.AUTH_TOKEN) headers["Authorization"]="Bearer "+window.AUTH_TOKEN;
+      const r=await fetch(url,{cache:'no-store', headers});
+      if(!r.ok) return null;
+      return await r.json();
+    }catch(_e){ return null; }
+  }
+  function getBase(){
+    return String(window.WORKER_BASE_URL || '').replace(/\/$/,'');
+  }
+  async function ensureBundlesFresh(){
+    const {lat,lon}=getLatLon();
+    const base=getBase();
+    const la=encodeURIComponent(lat), lo=encodeURIComponent(lon);
+    const out={dmc:{},accu:{},page:{}};
+    if(Number.isFinite(lat) && Number.isFinite(lon) && base){
+      const [dmc, accuC, accuH, accuD] = await Promise.all([
+        fetchJson(`${base}/dmc/current?lat=${la}&lon=${lo}&_ts=${Date.now()}`),
+        fetchJson(`${base}/accu/current?lat=${la}&lon=${lo}&_ts=${Date.now()}`),
+        fetchJson(`${base}/accu/hourly12?lat=${la}&lon=${lo}&_ts=${Date.now()}`),
+        fetchJson(`${base}/accu/daily5?lat=${la}&lon=${lo}&_ts=${Date.now()}`)
+      ]);
+      out.dmc=dmc||{};
+      out.accu={current:accuC||{}, h12:accuH||{}, d5:accuD||{}};
+      window.__dmcCurrentData = out.dmc;
+      window.__accuCache = { now: out.accu.current, h12: out.accu.h12, d5: out.accu.d5 };
+    }
+    out.page = window.__temp7dForecast || window.__forecastJson || window.__meteoData || {};
+    return out;
+  }
+  function pickFirst(obj, keys){
+    for(const k of keys){
+      if(obj && obj[k] != null && obj[k] !== '') return obj[k];
+    }
+    return null;
+  }
+  function observedDmc(bundle){
+    const dmc=bundle.dmc||{};
+    const summ=dmc.official_recent_summary||{};
+    const latest=summ.latest||summ||{};
+    const st=summ.station||dmc.official_station||{};
+    const cur=dmc.current||{};
+    const station = String(st.ciudad||st.nombre||st.name||latest.station_name||latest.station||byId('valDmcStation')?.textContent||'Estación DMC más cercana').trim();
+    let hora='N/D';
+    const lt = pickFirst(latest,['time_local','hour_local','hora_local','fecha_hora','time']);
+    if(lt){
+      const s=String(lt);
+      const m=s.match(/(\d{2}):(\d{2})/);
+      if(m) hora=`${m[1]}:${m[2]}h`;
+    }
+    function n(keys){
+      for(const k of keys){
+        const v=num(latest[k]);
+        if(Number.isFinite(v)) return v;
+      }
+      for(const k of keys){
+        const v=num(cur[k]);
+        if(Number.isFinite(v)) return v;
+      }
+      return NaN;
+    }
+    const cloudOct=num(pickFirst(latest,['nubosidad_octas','octas','cloud_octas','n_octas']));
+    const cloud=Number.isFinite(cloudOct)?Math.round((cloudOct/8)*100):n(['cloud_cover','cloudiness','cloud']);
+    const visRaw=n(['visibilidad_m','visibility_m','visibility','visibilidad_km','vis_km','vis_m','vis']);
+    const vis=Number.isFinite(visRaw)?(visRaw>120?visRaw:visRaw*1000):NaN;
+    return {
+      station,hora,
+      code:n(['weather_code','code']),
+      temp:n(['temperatura_c','temp_c','temperatura','temp','air_temp','t2m','temperature_2m']),
+      hum:n(['humedad_relativa','humedad','hr','humidity','rh','hr_pct','relative_humidity_2m']),
+      wind:n(['velocidad_viento_kmh','viento_kmh','wind_speed_kmh','wind_speed','viento','wspd_kmh','wind_speed_10m']),
+      gust:n(['rafaga_kmh','racha_kmh','gust_kmh','rafaga','racha','wgst_kmh','wind_gusts_10m']),
+      dir:n(['direccion_viento','wind_direction','dir_viento','wdir','wind_direction_10m']),
+      precip:n(['precipitacion_mm','precip_mm','pp_mm','precipitacion','rain_mm','precip','precipitation']),
+      cloud:Number.isFinite(cloud)?cloud:NaN,
+      vis,
+      pres:n(['presion_qff','presion_qfe','presion','pressure','qff','qfe','mslp_hpa','pressure_msl'])
+    };
+  }
+  function accuCurrent(bundle){
+    const cc=bundle?.accu?.current?.data||bundle?.accu?.current||{};
+    return {
+      temp:num(cc?.Temperature?.Metric?.Value),
+      hum:num(cc?.RelativeHumidity),
+      wind:num(cc?.Wind?.Speed?.Metric?.Value),
+      gust:num(cc?.WindGust?.Speed?.Metric?.Value),
+      dir:num(cc?.Wind?.Direction?.Degrees),
+      cloud:num(cc?.CloudCover),
+      vis:Number.isFinite(num(cc?.Visibility?.Metric?.Value))?num(cc.Visibility.Metric.Value)*1000:NaN,
+      pres:num(cc?.Pressure?.Metric?.Value),
+      code:num(cc?.WeatherIcon)
+    };
+  }
+  function findNearestTimeIndex(times, targetIso, targetHm){
+    if(!Array.isArray(times) || !times.length) return -1;
+    const target = new Date(`${targetIso}T${targetHm||'08:00'}:00`).getTime();
+    let bestIdx=-1, bestDiff=Infinity;
+    times.forEach((t,i)=>{
+      const s=String(t||'').replace(' ','T');
+      const ms=new Date(s).getTime();
+      if(!Number.isFinite(ms)) return;
+      const dIso=s.slice(0,10);
+      const diff=Math.abs(ms-target);
+      const sameDay=(dIso===targetIso);
+      const score = sameDay ? diff : diff + 36*3600*1000;
+      if(score < bestDiff){ bestDiff=score; bestIdx=i; }
+    });
+    return bestIdx;
+  }
+  function fromHourlyBlock(H, idx){
+    const val=(keys)=>{
+      if(idx<0) return NaN;
+      for(const k of keys){
+        const arr=H?.[k];
+        const v=Array.isArray(arr)?num(arr[idx]):NaN;
+        if(Number.isFinite(v)) return v;
+      }
+      return NaN;
+    };
+    return {
+      temp:val(['temperature_2m','temp_c']),
+      hum:val(['relative_humidity_2m','humidity']),
+      wind:val(['wind_speed_10m','wind_speed']),
+      gust:val(['wind_gusts_10m','wind_gust']),
+      dir:val(['wind_direction_10m','wind_direction']),
+      precip:val(['precipitation','precip_mm']),
+      cloud:val(['cloud_cover','cloudiness']),
+      vis:val(['visibility','visibility_m']),
+      code:val(['weather_code','code'])
+    };
+  }
+  function dmcHourly(bundle, iso, hhmm){
+    const H=bundle?.dmc?.hourly||bundle?.dmc?.forecast_hourly||{};
+    const idx=findNearestTimeIndex(Array.isArray(H.time)?H.time:[], iso, hhmm);
+    return fromHourlyBlock(H, idx);
+  }
+  function pageHourly(bundle, iso, hhmm){
+    const H=bundle?.page?.hourly||{};
+    const idx=findNearestTimeIndex(Array.isArray(H.time)?H.time:[], iso, hhmm);
+    return fromHourlyBlock(H, idx);
+  }
+  function dmcDaily(bundle, iso){
+    const D=bundle?.dmc?.daily||bundle?.dmc?.forecast_preview||{};
+    const time=Array.isArray(D.time)?D.time:(Array.isArray(D.date)?D.date:[]);
+    const idx=time.findIndex(t=>String(t).slice(0,10)===iso);
+    const val=(keys)=>{
+      if(idx<0) return NaN;
+      for(const k of keys){
+        const arr=D[k];
+        const n=Array.isArray(arr)?num(arr[idx]):NaN;
+        if(Number.isFinite(n)) return n;
+      }
+      return NaN;
+    };
+    return { tmin:val(['temperature_2m_min','tmin','temp_min']), tmax:val(['temperature_2m_max','tmax','temp_max']), windMax:val(['wind_speed_10m_max','wind_max']), gustMax:val(['wind_gusts_10m_max','gust_max']), precip:val(['precipitation_sum','precip_mm','precip']) };
+  }
+  function pageDaily(bundle, iso){
+    const D=bundle?.page?.daily||{};
+    const time=Array.isArray(D.time)?D.time:[];
+    const idx=time.findIndex(t=>String(t).slice(0,10)===iso);
+    const val=(keys)=>{
+      if(idx<0) return NaN;
+      for(const k of keys){
+        const arr=D[k];
+        const n=Array.isArray(arr)?num(arr[idx]):NaN;
+        if(Number.isFinite(n)) return n;
+      }
+      return NaN;
+    };
+    return { tmin:val(['temperature_2m_min','tmin','temp_min']), tmax:val(['temperature_2m_max','tmax','temp_max']), windMax:val(['wind_speed_10m_max','wind_max']), gustMax:val(['wind_gusts_10m_max','gust_max']), precip:val(['precipitation_sum','precip_mm','precip']) };
+  }
+  function accuHourly(bundle, iso, hhmm){
+    const arr = Array.isArray(bundle?.accu?.h12?.data) ? bundle.accu.h12.data : (Array.isArray(bundle?.accu?.h12) ? bundle.accu.h12 : []);
+    const target = new Date(`${iso}T${hhmm||'08:00'}:00`).getTime();
+    let best=null, bestScore=Infinity;
+    arr.forEach(x=>{
+      const dt=x?.DateTime||x?.LocalObservationDateTime;
+      if(!dt) return;
+      const d=new Date(dt);
+      if(isNaN(d)) return;
+      const score=Math.abs(d.getTime()-target);
+      if(score<bestScore){ bestScore=score; best=x; }
+    });
+    if(!best) return {};
+    return {
+      temp:num(best?.Temperature?.Value ?? best?.Temperature?.Metric?.Value),
+      hum:num(best?.RelativeHumidity),
+      wind:num(best?.Wind?.Speed?.Value ?? best?.Wind?.Speed?.Metric?.Value),
+      gust:num(best?.WindGust?.Speed?.Value ?? best?.WindGust?.Speed?.Metric?.Value),
+      dir:num(best?.Wind?.Direction?.Degrees),
+      precip:num(best?.PrecipitationProbability),
+      cloud:num(best?.CloudCover),
+      vis:Number.isFinite(num(best?.Visibility?.Value ?? best?.Visibility?.Metric?.Value)) ? num(best?.Visibility?.Value ?? best?.Visibility?.Metric?.Value)*1000 : NaN,
+      code:num(best?.WeatherIcon)
+    };
+  }
+  function accuDaily(bundle, iso){
+    const arr=bundle?.accu?.d5?.data?.DailyForecasts||bundle?.accu?.d5?.DailyForecasts||[];
+    let item=arr.find(x=>{ const d=x?.Date?new Date(x.Date):null; return d && !isNaN(d) && d.toISOString().slice(0,10)===iso; }) || null;
+    if(!item) return {};
+    return { tmin:num(item?.Temperature?.Minimum?.Value), tmax:num(item?.Temperature?.Maximum?.Value), windMax:num(item?.Day?.Wind?.Speed?.Value ?? item?.Day?.Wind?.Speed?.Metric?.Value), gustMax:num(item?.Day?.WindGust?.Speed?.Value ?? item?.Day?.WindGust?.Speed?.Metric?.Value), precip:num(item?.Day?.PrecipitationProbability) };
+  }
+  function merge(primary, fallback, fields){
+    const out={}; let used=false;
+    fields.forEach(f=>{
+      let v=primary?.[f];
+      const bad=!Number.isFinite(v) || (['temp','hum','wind','gust'].includes(f) && fakeZero(v)) || (f==='dir' && (!Number.isFinite(v) || v===0));
+      if(bad){
+        const b=fallback?.[f];
+        if(Number.isFinite(b) && !(['temp','hum','wind','gust'].includes(f) && fakeZero(b)) && !(f==='dir' && b===0)){ v=b; used=true; }
+      }
+      out[f]=v;
+    });
+    return {data:out, used};
+  }
+  function pickBestHourly(bundle, iso, hhmm){
+    const pg=pageHourly(bundle, iso, hhmm);
+    const dm=dmcHourly(bundle, iso, hhmm);
+    const ac=accuHourly(bundle, iso, hhmm);
+    const step1=merge(pg, dm, ['temp','hum','wind','gust','dir','precip','cloud','vis','code']).data;
+    return merge(step1, ac, ['temp','hum','wind','gust','dir','precip','cloud','vis','code']).data;
+  }
+  function pickBestDaily(bundle, iso){
+    const pg=pageDaily(bundle, iso);
+    const dm=dmcDaily(bundle, iso);
+    const ac=accuDaily(bundle, iso);
+    const step1=merge(pg, dm, ['tmin','tmax','windMax','gustMax','precip']).data;
+    return merge(step1, ac, ['tmin','tmax','windMax','gustMax','precip']).data;
+  }
+  function buildQuickText(bundle, iso, hhmm){
+    const obs = observedDmc(bundle);
+    const obsAcc = accuCurrent(bundle);
+    Object.assign(obs, merge(obs, obsAcc, ['temp','hum','wind','gust','dir','cloud','vis','pres','code']).data);
+    const fxh = pickBestHourly(bundle, iso, hhmm);
+    const fxd = pickBestDaily(bundle, iso);
+    const obsWx=weatherText(obs.code,obs.cloud,obs.hum,obs.precip);
+    const fxWx=weatherText(fxh.code,fxh.cloud,fxh.hum,fxh.precip);
+    const lines=[];
+    lines.push(longDateEs(iso,hhmm));
+    lines.push('Fuente: Dirección Meteorológica de Chile (DMC).');
+    lines.push(''); lines.push('Se observa en la estación oficial DMC más cercana:');
+    const ch=[];
+    if(Number.isFinite(obs.temp)) ch.push(`Temperatura: ${fmt1(obs.temp,'°C')}`);
+    if(Number.isFinite(obs.hum)) ch.push(`HR: ${fmt1(obs.hum,'%')}`);
+    if(Number.isFinite(obs.wind)) ch.push(`Viento: ${fmt0(obs.wind,' km/h')}`);
+    if(Number.isFinite(obs.gust)&&(!Number.isFinite(obs.wind)||obs.gust>=obs.wind)) ch.push(`Racha máxima: ${fmt0(obs.gust,' km/h')}`);
+    if(Number.isFinite(obs.dir)&&obs.dir!==0) ch.push(`Dirección: ${dirText(obs.dir)}`);
+    if(Number.isFinite(obs.cloud)) ch.push(`Nubosidad: ${fmt0(obs.cloud,' %')}`);
+    if(Number.isFinite(obs.precip)) ch.push(`Precipitación: ${fmt1(obs.precip,' mm')}`);
+    if(Number.isFinite(obs.vis)&&obs.vis>0) ch.push(`Visibilidad: ${fmt1(obs.vis/1000,' km')}`);
+    if(Number.isFinite(obs.pres)&&obs.pres>100) ch.push(`Presión: ${fmt1(obs.pres,' hPa')}`);
+    lines.push(`• ${obs.station}: ${obsWx}. Último dato oficial disponible: ${obs.hora || 'N/D'}.${ch.length ? ' ' + ch.join(' | ') + '.' : ''}`);
+    lines.push('');
+    lines.push('Situación Meteorológica:');
+    let sit=`Para el periodo evaluado se prevé un comportamiento atmosférico ${fxWx}`;
+    if(Number.isFinite(fxd.tmin)||Number.isFinite(fxd.tmax)) sit += `, con temperaturas entre ${fmt0(fxd.tmin,'°C')} y ${fmt0(fxd.tmax,'°C')}`;
+    if(Number.isFinite(fxh.wind)&&fxh.wind>=1) sit += ` y viento del orden de ${fmt0(fxh.wind,' km/h')}`;
+    else if(Number.isFinite(fxd.windMax)&&fxd.windMax>=1) sit += ` y vientos del orden de ${fmt0(fxd.windMax,' km/h')}`;
+    if(Number.isFinite(fxh.gust)&&fxh.gust>=1&&(!Number.isFinite(fxh.wind)||fxh.gust>=fxh.wind)) sit += `, con rachas de hasta ${fmt0(fxh.gust,' km/h')}`;
+    else if(Number.isFinite(fxd.gustMax)&&fxd.gustMax>=1) sit += `, con rachas de hasta ${fmt0(fxd.gustMax,' km/h')}`;
+    lines.push(sit + '.');
+    if(Number.isFinite(fxd.precip)) lines.push(`La precipitación estimada para el periodo evaluado es de ${fmt1(fxd.precip,' mm')}.`);
+    lines.push('');
+    lines.push('Variables previstas para la hora seleccionada:');
+    const hv=[];
+    if(Number.isFinite(fxh.temp)&&!fakeZero(fxh.temp)) hv.push(`• Temperatura: ${fmt1(fxh.temp,'°C')}`);
+    if(Number.isFinite(fxh.hum)&&!fakeZero(fxh.hum)) hv.push(`• Humedad relativa: ${fmt1(fxh.hum,'%')}`);
+    if(Number.isFinite(fxh.wind)&&!fakeZero(fxh.wind)) hv.push(`• Viento: ${fmt0(fxh.wind,' km/h')}`);
+    if(Number.isFinite(fxh.gust)&&!fakeZero(fxh.gust)&&(!Number.isFinite(fxh.wind)||fxh.gust>=fxh.wind)) hv.push(`• Racha: ${fmt0(fxh.gust,' km/h')}`);
+    if(Number.isFinite(fxh.precip)) hv.push(`• Precipitación: ${fmt1(fxh.precip,' mm/h')}`);
+    if(Number.isFinite(fxh.vis)&&fxh.vis>0) hv.push(`• Visibilidad: ${fmt1(fxh.vis/1000,' km')}`);
+    if(Number.isFinite(fxh.cloud)&&!fakeZero(fxh.cloud)) hv.push(`• Nubosidad: ${fmt0(fxh.cloud,' %')}`);
+    if(Number.isFinite(fxh.dir)&&fxh.dir!==0) hv.push(`• Dirección: ${dirText(fxh.dir)}`);
+    lines.push(hv.length ? hv.join('\n') : '• Sin datos horarios suficientes para esa fecha y hora.');
+    lines.push('');
+    lines.push('Se mantiene el monitoreo y seguimiento.');
+    lines.push('');
+    lines.push(`Actualmente predominan condiciones de ${obsWx} en ${obs.station}.`);
+    if(Number.isFinite(fxd.tmin)||Number.isFinite(fxd.tmax)) lines.push(`En ${obs.station} se estima una mínima de ${fmt0(fxd.tmin,'°C')} y una máxima cercana a ${fmt0(fxd.tmax,'°C')}.`);
+    return lines.join('\n');
+  }
+  async function finalQuickGeneratePatched(ev){
+    if(ev){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); }
+    const iso=normalizeIso((byId('finalQuickDate')||byId('bulletinQuickDate')||byId('oaiBulletinDate'))?.value || todayIso());
+    const hhmm=(byId('finalQuickTime')||byId('bulletinQuickTime')||byId('oaiBulletinTime'))?.value || '08:00';
+    const area=byId('finalQuickText')||byId('quickBulletinText')||byId('oaiBulletinText');
+    if(area) area.value='Generando boletín...';
+    const bundle = await ensureBundlesFresh();
+    const txt = buildQuickText(bundle, iso, hhmm);
+    if(area) area.value=txt;
+    byId('finalQuickOut')?.classList.add('show');
+    byId('quickBulletinWrap')?.classList.add('show');
+    return false;
+  }
+  function bindPatched(){
+    ['finalQuickGenerate','bulletinQuickGenerate','oaiBulletinGenerate'].forEach(id=>{
+      const el=byId(id); if(!el || el.dataset.quickPatched2) return;
+      const neo=el.cloneNode(true);
+      neo.dataset.quickPatched2='1';
+      el.parentNode.replaceChild(neo, el);
+      neo.addEventListener('click', finalQuickGeneratePatched, true);
+      neo.onclick = finalQuickGeneratePatched;
+    });
+    window.generateQuickBulletin = finalQuickGeneratePatched;
+    window.robustGenerateQuickBulletin = finalQuickGeneratePatched;
+  }
+  function isHttpUrl(u){ return /^https?:\/\//i.test(String(u||'').trim()); }
+  function sanitizeAlertLinks(root){
+    (root||document).querySelectorAll('.alert-link').forEach(el=>{
+      const txt=(el.textContent||'').toUpperCase();
+      if(!/VER DETALLE|VER EN DMC/.test(txt)) return;
+      const oc = el.getAttribute('onclick') || '';
+      const m = oc.match(/window\.open\('([^']+)'/i);
+      const href = m ? m[1] : '';
+      if(!isHttpUrl(href)){
+        el.remove();
+        return;
+      }
+      el.removeAttribute('onclick');
+      el.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); window.open(href,'_blank','noopener'); }, {once:false});
+    });
+  }
+  function watchAlertLinks(){
+    sanitizeAlertLinks(document);
+    const mo = new MutationObserver(muts=>{
+      for(const mu of muts){
+        mu.addedNodes && mu.addedNodes.forEach(n=>{
+          if(n.nodeType===1) sanitizeAlertLinks(n);
+        });
+      }
+    });
+    mo.observe(document.documentElement,{childList:true,subtree:true});
+  }
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded', ()=>{ bindPatched(); watchAlertLinks(); });
+  } else {
+    bindPatched(); watchAlertLinks();
+  }
+})();
+</script>
+
 </body>
 </html>
