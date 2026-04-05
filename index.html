@@ -13639,11 +13639,66 @@ async function robustGenerate(ev){
     lines.push('Se mantiene el monitoreo y seguimiento.');
     return lines.join('\n');
   }
+  function pageForecastAt(iso, hhmm){
+    const src = window.__temp7dForecast || window.__forecastJson || window.__meteoData || null;
+    const H = src && src.hourly ? src.hourly : null;
+    const D = src && src.daily ? src.daily : null;
+    const out = {};
+    if(H && Array.isArray(H.time) && H.time.length){
+      const target = new Date(`${iso}T${hhmm}:00`).getTime();
+      let bestIndex = -1, bestDiff = Infinity;
+      H.time.forEach((t,i)=>{
+        const ms = new Date(String(t)).getTime();
+        if(!Number.isFinite(ms)) return;
+        const diff = Math.abs(ms - target);
+        if(diff < bestDiff){ bestDiff = diff; bestIndex = i; }
+      });
+      if(bestIndex >= 0){
+        const at = (key) => {
+          const arr = H[key];
+          if(!Array.isArray(arr)) return null;
+          const v = Number(arr[bestIndex]);
+          return Number.isFinite(v) ? v : null;
+        };
+        out.temp = at('temperature_2m');
+        out.humidity = at('relative_humidity_2m');
+        out.wind = at('wind_speed_10m');
+        out.gust = at('wind_gusts_10m');
+        out.dir = at('wind_direction_10m');
+        out.clouds = at('cloud_cover');
+        out.precip = at('precipitation');
+        out.visibility = at('visibility');
+        out.condition = null;
+      }
+    }
+    if(D && Array.isArray(D.time) && D.time.length){
+      let dayIndex = -1, bestDiff = Infinity;
+      D.time.forEach((d,i)=>{
+        const ms = new Date(`${String(d).slice(0,10)}T12:00:00`).getTime();
+        const diff = Math.abs(ms - new Date(`${iso}T12:00:00`).getTime());
+        if(diff < bestDiff){ bestDiff = diff; dayIndex = i; }
+      });
+      if(dayIndex >= 0){
+        const atd = (key) => {
+          const arr = D[key];
+          if(!Array.isArray(arr)) return null;
+          const v = Number(arr[dayIndex]);
+          return Number.isFinite(v) ? v : null;
+        };
+        out.tmin = atd('temperature_2m_min');
+        out.tmax = atd('temperature_2m_max');
+        if(out.wind == null) out.wind = atd('wind_speed_10m_max');
+        if(out.precip == null) out.precip = atd('precipitation_sum');
+      }
+    }
+    return out;
+  }
   function buildBulletin(bundle, iso, hhmm){
     const obs = dmcObserved(bundle);
     const accuNow = accuNormalizeNow(bundle.accuNow);
     const accuHr = accuNormalizeHourly(bundle.accuH12, iso, hhmm);
     const accuDy = accuNormalizeDaily(bundle.accuD5, iso);
+    const pageFc = pageForecastAt(iso, hhmm);
     const dmcFc = dmcForecast(bundle, iso, hhmm);
     const station = (function(s){
       if (s == null) return 'Estación DMC más cercana';
@@ -13662,18 +13717,18 @@ async function robustGenerate(ev){
       pressure: pick(obs.pressure, accuNow.pressure)
     };
     const forecast = {
-      temp: pick(dmcFc.temp, accuHr.temp, observed.temp),
-      humidity: pick(dmcFc.humidity, accuHr.humidity, observed.humidity),
-      wind: pick(dmcFc.wind, accuHr.wind, observed.wind),
-      gust: pick(dmcFc.gust, accuHr.gust, observed.gust),
-      dir: pick(dmcFc.dir, accuHr.dir, observed.dir),
-      clouds: pick(dmcFc.clouds, accuHr.clouds, observed.clouds),
-      precip: pick(dmcFc.precip, accuHr.precip, accuDy.precip, 0),
-      visibility: pick(dmcFc.visibility, accuHr.visibility, observed.visibility),
-      condition: pick(dmcFc.condition, accuHr.condition, accuDy.condition, obs.condition)
+      temp: pick(pageFc.temp, dmcFc.temp, accuHr.temp, observed.temp),
+      humidity: pick(pageFc.humidity, dmcFc.humidity, accuHr.humidity, observed.humidity),
+      wind: pick(pageFc.wind, dmcFc.wind, accuHr.wind, observed.wind),
+      gust: pick(pageFc.gust, dmcFc.gust, accuHr.gust, observed.gust),
+      dir: pick(pageFc.dir, dmcFc.dir, accuHr.dir, observed.dir),
+      clouds: pick(pageFc.clouds, dmcFc.clouds, accuHr.clouds, observed.clouds),
+      precip: pick(pageFc.precip, dmcFc.precip, accuHr.precip, accuDy.precip, 0),
+      visibility: pick(pageFc.visibility, dmcFc.visibility, accuHr.visibility, observed.visibility),
+      condition: pick(pageFc.condition, dmcFc.condition, accuHr.condition, accuDy.condition, obs.condition)
     };
-    const tmin = pick(dmcFc.tmin, accuDy.tmin);
-    const tmax = pick(dmcFc.tmax, accuDy.tmax);
+    const tmin = pick(pageFc.tmin, dmcFc.tmin, accuDy.tmin);
+    const tmax = pick(pageFc.tmax, dmcFc.tmax, accuDy.tmax);
     const lines=[];
     lines.push(fmtLongDateEs(iso, hhmm));
     lines.push('Fuente: Dirección Meteorológica de Chile (DMC) y AccuWeather.');
