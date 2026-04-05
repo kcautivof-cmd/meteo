@@ -6952,6 +6952,50 @@ window.onload = async function() {
                 lastLat = latitude;
                 lastLon = longitude;
 
+                // ── Elevación automática via Open-Meteo (solo altitud, sin pronóstico) ──
+                (function fetchElevation(lat, lon){
+                  try {
+                    fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lon}`)
+                      .then(function(r){ return r.ok ? r.json() : null; })
+                      .then(function(d){
+                        if(d && Array.isArray(d.elevation) && d.elevation.length){
+                          window.__selectedAltitude = Math.round(d.elevation[0]);
+                        }
+                      })
+                      .catch(function(){});
+                  } catch(e){}
+                })(latitude, longitude);
+
+                // ── Geocodificación inversa via Nominatim (nivel localidad, zoom=16) ──
+                (function fetchReverseGeo(lat, lon){
+                  try {
+                    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=es&zoom=16&addressdetails=1`,
+                      {headers:{'Accept-Language':'es','User-Agent':'MeteorologiaAplicada/1.0'}})
+                      .then(function(r){ return r.ok ? r.json() : null; })
+                      .then(function(d){
+                        if(!d) return;
+                        const a = d.address || {};
+                        // Ignorar d.name completamente (puede ser estadio, calle, edificio)
+                        // Usar solo la jerarquía de address: localidad > pueblo > municipio
+                        const lugar =
+                          a.hamlet || a.village || a.isolated_dwelling ||
+                          a.locality || a.neighbourhood || a.suburb ||
+                          a.town || a.city_district || a.city ||
+                          a.municipality || a.county || null;
+                        const region = a.state_district || a.state || null;
+                        const pais   = a.country_code ? a.country_code.toUpperCase() : null;
+                        const parts  = [];
+                        if(lugar)                          parts.push(lugar);
+                        if(region && region !== lugar)     parts.push(region);
+                        if(pais)                           parts.push(pais);
+                        window.__selectedPointLabel = parts.length
+                          ? parts.join(', ')
+                          : (d.display_name ? d.display_name.split(',').slice(0,3).join(',').trim() : null);
+                      })
+                      .catch(function(){});
+                  } catch(e){}
+                })(latitude, longitude);
+
                 document.getElementById('windyEmbed').src = `https://embed.windy.com/embed2.html?lat=${latitude}&lon=${longitude}&detailLat=${latitude}&detailLon=${longitude}&width=650&height=450&zoom=10&level=surface&overlay=wind&product=ecmwf&menu=&message=&marker=&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=km%2Fh&metricTemp=%C2%B0C&radarRange=-1`;
 
                 // Sincroniza mapa de selección con la ubicación actual
@@ -14122,6 +14166,7 @@ async function robustGenerate(ev){
   }
   // ─── RESUMEN OPERACIONAL POR TICKET (datos reales) ───────────────────────────
   function buildSummary(tickets, obs, fc){
+    // Umbrales: MDI-70002, RDI-20005, CDI-90008
     const lines=[];
     const cond   = pick(fc.condition, obs.condition) ||
       (()=>{ const cl=num(pick(fc.cloud,obs.cloud)), p=num(pick(fc.precip,obs.precip,0)), w=num(pick(fc.wind,obs.wind));
@@ -14134,63 +14179,178 @@ async function robustGenerate(ev){
     const visV   = num(pick(fc.vis,   obs.vis));
     const precipV= num(pick(fc.precip,obs.precip, 0));
     const cloudV = num(pick(fc.cloud, obs.cloud));
+    const tempV  = num(pick(fc.temp,  obs.temp));
+    const humV   = num(pick(fc.hum,   obs.hum));
 
-    const windLbl  = windV!==null  ? (windV<10?'débil':windV<25?'moderado':windV<40?'moderado a fuerte':'fuerte') : 'variable';
-    const visLbl   = visV!==null   ? (visV<=1000?'reducida (<1 km)':visV<=5000?'limitada (1–5 km)':'adecuada (>5 km)') : 'variable';
-    const precipSig= precipV!==null && precipV>0.5;
+    const windLbl  = windV!==null  ? (windV<13?'débil':windV<29?'moderado':windV<50?'moderado a fuerte':'fuerte') : 'variable';
+    const visLbl   = visV!==null   ? (visV<1500?'muy reducida (<1.5 km)':visV<3000?'limitada (1.5–3 km)':visV<5000?'moderada (3–5 km)':'adecuada (>5 km)') : 'variable';
+    const precipSig= precipV!==null && precipV>=3;
+    const precipLig= precipV!==null && precipV>0 && precipV<3;
     const highCloud= cloudV!==null  && cloudV>70;
 
     lines.push(`• Condición dominante: ${String(cond||'condiciones variables').toLowerCase()}. Viento ${windLbl}${windV!==null?' ('+Math.round(windV)+' km/h)':''}${gustV!==null&&(windV===null||gustV>=windV)?', rachas '+Math.round(gustV)+' km/h':''}. Visibilidad ${visLbl}.`);
-    lines.push(precipSig ? '• Señal de precipitación activa en el periodo. Mantener seguimiento continuo.' : '• Sin señal significativa de precipitación en el periodo evaluado.');
+    lines.push(precipSig ? `• Precipitación activa (${precipV.toFixed(1)} mm/h). Mantener seguimiento continuo.` :
+               precipLig ? `• Precipitación ligera/llovizna (${precipV.toFixed(1)} mm/h). Monitorear evolución.` :
+               '• Sin señal significativa de precipitación en el periodo evaluado.');
 
     if(!tickets||!tickets.length){ lines.push('• (Sin ámbito específico seleccionado.)'); lines.push('Se mantiene el monitoreo y seguimiento.'); return lines.join('\n'); }
 
+    // ── TELECOMUNICACIONES (MDI-70002 4.6 / Tabla 1-2) ──
     if(tickets.includes('telecom')){
-      const f= windV!==null&&windV>=40?`viento fuerte (${Math.round(windV)} km/h) puede afectar enlaces en banda alta y líneas de vista`:(precipSig?'precipitación activa puede degradar calidad RF y satélite':'condiciones compatibles con enlace');
-      const r= windV!==null&&windV>=40?'verificar orientación de antenas y considerar redundancia de enlace':(precipSig?'monitorear atenuación en frecuencias >10 GHz':'seguimiento preventivo en sectores expuestos');
+      // Viento antenas: SEVERO >55 km/h (30 nudos), MODERADO 30–55 km/h (16–30 nudos)
+      // Humedad: SEVERO >90% o <20%; Temperatura baterías: SEVERO <−20°C, MOD −10 a −20°C
+      const vFact=[];
+      if(windV!==null&&windV>55) vFact.push(`viento muy fuerte (${Math.round(windV)} km/h) — riesgo rotura antenas`);
+      else if(windV!==null&&windV>=30) vFact.push(`viento moderado-fuerte (${Math.round(windV)} km/h) afecta antenas`);
+      if(humV!==null&&(humV>90||humV<20)) vFact.push(`humedad ${Math.round(humV)}% — degradación de equipos`);
+      else if(humV!==null&&humV>80) vFact.push(`humedad elevada (${Math.round(humV)}%) — monitorear equipos`);
+      if(tempV!==null&&tempV<-20) vFact.push(`temperatura muy baja (${tempV.toFixed(1)}°C) — baterías en riesgo`);
+      else if(tempV!==null&&tempV<=-10) vFact.push(`temperatura baja (${tempV.toFixed(1)}°C) — rendimiento baterías reducido`);
+      if(precipSig) vFact.push('precipitación activa puede atenuar señal RF y satélite');
+      const f = vFact.length ? vFact.join('; ') : 'condiciones compatibles con operación de enlace';
+      const r = windV!==null&&windV>55 ? 'verificar fijación de antenas, prever corte de operación' :
+                windV!==null&&windV>=30 ? 'verificar orientación y sujeción de antenas, considerar redundancia' :
+                humV!==null&&humV>90    ? 'proteger equipos de humedad, verificar hermeticidad' :
+                precipSig               ? 'monitorear atenuación en frecuencias >10 GHz' :
+                'seguimiento preventivo en sectores expuestos';
       lines.push(`• Telecomunicaciones — Factor: ${f}. Acción: ${r}.`);
     }
-    if(tickets.includes('patrulla')){
-      const f= windV!==null&&windV>=40?`viento fuerte (${Math.round(windV)} km/h) limita avance en zonas expuestas`:(visV!==null&&visV<=2000?`visibilidad reducida (${fmt1(visV/1000,' km')}) dificulta orientación`:precipSig?'precipitación activa incrementa riesgo de resbalamiento':'sin restricción dominante para desplazamiento');
-      const r= windV!==null&&windV>=40?'controlar tiempos de exposición, ajustar ritmo de avance':(visV!==null&&visV<=2000?'reforzar referencias visuales y distancias de control':'mantener vigilancia sobre evolución de viento y temperatura');
-      lines.push(`• Desplazamiento a pie — Factor: ${f}. Acción: ${r}.`);
-    }
+
+    // ── OBSERVACIÓN / POFs (MDI-70002 1.2.3.7 / An.3) ──
     if(tickets.includes('observacion')){
-      const f= visV!==null&&visV<=2000?`visibilidad reducida (${fmt1(visV/1000,' km')}) limita alcance visual`:(highCloud?`nubosidad alta (${Math.round(cloudV)}%) reduce contraste`:precipSig?'precipitación activa reduce contraste y alcance visual':'condiciones favorables para observación');
-      const r= visV!==null&&visV<=2000?'reducir distancias de referencia, priorizar observación próxima':(highCloud?'compensar contraste en equipos donde sea posible':'verificación continua de condiciones efectivas en punto');
+      // Vis: SEVERO <1.500 m, MODERADO 1.500–3.000 m | Nubosidad techo: SEV <150 m, MOD 150–300 m
+      const oFact=[];
+      if(visV!==null&&visV<1500) oFact.push(`visibilidad muy reducida (${(visV/1000).toFixed(1)} km) — alcance visual crítico`);
+      else if(visV!==null&&visV<3000) oFact.push(`visibilidad limitada (${(visV/1000).toFixed(1)} km)`);
+      if(cloudV!==null&&cloudV>85) oFact.push(`nubosidad muy alta (${Math.round(cloudV)}%) — techo nuboso bajo`);
+      else if(highCloud) oFact.push(`nubosidad (${Math.round(cloudV)}%) reduce contraste`);
+      if(precipSig) oFact.push('precipitación activa reduce alcance visual');
+      const f = oFact.length ? oFact.join('; ') : 'condiciones favorables para observación';
+      const r = visV!==null&&visV<1500 ? 'reducir distancias de referencia, priorizar observación próxima' :
+                visV!==null&&visV<3000 ? 'ajustar distancias estimadas de detección' :
+                highCloud ? 'compensar contraste en equipos donde sea posible' :
+                'verificación continua de condiciones efectivas en punto';
       lines.push(`• Observación — Factor: ${f}. Acción: ${r}.`);
     }
+
+    // ── VEHÍCULOS LIVIANOS / CAMIONETA (MDI-70002 2.2.1 / 4.2) ──
     if(tickets.includes('vehiculos_livianos')){
-      const f= windV!==null&&windV>=50?`viento fuerte (${Math.round(windV)} km/h) en sectores expuestos`:(visV!==null&&visV<=2000?`visibilidad reducida (${fmt1(visV/1000,' km')})`:precipSig?'precipitación reduce adherencia':'sin restricción dominante');
-      const r= windV!==null&&windV>=50?'conducción conservadora en sectores abiertos y expuestos':(precipSig?'reducir velocidad, aumentar distancia de frenado':'atención a variaciones locales de viento o visibilidad');
+      // Precip: SEVERO >13 mm/h, MOD 3–13 mm/h | Temp motor: SEV <−20°C, MOD −10 a −20°C
+      const vFact=[];
+      if(precipSig) vFact.push(`precipitación (${precipV.toFixed(1)} mm/h) — riesgo en caminos no pavimentados`);
+      else if(precipLig) vFact.push('llovizna — precaución en caminos de tierra');
+      if(tempV!==null&&tempV<-20) vFact.push(`temperatura muy baja (${tempV.toFixed(1)}°C) — riesgo arranque motor`);
+      else if(tempV!==null&&tempV<=-10) vFact.push(`temperatura baja (${tempV.toFixed(1)}°C) — verificar motor y anticongelante`);
+      if(visV!==null&&visV<3000) vFact.push(`visibilidad reducida (${(visV/1000).toFixed(1)} km)`);
+      const f = vFact.length ? vFact.join('; ') : 'sin restricción operativa dominante';
+      const r = precipSig ? 'reducir velocidad, aumentar distancia de frenado, evaluar ruta alternativa' :
+                tempV!==null&&tempV<-10 ? 'verificar motor, anticongelante y baterías antes de mover' :
+                'atención a variaciones locales de viento o visibilidad';
       lines.push(`• Vehículos livianos — Factor: ${f}. Acción: ${r}.`);
     }
+
+    // ── VEHÍCULOS DE TRANSPORTE (MDI-70002 2.2.1) ──
     if(tickets.includes('vehiculos_transporte')){
-      const f= windV!==null&&windV>=50?`viento fuerte (${Math.round(windV)} km/h) puede comprometer estabilidad en vehículos de mayor perfil`:(visV!==null&&visV<=3000?`visibilidad limitada (${fmt1(visV/1000,' km')}) en rutas expuestas`:'condiciones generalmente aptas para transporte');
-      const r= windV!==null&&windV>=50?'evaluar suspensión de tránsito en rutas de alta exposición al viento':(precipSig?'control de velocidad, atención a variaciones de calzada':'seguimiento de condiciones en ruta, especialmente en sectores de altura');
+      const vFact=[];
+      if(windV!==null&&windV>=50) vFact.push(`viento fuerte (${Math.round(windV)} km/h) — riesgo estabilidad vehículo alto perfil`);
+      else if(windV!==null&&windV>=29) vFact.push(`viento moderado (${Math.round(windV)} km/h) en rutas expuestas`);
+      if(precipSig) vFact.push(`precipitación (${precipV.toFixed(1)} mm/h) — vialidad comprometida`);
+      if(visV!==null&&visV<3000) vFact.push(`visibilidad limitada (${(visV/1000).toFixed(1)} km)`);
+      const f = vFact.length ? vFact.join('; ') : 'condiciones generalmente aptas para transporte';
+      const r = windV!==null&&windV>=50 ? 'evaluar suspensión de tránsito en rutas de alta exposición al viento' :
+                precipSig ? 'control de velocidad, atención a variaciones de calzada' :
+                'seguimiento de condiciones en ruta, especialmente en sectores de altura';
       lines.push(`• Vehículos de transporte — Factor: ${f}. Acción: ${r}.`);
     }
+
+    // ── MOTORIZADOS LIGEROS / MOTOS (MDI-70002 4.2) ──
     if(tickets.includes('vehiculos_motorizados')){
-      const f= windV!==null&&windV>=30?`viento (${Math.round(windV)} km/h) afecta estabilidad de motos y vehículos ligeros`:(precipSig?'precipitación reduce adherencia significativamente':visV!==null&&visV<=2000?`visibilidad reducida (${fmt1(visV/1000,' km')})`:'operable con atención preventiva');
-      const r= windV!==null&&windV>=30?'conducción conservadora, evitar sectores con rafagueo intenso':(precipSig?'velocidad reducida, calzada resbaladiza':'supervisión continua de condiciones locales');
+      // Viento: SEV >50 km/h, MOD 30–50 km/h | Temp conductor: SEV <−5°C, MOD −5 a 0°C
+      const mFact=[];
+      if(windV!==null&&windV>=50) mFact.push(`viento fuerte (${Math.round(windV)} km/h) — pérdida de control`);
+      else if(windV!==null&&windV>=30) mFact.push(`viento (${Math.round(windV)} km/h) afecta estabilidad`);
+      if(tempV!==null&&tempV<-5) mFact.push(`temperatura muy baja (${tempV.toFixed(1)}°C) — congelamiento conductor`);
+      else if(tempV!==null&&tempV<0) mFact.push(`temperatura bajo cero (${tempV.toFixed(1)}°C) — hipotermia conductor`);
+      if(precipSig) mFact.push('precipitación — calzada resbaladiza');
+      else if(precipLig) mFact.push('llovizna — calzada húmeda');
+      if(visV!==null&&visV<3000) mFact.push(`visibilidad reducida (${(visV/1000).toFixed(1)} km)`);
+      const f = mFact.length ? mFact.join('; ') : 'operable con atención preventiva';
+      const r = windV!==null&&windV>=50 ? 'no operar con viento ≥50 km/h, aguardar condiciones' :
+                windV!==null&&windV>=30 ? 'conducción conservadora, evitar sectores con rafagueo intenso' :
+                tempV!==null&&tempV<-5  ? 'equipar adecuadamente, evaluar exposición prolongada' :
+                precipSig ? 'velocidad reducida, calzada resbaladiza' :
+                'supervisión continua de condiciones locales';
       lines.push(`• Veh. motorizados ligeros — Factor: ${f}. Acción: ${r}.`);
     }
+
+    // ── SISTEMAS OPTRÓNICOS / NVG (MDI-70002 4.7 / CDI-90008 3.5.2) ──
     if(tickets.includes('optronicos')){
-      const f= cloudV!==null&&cloudV>80?`nubosidad alta (${Math.round(cloudV)}%) degrada resolución y contraste`:(precipSig?'precipitación activa afecta óptica y resolución':visV!==null&&visV<=3000?`visibilidad limitada (${fmt1(visV/1000,' km')})`:'condiciones generalmente favorables');
-      const r= cloudV!==null&&cloudV>80?'considerar modo alterno o ajuste de contraste':(precipSig?'protección activa de lentes, limpieza de óptica':'monitoreo de nubosidad para ventanas de mayor contraste');
+      // Vis rango efectivo: SEV <100 m, MOD 100–300 m | Nubosidad: SEV >7 octas, MOD 4–7 octas
+      // Precip: SEV >13 mm/h, MOD 3–13 mm/h | Temp: SEV <−20°C, MOD −10 a −20°C
+      const oFact=[];
+      if(precipV!==null&&precipV>=13) oFact.push(`precipitación intensa (${precipV.toFixed(1)} mm/h) — sensor muy degradado`);
+      else if(precipV!==null&&precipV>=3) oFact.push(`precipitación (${precipV.toFixed(1)} mm/h) — degradación de sensor óptico`);
+      if(visV!==null&&visV<300) oFact.push(`visibilidad muy reducida (${visV} m) — rango efectivo crítico`);
+      else if(visV!==null&&visV<1500) oFact.push(`visibilidad reducida (${(visV/1000).toFixed(1)} km)`);
+      if(cloudV!==null&&cloudV>=87) oFact.push(`cielo cubierto (${Math.round(cloudV)}%) — iluminación pasiva nula (NVG)`);
+      else if(cloudV!==null&&cloudV>=50) oFact.push(`nubosidad (${Math.round(cloudV)}%) — iluminación pasiva reducida`);
+      if(tempV!==null&&tempV<-20) oFact.push(`temperatura muy baja (${tempV.toFixed(1)}°C) — electrónica en riesgo`);
+      else if(tempV!==null&&tempV<=-10) oFact.push(`temperatura baja (${tempV.toFixed(1)}°C) — verificar baterías`);
+      const f = oFact.length ? oFact.join('; ') : 'condiciones generalmente favorables para sistemas ópticos';
+      const r = precipV!==null&&precipV>=3 ? 'proteger equipos, ajustar distancias de detección estimadas' :
+                visV!==null&&visV<1500 ? 'reducir distancias de referencia, complementar con otros sensores' :
+                cloudV!==null&&cloudV>=87 ? 'iluminación activa necesaria para NVG, ajustar parámetros' :
+                'verificación continua de contraste y ajuste de parámetros';
       lines.push(`• Sistemas optrónicos — Factor: ${f}. Acción: ${r}.`);
     }
+
+    // ── RPAS (MDI-70002 4.10 / An.3) ──
     if(tickets.includes('rpas')){
-      const gT= gustV!==null&&gustV>=37;
-      const wT= windV!==null&&windV>=29;
-      const f= gT?`rachas ${Math.round(gustV)} km/h SUPERAN umbral conservador (37 km/h)`:wT?`viento ${Math.round(windV)} km/h requiere evaluación de margen operacional`:precipSig?'precipitación activa: riesgo directo sobre plataforma y óptica':visV!==null&&visV<=3000?`visibilidad limitada (${fmt1(visV/1000,' km')})`:'dentro de márgenes básicos';
-      const r= gT?'NO OPERAR. Verificar condición en sitio antes de cualquier decisión.':wT?'validar margen según plataforma, verificación local inmediata previa':precipSig?'posponer hasta ventana sin precipitación':'verificación final obligatoria en sitio antes de cada vuelo';
-      lines.push(`• RPAS — Factor: ${f}. Acción: ${r}.`);
+      // Viento: SIN IMPACTO <30 km/h, MOD 30–50 km/h, SEV >50 km/h
+      // Precip: SIN impacto=0, MOD llovizna <3 mm/h, SEV ≥3 mm/h
+      // Vis sensor: SEV <500 m, MOD 500–1.500 m | Temp batería: SEV <−15°C, MOD −5 a −15°C
+      const rFact=[];
+      if(windV!==null&&windV>=50) rFact.push(`viento fuerte (${Math.round(windV)} km/h) — NO operar (límite excedido)`);
+      else if(windV!==null&&windV>=30) rFact.push(`viento (${Math.round(windV)} km/h) — zona de impacto moderado`);
+      if(gustV!==null&&gustV>=50) rFact.push(`rachas ${Math.round(gustV)} km/h — riesgo de pérdida de control`);
+      if(precipV!==null&&precipV>=3) rFact.push(`lluvia (${precipV.toFixed(1)} mm/h) — NO operar`);
+      else if(precipV!==null&&precipV>0) rFact.push('llovizna — impacto moderado en sensor y estabilidad');
+      if(visV!==null&&visV<500) rFact.push(`visibilidad muy reducida (${visV} m) — sensor óptico fuera de rango`);
+      else if(visV!==null&&visV<1500) rFact.push(`visibilidad reducida (${(visV/1000).toFixed(1)} km) — impacto en sensor`);
+      if(tempV!==null&&tempV<-15) rFact.push(`temperatura muy baja (${tempV.toFixed(1)}°C) — batería en riesgo severo`);
+      else if(tempV!==null&&tempV<=-5) rFact.push(`temperatura baja (${tempV.toFixed(1)}°C) — rendimiento batería reducido`);
+      if(cloudV!==null&&cloudV>=87) rFact.push(`cielo cubierto (${Math.round(cloudV)}%) — techo nuboso bajo`);
+      const f = rFact.length ? rFact.join('; ') : 'condiciones dentro de parámetros operacionales RPAS';
+      const cond_rpas = (windV!==null&&windV>=50)||(precipV!==null&&precipV>=3) ? 'NO RECOMENDADA' :
+                        (windV!==null&&windV>=30)||(gustV!==null&&gustV>=50)||(visV!==null&&visV<500)||(tempV!==null&&tempV<-15) ? 'CONDICIONADA' : 'APTA';
+      const r = cond_rpas==='NO RECOMENDADA' ? 'No operar. Condición excede límites MDI-70002 4.10' :
+                cond_rpas==='CONDICIONADA'   ? 'Verificar en sitio. Reducir tiempo de vuelo. Mantener línea visual directa' :
+                'Verificar condiciones in-situ. Inspección obligatoria en sitio antes de cada vuelo';
+      lines.push(`• RPAS [${cond_rpas}] — Factor: ${f}. Acción: ${r}.`);
     }
+
+    // ── DESPLAZAMIENTO A PIE / PATRULLAS (MDI-70002 Tabla 1-2 / CDI-90008 3.2.2) ──
+    if(tickets.includes('patrulla')||tickets.includes('desplazamiento')){
+      // Viento: SEV >50 km/h, MOD 29–50 km/h | Temp altiplano: SEV <−10°C, MOD −5 a −10°C
+      // Windchill: SEV <−30°C, MOD 0 a −30°C
+      const pFact=[];
+      if(windV!==null&&windV>=50) pFact.push(`viento fuerte (${Math.round(windV)} km/h) — restricción severa`);
+      else if(windV!==null&&windV>=29) pFact.push(`viento moderado (${Math.round(windV)} km/h) limita avance en zonas expuestas`);
+      if(tempV!==null&&tempV<-10) pFact.push(`temperatura muy baja (${tempV.toFixed(1)}°C, altiplano) — hipotermia severa`);
+      else if(tempV!==null&&tempV<-5) pFact.push(`temperatura baja (${tempV.toFixed(1)}°C) — riesgo hipotermia`);
+      if(visV!==null&&visV<1500) pFact.push(`visibilidad reducida (${(visV/1000).toFixed(1)} km)`);
+      if(precipSig) pFact.push(`precipitación (${precipV.toFixed(1)} mm/h) — incrementa riesgo resbalamiento`);
+      const f = pFact.length ? pFact.join('; ') : 'sin restricción dominante para desplazamiento';
+      const r = windV!==null&&windV>=50 ? 'controlar tiempos de exposición, buscar abrigo, posponer si es posible' :
+                tempV!==null&&tempV<-10  ? 'equipamiento antifrizz obligatorio, limitar exposición continua' :
+                windV!==null&&windV>=29  ? 'ajustar ritmo de avance, controlar exposición en crestas' :
+                'mantener vigilancia sobre evolución de viento y temperatura';
+      lines.push(`• Desplazamiento a pie — Factor: ${f}. Acción: ${r}.`);
+    }
+
     lines.push('Se mantiene el monitoreo y seguimiento.');
     return lines.join('\n');
   }
-
   function selectedTickets(){ return Array.from(document.querySelectorAll('#quickImpactOptions input[type="checkbox"]:checked')).map(el=>el.value); }
 
   // ─── BOLETÍN RÁPIDO ESTRUCTURADO (v2 – profesional y operacional) ─────────────
@@ -14276,6 +14436,20 @@ async function robustGenerate(ev){
       }
       if(avg.wind_speed_10m===null) avg.wind_speed_10m=windMax;
       if(avg.wind_gusts_10m===null) avg.wind_gusts_10m=gustMax;
+      // Fallback 1: AccuWeather hourly para nubosidad
+      if(avg.cloud_cover===null){
+        const mh=(h0+h1)/2;
+        const aHr=accuHourly(bundle, iso, String(Math.round(mh)).padStart(2,'0')+':00');
+        if(aHr&&aHr.cloud!=null) avg.cloud_cover=num(aHr.cloud);
+      }
+      // Fallback 2: nubosidad de la hora seleccionada (forecast.cloud) si sigue sin dato
+      if(avg.cloud_cover===null && forecast && forecast.cloud!=null){
+        avg.cloud_cover = num(forecast.cloud);
+      }
+      // Fallback 3: nubosidad observada actual
+      if(avg.cloud_cover===null && observed && observed.cloud!=null){
+        avg.cloud_cover = num(observed.cloud);
+      }
       return avg;
     }
     function tramoRow(label, d){
@@ -14297,16 +14471,19 @@ async function robustGenerate(ev){
     const gustN = num(forecast.gust); const windN = num(forecast.wind);
     const precipN = num(forecast.precip); const visN = num(forecast.vis);
     function buildRiskLabel(wN,gN,pN,vN,clN){
+      // Umbrales: MDI-70002 Tabla 1-2 / CDI-90008 3.2.2 Tabla 3-2 / RDI-20005
       const reasons=[];
       let level='BAJO';
-      if(pN!==null&&pN>5)   { level='ALTO';        reasons.push('precipitación intensa'); }
-      if(gN!==null&&gN>=50) { level='ALTO';        reasons.push(`rachas ${Math.round(gN)} km/h`); }
-      if(wN!==null&&wN>=45) { level=level==='BAJO'?'MODERADO-ALTO':level; reasons.push(`viento sostenido ${Math.round(wN)} km/h`); }
-      if(vN!==null&&vN<=1000){ level=level==='BAJO'?'ALTO':level; reasons.push('visibilidad muy reducida'); }
-      if(gN!==null&&gN>=37&&gN<50) { if(level==='BAJO') level='MODERADO-ALTO'; reasons.push(`rachas ${Math.round(gN)} km/h`); }
-      if(pN!==null&&pN>1&&pN<=5)   { if(level==='BAJO') level='MODERADO'; reasons.push('precipitación moderada'); }
-      if(wN!==null&&wN>=30&&wN<45) { if(level==='BAJO') level='MODERADO'; reasons.push(`viento ${Math.round(wN)} km/h`); }
-      if(vN!==null&&vN>1000&&vN<=3000){ if(level==='BAJO') level='MODERADO'; reasons.push('visibilidad limitada'); }
+      // SEVERO / ALTO
+      if(pN!==null&&pN>13)  { level='ALTO'; reasons.push(`precipitación intensa (${(pN).toFixed(1)} mm/h)`); }
+      if(gN!==null&&gN>=50) { level='ALTO'; reasons.push(`rachas ${Math.round(gN)} km/h`); }
+      if(wN!==null&&wN>=50) { level='ALTO'; reasons.push(`viento fuerte sostenido ${Math.round(wN)} km/h`); }
+      if(vN!==null&&vN<1500){ if(level==='BAJO') level='ALTO'; reasons.push('visibilidad muy reducida (<1.5 km)'); }
+      // MODERADO
+      if(pN!==null&&pN>=3&&pN<=13){ if(level==='BAJO') level='MODERADO'; reasons.push(`precipitación moderada (${(pN).toFixed(1)} mm/h)`); }
+      if(gN!==null&&gN>=37&&gN<50){ if(level==='BAJO') level='MODERADO'; reasons.push(`rachas ${Math.round(gN)} km/h`); }
+      if(wN!==null&&wN>=29&&wN<50){ if(level==='BAJO') level='MODERADO'; reasons.push(`viento ${Math.round(wN)} km/h (Beaufort terreno)`); }
+      if(vN!==null&&vN>=1500&&vN<=3000){ if(level==='BAJO') level='MODERADO'; reasons.push('visibilidad limitada (1.5–3 km)'); }
       if(clN!==null&&clN>85&&level==='BAJO') reasons.push('cobertura nubosa elevada');
       if(!reasons.length) reasons.push('viento débil, visibilidad adecuada, sin precipitación');
       return `${level} — ${reasons.join(', ')}`;
@@ -14315,7 +14492,24 @@ async function robustGenerate(ev){
     const obsWind = num(observed.wind);
     const tendLbl = (windN!==null&&obsWind!==null) ? (windN>obsWind+5?'Viento en aumento respecto al observado':windN<obsWind-5?'Viento en descenso respecto al observado':'Estable respecto al observado') : 'Sin datos suficientes para evaluar tendencia';
     const hSel = Number(String(hhmm||'08:00').slice(0,2));
-    const ventanaLbl = hSel>=0&&hSel<6?'Madrugada: condiciones habitualmente más calmas, menor convección':hSel>=6&&hSel<10?'Mañana temprana (06–10 hrs): tramo usualmente más estable del día':hSel>=10&&hSel<13?'Media mañana: aumento de inestabilidad térmica, evaluar evolución':hSel>=13&&hSel<18?'Tarde: posible repunte de viento, priorizar actividades matutinas':'Noche: menor actividad convectiva, seguimiento preventivo';
+    // Ventana favorable basada en datos reales (MDI-70002 / CDI-90008)
+    const _wMax = num(windMax), _gMax = num(gustMax),
+          _tMin = num(tmin),    _tMax = num(tmax),
+          _pFx  = num(forecast.precip);
+    let ventanaLbl;
+    if(_pFx!==null&&_pFx>=3){
+      ventanaLbl='Sin ventana favorable clara — precipitación activa en el periodo';
+    } else if(_wMax!==null&&_wMax>=50){
+      ventanaLbl='06:00–09:00 hrs. — antes del aumento de viento diurno (umbral ≥50 km/h esperado)';
+    } else if(_gMax!==null&&_gMax>=40){
+      ventanaLbl='07:00–10:00 hrs. — rachas ≥40 km/h esperadas en horas centrales del día';
+    } else if(_tMin!==null&&_tMax!==null&&(_tMax-_tMin)>=12){
+      ventanaLbl='08:00–11:00 hrs. — temperatura moderada y viento aún reducido (amplitud térmica alta)';
+    } else if(_tMin!==null&&_tMin<=-5){
+      ventanaLbl='09:00–13:00 hrs. — evitar exposición matutina por temperatura mínima muy baja';
+    } else {
+      ventanaLbl='08:00–12:00 hrs. — tramo de mejores condiciones generales estimadas';
+    }
 
     // ── Alertas vigentes ──
     function alertasBlock(){
@@ -14424,6 +14618,26 @@ async function robustGenerate(ev){
     // ══════════════════════════════════════════════════════════
     const lines=[];
     lines.push(longDateEs(iso, hhmm));
+    // Punto de interés: geocodificación inversa Nominatim + coordenadas DMS
+    (function(){
+      const latDms   = (byId('latDms')?.value||'').trim();
+      const lonDms   = (byId('lonDms')?.value||'').trim();
+      const coords   = (latDms && lonDms) ? `${latDms}, ${lonDms}`
+                     : (typeof lastLat==='number' && typeof lastLon==='number')
+                       ? `${lastLat.toFixed(5)}°, ${lastLon.toFixed(5)}°` : null;
+      // Fuente 1: geocodificación inversa Nominatim (más exacta)
+      const revGeo   = (typeof window.__selectedPointLabel==='string' && window.__selectedPointLabel.trim())
+                       ? window.__selectedPointLabel.trim() : null;
+      // Fuente 2: lblCity cuando tiene nombre real (no "COORDENADAS")
+      const lblCity  = (txt('lblCity')||'').trim();
+      const hasLbl   = lblCity && !/^COORDENADAS/i.test(lblCity) && !/^UBICACI/i.test(lblCity);
+      const placeName = revGeo || (hasLbl ? lblCity : null);
+      let ref = '';
+      if(placeName && coords) ref = `${placeName} (${coords})`;
+      else if(placeName)      ref = placeName;
+      else if(coords)         ref = coords;
+      if(ref) lines.push(`Punto de interés     : ${ref}`);
+    })();
     lines.push('Fuente: Dirección Meteorológica de Chile (DMC).');
     lines.push('Complemento de variables faltantes: AccuWeather.');
 
@@ -14512,6 +14726,48 @@ async function robustGenerate(ev){
     lines.push('');
     lines.push('── ALERTAS DMC / SENAPRED ─────────────────────────');
     alertasBlock().forEach(a=>lines.push(a));
+
+    // ── PUNA / ALTITUD (CDI-90008 Cap. 5 / Tabla 5-1) ──
+    const _altPuna = (typeof window.__selectedAltitude === 'number' && isFinite(window.__selectedAltitude))
+                   ? window.__selectedAltitude : null;
+    if(_altPuna !== null && _altPuna >= 3000){
+      lines.push('');
+      lines.push('── PUNA / ALTITUD ─────────────────────────────────');
+      lines.push(`  Altitud del punto     : ${_altPuna.toLocaleString('es-CL')} m s.n.m.`);
+      // Nivel puna CDI-90008 Tabla 5-1
+      let _punaNivel, _punaColor, _punaDesc;
+      if(_altPuna >= 4500){
+        _punaNivel='SEVERO'; _punaColor='ROJO';
+        _punaDesc='Riesgo severo de mal de altura. Aclimatación previa mínima de 8 días antes de superar 5.000 m.';
+      } else if(_altPuna >= 3000){
+        _punaNivel='MODERADO'; _punaColor='AMARILLO';
+        _punaDesc='No pernoctar más de 500 m sobre la altitud alcanzada durante el día. A ≥4.000 m: mínimo 2 noches de aclimatación.';
+      }
+      lines.push(`  Nivel de riesgo puna  : ${_punaNivel}`);
+
+      // Presión atmosférica estimada (fórmula barométrica estándar)
+      const _pEst = Math.round(1013.25 * Math.pow(1 - (_altPuna/44330), 5.255));
+      lines.push(`  Presión estimada      : ~${_pEst} hPa ${_pEst < 570 ? '[SEVERO — <570 hPa, electrónica en riesgo]' : _pEst < 700 ? '[MODERADO — 570–700 hPa]' : '[SIN IMPACTO — >700 hPa]'}`);
+      // Temperatura con gradiente altitudinal (-6.5°C/1000m)
+      if(observed.temp !== null){
+        const _deltaT = -((_altPuna - 0) * 6.5 / 1000);
+        lines.push(`  Gradiente térmico     : Corrección estimada de ${_deltaT.toFixed(1)}°C respecto al nivel del mar`);
+      }
+      // Umbrales de baterías y equipos (CDI-90008 3.6)
+      lines.push(`  Equipos electrónicos  : ${_pEst < 570 ? 'Verificar especificaciones de operación en baja presión. Riesgo severo.' : 'Verificar rendimiento de baterías y sellado de equipos en altura.'}`);
+      // Recomendaciones operacionales
+      lines.push('  Recomendaciones:');
+      if(_altPuna >= 4500){
+        lines.push('  • Personal: aclimatación obligatoria ≥8 días antes de superar 5.000 m.');
+        lines.push('  • RPAS: rendimiento de batería reducido hasta un 30–40%. Verificar límites del fabricante.');
+        lines.push('  • Vehículos: posible pérdida de potencia en motores a combustión. Verificar antes de operar.');
+        lines.push('  • Telecom: baterías con rendimiento degradado a estas altitudes.');
+      } else {
+        lines.push('  • Personal: no pernoctar >500 m sobre altitud alcanzada durante el día.');
+        lines.push('  • RPAS: rendimiento de batería reducido ~15–25%. Ajustar tiempo de vuelo.');
+        lines.push('  • Monitorear síntomas de mal de altura en personal (cefalea, náuseas, fatiga).');
+      }
+    }
 
     // ── CIERRE ──
     lines.push('');
