@@ -13611,7 +13611,7 @@ async function robustGenerate(ev){
     if(obj.dir!=null && String(obj.dir).trim()!=='') parts.push(`Dirección: ${String(obj.dir)}`);
     if(obj.clouds!=null) parts.push(`Nubosidad: ${Math.round(obj.clouds)}%`);
     if(obj.precip!=null) parts.push(`Precipitación: ${fmt(obj.precip,1)} mm${mode==='forecast' ? '/h' : ''}`);
-    if(obj.visibility!=null) parts.push(`Visibilidad: ${fmt(obj.visibility,1)} km`);
+    if(obj.visibility!=null) parts.push(`Visibilidad: ${fmt(obj.visibility>=1000 ? obj.visibility/1000 : obj.visibility,1)} km`);
     if(obj.pressure!=null && mode!=='forecast') parts.push(`Presión: ${fmt(obj.pressure,1)} hPa`);
     return parts;
   }
@@ -13701,9 +13701,9 @@ async function robustGenerate(ev){
     const pageFc = pageForecastAt(iso, hhmm);
     const dmcFc = dmcForecast(bundle, iso, hhmm);
     const station = (function(s){
-      if (s == null) return 'Estación DMC más cercana';
-      if (typeof s === 'string') return s;
-      return s.name || s.stationName || s.nombre || s.label || s.title || s.comuna || 'Estación DMC más cercana';
+      const raw = (s == null) ? null : (typeof s === 'string' ? s : (s.name || s.stationName || s.nombre || s.label || s.title || s.comuna || null));
+      if (raw && raw !== 'Estación DMC más cercana') return raw;
+      return (window.__dmcCurrentData && (window.__dmcCurrentData.station_name || window.__dmcCurrentData.station)) || visibleVal('valDmcStation') || visibleVal('lblCity') || (document.getElementById('cityInput') && document.getElementById('cityInput').value) || 'Estación oficial DMC';
     })(obs.stationName);
     const observed = {
       temp: pick(obs.temp, accuNow.temp),
@@ -13733,7 +13733,7 @@ async function robustGenerate(ev){
     lines.push(fmtLongDateEs(iso, hhmm));
     lines.push('Fuente: Dirección Meteorológica de Chile (DMC) y AccuWeather.');
     lines.push('');
-    lines.push('Se observa en la estación oficial DMC más cercana:');
+    lines.push(`Se observa en ${station}:`);
     lines.push(`• ${station}. Último dato oficial disponible: ${obs.when || 'sin hora oficial visible'}.`);
     const obsLine = lineVars(observed, 'observed');
     if(obsLine.length) lines.push(`  ${obsLine.join(' | ')}`);
@@ -14128,7 +14128,8 @@ async function robustGenerate(ev){
     };
     const tmin = pick(pageFx.tmin, dmcFxD.tmin, accuFxD.tmin);
     const tmax = pick(pageFx.tmax, dmcFxD.tmax, accuFxD.tmax);
-    const station = cleanText(obs.station || 'Estación DMC más cercana');
+    const _rawSt = obs.station;
+    const station = cleanText((_rawSt && _rawSt !== 'Estación DMC más cercana' ? _rawSt : null) || (window.__dmcCurrentData && (window.__dmcCurrentData.station_name || window.__dmcCurrentData.station)) || txt('valDmcStation') || txt('lblCity') || byId('cityInput')?.value || 'Estación oficial DMC');
     const obsWx = upperFirst(weatherText(observed.code, observed.cloud, observed.hum, observed.precip));
     const fxWx = String(pick(forecast.condition, weatherText(forecast.code, forecast.cloud, forecast.hum, forecast.precip), 'condiciones variables')).toLowerCase();
     const lines=[];
@@ -14136,8 +14137,8 @@ async function robustGenerate(ev){
     lines.push('Fuente: Dirección Meteorológica de Chile (DMC).');
     lines.push('Complemento de variables faltantes: AccuWeather.');
     lines.push('');
-    lines.push('Se observa en la estación oficial DMC más cercana:');
-    const obsParts=[]; if(observed.temp!==null) obsParts.push(`Temperatura: ${fmt1(observed.temp,'°C')}`); if(observed.hum!==null) obsParts.push(`Humedad relativa: ${fmt1(observed.hum,'%')}`); if(observed.wind!==null) obsParts.push(`Viento: ${fmt0(observed.wind,' km/h')}`); if(observed.gust!==null && (observed.wind===null || observed.gust>=observed.wind)) obsParts.push(`Racha: ${fmt0(observed.gust,' km/h')}`); if(observed.dir!==null && observed.dir!==0) obsParts.push(`Dirección: ${dirText(observed.dir)}`); if(observed.cloud!==null) obsParts.push(`Nubosidad: ${fmt0(observed.cloud,' %')}`); if(observed.precip!==null) obsParts.push(`Precipitación: ${fmt1(observed.precip,' mm')}`); if(observed.vis!==null) obsParts.push(`Visibilidad: ${fmt1((observed.vis>80?observed.vis/1000:observed.vis),' km')}`); if(observed.pres!==null) obsParts.push(`Presión: ${fmt1(observed.pres,' hPa')}`);
+    lines.push(`Se observa en ${station}:`);
+    const obsParts=[]; if(observed.temp!==null) obsParts.push(`Temperatura: ${fmt1(observed.temp,'°C')}`); if(observed.hum!==null) obsParts.push(`Humedad relativa: ${fmt1(observed.hum,'%')}`); if(observed.wind!==null) obsParts.push(`Viento: ${fmt0(observed.wind,' km/h')}`); if(observed.gust!==null && (observed.wind===null || observed.gust>=observed.wind)) obsParts.push(`Racha: ${fmt0(observed.gust,' km/h')}`); if(observed.dir!==null && observed.dir!==0) obsParts.push(`Dirección: ${dirText(observed.dir)}`); if(observed.cloud!==null) obsParts.push(`Nubosidad: ${fmt0(observed.cloud,' %')}`); if(observed.precip!==null) obsParts.push(`Precipitación: ${fmt1(observed.precip,' mm')}`); if(observed.vis!==null) obsParts.push(`Visibilidad: ${fmt1((observed.vis>=1000?observed.vis/1000:observed.vis),' km')}`); if(observed.pres!==null) obsParts.push(`Presión: ${fmt1(observed.pres,' hPa')}`);
     lines.push(`• ${station}. Último dato oficial disponible: ${obs.hora || 'N/D'}.${obsParts.length ? ' ' + obsParts.join(' | ') : ''}`);
     lines.push('');
     lines.push('Situación Meteorológica:');
@@ -14149,7 +14150,7 @@ async function robustGenerate(ev){
     if(forecast.precip!==null) lines.push(`La precipitación estimada para el periodo evaluado es de ${fmt1(forecast.precip,' mm')}.`);
     lines.push('');
     lines.push('Variables previstas para la hora seleccionada:');
-    const hv=[]; if(forecast.temp!==null) hv.push(`• Temperatura: ${fmt1(forecast.temp,'°C')}`); if(forecast.hum!==null) hv.push(`• Humedad relativa: ${fmt1(forecast.hum,'%')}`); if(forecast.wind!==null) hv.push(`• Viento: ${fmt0(forecast.wind,' km/h')}`); if(forecast.gust!==null && (forecast.wind===null || forecast.gust>=forecast.wind)) hv.push(`• Racha: ${fmt0(forecast.gust,' km/h')}`); if(forecast.dir!==null && forecast.dir!==0) hv.push(`• Dirección: ${dirText(forecast.dir)}`); if(forecast.cloud!==null) hv.push(`• Nubosidad: ${fmt0(forecast.cloud,' %')}`); if(forecast.precip!==null) hv.push(`• Precipitación: ${fmt1(forecast.precip,' mm/h')}`); if(forecast.vis!==null) hv.push(`• Visibilidad: ${fmt1((forecast.vis>80?forecast.vis/1000:forecast.vis),' km')}`);
+    const hv=[]; if(forecast.temp!==null) hv.push(`• Temperatura: ${fmt1(forecast.temp,'°C')}`); if(forecast.hum!==null) hv.push(`• Humedad relativa: ${fmt1(forecast.hum,'%')}`); if(forecast.wind!==null) hv.push(`• Viento: ${fmt0(forecast.wind,' km/h')}`); if(forecast.gust!==null && (forecast.wind===null || forecast.gust>=forecast.wind)) hv.push(`• Racha: ${fmt0(forecast.gust,' km/h')}`); if(forecast.dir!==null && forecast.dir!==0) hv.push(`• Dirección: ${dirText(forecast.dir)}`); if(forecast.cloud!==null) hv.push(`• Nubosidad: ${fmt0(forecast.cloud,' %')}`); if(forecast.precip!==null) hv.push(`• Precipitación: ${fmt1(forecast.precip,' mm/h')}`); if(forecast.vis!==null) hv.push(`• Visibilidad: ${fmt1((forecast.vis>=1000?forecast.vis/1000:forecast.vis),' km')}`);
     lines.push(hv.length?hv.join('\n'):'• Sin datos suficientes para esa fecha/hora.');
     lines.push('');
     lines.push(buildSummary(selectedTickets(), observed, forecast));
