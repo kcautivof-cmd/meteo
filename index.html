@@ -13977,13 +13977,51 @@ async function robustGenerate(ev){
       code: pick(num(latest.weather_code), num(latest.code))
     };
   }
+  function pickNearestIndexByLocalDateHour(times, iso, hhmm){
+    const targetHour = Number(String(hhmm||'08:00').slice(0,2));
+    const sameDay = [];
+    (Array.isArray(times)?times:[]).forEach((t,i)=>{
+      const s = String(t||'');
+      if(s.slice(0,10) !== iso) return;
+      const h = Number(s.slice(11,13));
+      if(!Number.isFinite(h)) return;
+      sameDay.push({i,h,m:Number(s.slice(14,16))||0});
+    });
+    if(!sameDay.length) return -1;
+    sameDay.sort((a,b)=> Math.abs(a.h-targetHour) - Math.abs(b.h-targetHour) || a.m-b.m);
+    return sameDay[0]?.i ?? -1;
+  }
+  function estimateTempFromDaily(tmin, tmax, hhmm){
+    const h = Number(String(hhmm||'08:00').slice(0,2));
+    if(!Number.isFinite(tmin) && !Number.isFinite(tmax)) return null;
+    if(!Number.isFinite(tmin)) return tmax;
+    if(!Number.isFinite(tmax)) return tmin;
+    const anchors = [
+      {h:0, v:tmin + (tmax-tmin)*0.10},
+      {h:5, v:tmin},
+      {h:8, v:tmin + (tmax-tmin)*0.28},
+      {h:11, v:tmin + (tmax-tmin)*0.62},
+      {h:14, v:tmax},
+      {h:17, v:tmin + (tmax-tmin)*0.72},
+      {h:20, v:tmin + (tmax-tmin)*0.40},
+      {h:23, v:tmin + (tmax-tmin)*0.18},
+      {h:24, v:tmin + (tmax-tmin)*0.10}
+    ];
+    for(let k=1;k<anchors.length;k++){
+      const a=anchors[k-1], b=anchors[k];
+      if(h >= a.h && h <= b.h){
+        const span = b.h-a.h || 1;
+        const p = (h-a.h)/span;
+        return a.v + (b.v-a.v)*p;
+      }
+    }
+    return tmin;
+  }
   function dmcHourly(pack, iso, hhmm){
     const H = pack?.hourly || pack?.forecast_hourly || pack?.hourly_forecast || pack?.forecast?.hourly || {};
     const time = Array.isArray(H.time)?H.time:[];
     if(!time.length) return {};
-    const target = new Date(`${iso}T${hhmm}:00`).getTime();
-    let idx=-1,best=Infinity;
-    time.forEach((t,i)=>{ const ms=new Date(t).getTime(); if(!Number.isFinite(ms)) return; const diff=Math.abs(ms-target); if(diff<best){best=diff; idx=i;} });
+    const idx = pickNearestIndexByLocalDateHour(time, iso, hhmm);
     const val=(...keys)=>{ if(idx<0) return null; for(const k of keys){ const arr=H[k]; const n=Array.isArray(arr)?num(arr[idx]):null; if(n!==null) return n; } return null; };
     return { temp:val('temperature_2m','temp_c'), hum:val('relative_humidity_2m','humidity'), wind:val('wind_speed_10m','wind_speed'), gust:val('wind_gusts_10m','wind_gust'), dir:val('wind_direction_10m','wind_direction'), precip:val('precipitation','precip_mm'), cloud:val('cloud_cover','cloudiness'), vis:val('visibility','visibility_m'), code:val('weather_code','code') };
   }
@@ -13992,9 +14030,19 @@ async function robustGenerate(ev){
   function accuHourly(bundle, iso, hhmm){
     const arr = Array.isArray(bundle?.accuH12?.data) ? bundle.accuH12.data : (Array.isArray(bundle?.accuH12?.HourlyForecasts) ? bundle.accuH12.HourlyForecasts : (Array.isArray(bundle?.accuH12) ? bundle.accuH12 : []));
     if(!arr.length) return {};
-    const target = new Date(`${iso}T${hhmm}:00`).getTime();
+    const targetHour = Number(String(hhmm||'08:00').slice(0,2));
     let best=null,bestDiff=Infinity;
-    arr.forEach(x=>{ const dt=x?.DateTime||x?.LocalObservationDateTime||x?.dateTime||x?.time; const ms=dt?new Date(dt).getTime():NaN; if(!Number.isFinite(ms)) return; const diff=Math.abs(ms-target); if(diff<bestDiff){bestDiff=diff; best=x;} });
+    arr.forEach(x=>{
+      const dt = x?.DateTime||x?.LocalObservationDateTime||x?.dateTime||x?.time;
+      const s = String(dt||'');
+      if(!s) return;
+      const datePart = s.slice(0,10);
+      const hourPart = Number(s.slice(11,13));
+      if(datePart && /^\d{4}-\d{2}-\d{2}$/.test(datePart) && datePart !== iso) return;
+      if(!Number.isFinite(hourPart)) return;
+      const diff=Math.abs(hourPart-targetHour);
+      if(diff<bestDiff){bestDiff=diff; best=x;}
+    });
     if(!best) return {};
     const visRaw = num(best?.Visibility?.Metric?.Value ?? best?.Visibility?.Value ?? best?.visibility ?? best?.vis);
     return { temp:num(best?.Temperature?.Value ?? best?.Temperature?.Metric?.Value ?? best?.temperature ?? best?.temp), hum:num(best?.RelativeHumidity ?? best?.humidity), wind:num(best?.Wind?.Speed?.Metric?.Value ?? best?.Wind?.Speed?.Value ?? best?.windSpeed ?? best?.wind), gust:num(best?.WindGust?.Speed?.Metric?.Value ?? best?.WindGust?.Speed?.Value ?? best?.windGust ?? best?.gust), dir:num(best?.Wind?.Direction?.Degrees ?? best?.windDirection ?? best?.direction), precip:num(best?.TotalLiquid?.Value ?? best?.TotalLiquid?.Metric?.Value ?? best?.PrecipitationProbability ?? best?.precipitation ?? best?.precip), cloud:num(best?.CloudCover ?? best?.cloudCover ?? best?.clouds), vis: visRaw===null?null:(visRaw<80?visRaw*1000:visRaw), code:num(best?.WeatherIcon ?? best?.weatherIcon), condition: upperFirst(best?.IconPhrase || best?.WeatherText || best?.condition) };
@@ -14017,14 +14065,13 @@ async function robustGenerate(ev){
     const time = Array.isArray(H.time)?H.time:[];
     const out = {};
     if(time.length){
-      const target = new Date(`${iso}T${hhmm}:00`).getTime();
-      let idx=-1,best=Infinity;
-      time.forEach((t,i)=>{ const ms=new Date(t).getTime(); if(!Number.isFinite(ms)) return; const diff=Math.abs(ms-target); if(diff<best){best=diff; idx=i;} });
+      const idx = pickNearestIndexByLocalDateHour(time, iso, hhmm);
       const val=(...keys)=>{ if(idx<0) return null; for(const k of keys){ const arr=H[k]; const n=Array.isArray(arr)?num(arr[idx]):null; if(n!==null) return n; } return null; };
       out.temp=val('temperature_2m'); out.hum=val('relative_humidity_2m'); out.wind=val('wind_speed_10m'); out.gust=val('wind_gusts_10m'); out.dir=val('wind_direction_10m'); out.precip=val('precipitation'); out.cloud=val('cloud_cover'); out.vis=val('visibility'); out.code=val('weather_code');
     }
     const dtime = Array.isArray(D.time)?D.time:[];
     if(dtime.length){ const idx=dtime.findIndex(t=>String(t).slice(0,10)===iso); const dval=(...keys)=>{ if(idx<0) return null; for(const k of keys){ const arr=D[k]; const n=Array.isArray(arr)?num(arr[idx]):null; if(n!==null) return n; } return null; }; out.tmin=dval('temperature_2m_min'); out.tmax=dval('temperature_2m_max'); out.windMax=dval('wind_speed_10m_max'); out.precipDay=dval('precipitation_sum'); }
+    if(out.temp===null || out.temp===undefined) out.temp = estimateTempFromDaily(out.tmin, out.tmax, hhmm);
     return out;
   }
   async function ensureBundlesFresh(){
@@ -14066,13 +14113,14 @@ async function robustGenerate(ev){
     const observed = {
       temp: pick(obs.temp, obsAcc.temp), hum: pick(obs.hum, obsAcc.hum), wind: pick(obs.wind, obsAcc.wind), gust: pick(obs.gust, obsAcc.gust), dir: pick(obs.dir, obsAcc.dir), cloud: pick(obs.cloud, obsAcc.cloud), precip: pick(obs.precip, obsAcc.precip, 0), vis: pick(obs.vis, obsAcc.vis), pres: pick(obs.pres, obsAcc.pres), code: pick(obs.code), condition: weatherText(obs.code, obs.cloud, obs.hum, obs.precip)
     };
+    const estTemp = estimateTempFromDaily(pick(pageFx.tmin, dmcFxD.tmin, accuFxD.tmin), pick(pageFx.tmax, dmcFxD.tmax, accuFxD.tmax), hhmm);
     const forecast = {
-      temp: pick(pageFx.temp, dmcFxH.temp, accuFxH.temp, observed.temp),
+      temp: pick(pageFx.temp, dmcFxH.temp, accuFxH.temp, estTemp),
       hum: pick(pageFx.hum, dmcFxH.hum, accuFxH.hum, observed.hum),
-      wind: pick(pageFx.wind, dmcFxH.wind, accuFxH.wind, dmcFxD.windMax, accuFxD.wind, observed.wind),
-      gust: pick(pageFx.gust, dmcFxH.gust, accuFxH.gust, dmcFxD.gustMax, accuFxD.gust, observed.gust),
+      wind: pick(pageFx.wind, dmcFxH.wind, accuFxH.wind, accuFxD.wind, dmcFxD.windMax, observed.wind),
+      gust: pick(pageFx.gust, dmcFxH.gust, accuFxH.gust, accuFxD.gust, dmcFxD.gustMax, observed.gust),
       dir: pick(pageFx.dir, dmcFxH.dir, accuFxH.dir, observed.dir),
-      precip: pick(pageFx.precip, dmcFxH.precip, accuFxH.precip, pageFx.precipDay, dmcFxD.precip, accuFxD.precip, 0),
+      precip: pick(pageFx.precip, dmcFxH.precip, accuFxH.precip, 0),
       cloud: pick(pageFx.cloud, dmcFxH.cloud, accuFxH.cloud, observed.cloud),
       vis: pick(pageFx.vis, dmcFxH.vis, accuFxH.vis, observed.vis),
       code: pick(pageFx.code, dmcFxH.code, accuFxH.code, accuFxD.code, observed.code),
