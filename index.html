@@ -11928,7 +11928,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function closeQuick(){ hide(byId('bulletinQuickModal')); }
   function closeBuilder(){ hide(byId('reportBuilderModal')); }
   function openMenu(){ ensureMenuUi(); closeBuilder(); closeQuick(); setMenuPosition(); byId('bulletinMenuBackdrop')?.classList.add('show'); byId('bulletinMenuPop')?.classList.add('show'); }
-  function openQuick(){ ensureMenuUi(); closeBuilder(); closeMenu(); const d=byId('bulletinQuickDate'); const t=byId('bulletinQuickTime'); const now=new Date(); if(d && !d.value) d.value=now.toISOString().slice(0,10); if(t && !t.value) t.value='08:00'; byId('bulletinQuickModal')?.classList.add('show'); }
+  function openQuick(){ ensureMenuUi(); closeBuilder(); closeMenu(); const d=byId('bulletinQuickDate'); const t=byId('bulletinQuickTime'); const now=new Date(); if(d && !d.value) d.value=now.toISOString().slice(0,10); if(t && !t.value) t.value=hmNow(); byId('bulletinQuickModal')?.classList.add('show'); }
   function bind(){
     ensureMenuUi();
     const old=byId('reportLaunchBtn');
@@ -12291,7 +12291,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <div id="finalQuickModal" class="final-qm">
         <div class="final-grid">
           <div><label>FECHA</label><input id="finalQuickDate" type="date"></div>
-          <div><label>HORA</label><input id="finalQuickTime" type="time" value="08:00"></div>
+          <div><label>HORA</label><input id="finalQuickTime" type="time"></div>
         </div>
         <div class="final-actions" style="margin-top:10px">
           <button type="button" id="finalQuickCancel" style="width:auto;text-align:center">CERRAR</button>
@@ -12326,9 +12326,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   function closeAll(){ byId('finalBulletinBackdrop')?.classList.remove('show'); byId('finalBulletinMenu')?.classList.remove('show'); byId('finalQuickModal')?.classList.remove('show'); }
   function openMenu(from, anchorId){ ensureUi(); closeAll(); source=from||'launch'; byId('finalQuickOut')?.classList.remove('show'); byId('finalBulletinBackdrop').classList.add('show'); placeMenu(anchorId || (source==='builder'?'buildReportBtn':'reportLaunchBtn')); }
-  function openQuick(){ byId('finalBulletinMenu')?.classList.remove('show'); const d=byId('finalQuickDate'), t=byId('finalQuickTime'); const now=new Date(); if(d && !d.value) d.value=now.toISOString().slice(0,10); if(t && !t.value) t.value='08:00'; byId('finalQuickModal').classList.add('show'); }
+  function openQuick(){ byId('finalBulletinMenu')?.classList.remove('show'); const d=byId('finalQuickDate'), t=byId('finalQuickTime'); const now=new Date(); if(d && !d.value) d.value=now.toISOString().slice(0,10); if(t && !t.value) t.value=hmNow(); byId('finalQuickModal').classList.add('show'); }
   function openFull(){ closeAll(); if(source==='builder'){ if(typeof window.safeGenerateOperationalReport==='function') window.safeGenerateOperationalReport(new Event('click')); else if(typeof window.generateOperationalReport==='function') window.generateOperationalReport(); } else { if(typeof window.openReportBuilder==='function') window.openReportBuilder(); } }
-  async function doGenerate(){ const iso=byId('finalQuickDate')?.value || new Date().toISOString().slice(0,10); const hhmm=byId('finalQuickTime')?.value || '08:00'; const pack=await ensureDmcPack(); const text=buildText(pack, iso, hhmm); byId('finalQuickText').value=text; byId('finalQuickOut').classList.add('show'); }
+  async function doGenerate(){ const iso=byId('finalQuickDate')?.value || new Date().toISOString().slice(0,10); const hhmm=byId('finalQuickTime')?.value || hmNow(); const pack=await ensureDmcPack(); const text=buildText(pack, iso, hhmm); byId('finalQuickText').value=text; byId('finalQuickOut').classList.add('show'); }
   function wire(id, from){ const el=byId(id); if(!el || !el.parentNode) return; const clone=el.cloneNode(true); clone.removeAttribute('onclick'); clone.id=id; el.parentNode.replaceChild(clone, el); clone.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); openMenu(from,id); }); }
   function init(){ ensureUi(); wire('reportLaunchBtn','launch'); wire('buildReportBtn','builder'); }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', init); else init();
@@ -12509,7 +12509,7 @@ document.addEventListener('DOMContentLoaded', () => {
 async function robustGenerate(ev){
     if(ev){ ev.preventDefault(); ev.stopPropagation(); }
     const iso = (byId('finalQuickDate')?.value || byId('bulletinQuickDate')?.value || new Date().toISOString().slice(0,10));
-    const hhmm = (byId('finalQuickTime')?.value || byId('bulletinQuickTime')?.value || '08:00');
+    const hhmm = (byId('finalQuickTime')?.value || byId('bulletinQuickTime')?.value || hmNow());
     const pack = await ensureDmcPack();
     const text = buildBulletin(pack, iso, hhmm);
     const area = byId('finalQuickText') || byId('quickBulletinText');
@@ -12544,7 +12544,7 @@ async function robustGenerate(ev){
   function forecastDaily(pack, iso){ const D=pack?.daily||{}; const t=Array.isArray(D.time)?D.time:[]; const i=t.findIndex(x=>String(x).slice(0,10)===String(iso).slice(0,10)); if(i<0) return {}; const pick=k=>Array.isArray(D[k])?num(D[k][i]):NaN; return {tmin:pick('temperature_2m_min'), tmax:pick('temperature_2m_max'), windMax:pick('wind_speed_10m_max'), gustMax:pick('wind_gusts_10m_max'), precip:pick('precipitation_sum')}; }
   function fakeZero(v){ return Number.isFinite(v) && Math.abs(v) < 0.001; }
   function buildBulletin(pack, iso, hhmm){ const obs=observed(pack), fxh=forecastHourly(pack,iso,hhmm), fxd=forecastDaily(pack,iso), obsWx=weatherText(obs.code,obs.cloud,obs.hum,obs.precip), fxWx=weatherText(fxh.code,fxh.cloud,fxh.hum,fxh.precip); const lines=[]; lines.push(longDateEs(iso,hhmm)); lines.push('Fuente: Dirección Meteorológica de Chile (DMC).'); lines.push('Se observa en estación oficial DMC más cercana:'); const obsParts=[]; if(Number.isFinite(obs.cloud)) obsParts.push(`nubosidad= ${fmt0(obs.cloud,' %')}`); if(Number.isFinite(obs.precip)) obsParts.push(`precipitaciones= ${fmt1(obs.precip,' mm')}`); if(Number.isFinite(obs.wind)) obsParts.push(`viento= ${fmt0(obs.wind,' km/h')}`); if(Number.isFinite(obs.temp)) obsParts.push(`temperatura= ${fmt1(obs.temp,'°C')}`); if(Number.isFinite(obs.hum)) obsParts.push(`humedad= ${fmt1(obs.hum,'%')}`); if(Number.isFinite(obs.vis)&&obs.vis>0) obsParts.push(`visibilidad= ${fmt1(obs.vis/1000,' km')}`); if(Number.isFinite(obs.gust)&&(!Number.isFinite(obs.wind)||obs.gust>=obs.wind)) obsParts.push(`racha= ${fmt0(obs.gust,' km/h')}`); if(Number.isFinite(obs.dir)&&obs.dir!==0) obsParts.push(`dirección= ${dirText(obs.dir)}`); if(Number.isFinite(obs.pres)&&obs.pres>100) obsParts.push(`presión= ${fmt1(obs.pres,' hPa')}`); lines.push(`• ${obs.station}, ${obsWx}, último dato oficial disponible ${String(obs.hora||'N/D').replace(/\s+/g,'')}${obsParts.length?', '+obsParts.join(', '):''}`); lines.push('Situación Meteorológica:'); let sit=`Se prevé ${fxWx}`; if(Number.isFinite(fxd.tmin)||Number.isFinite(fxd.tmax)) sit += `, con temperaturas entre ${fmt0(fxd.tmin,'°C')} y ${fmt0(fxd.tmax,'°C')}`; if(Number.isFinite(fxd.windMax)&&fxd.windMax>=1) sit += `, vientos del orden de ${fmt0(fxd.windMax,' km/h')}`; if(Number.isFinite(fxd.gustMax)&&fxd.gustMax>=1&&(!Number.isFinite(fxd.windMax)||fxd.gustMax>=fxd.windMax)) sit += ` y rachas de hasta ${fmt0(fxd.gustMax,' km/h')}`; lines.push(sit+'.'); if(Number.isFinite(fxd.precip)) lines.push(`La precipitación acumulada estimada para el periodo es de ${fmt1(fxd.precip,' mm')}.`); const fxParts=[]; if(Number.isFinite(fxh.cloud)&&!fakeZero(fxh.cloud)) fxParts.push(`nubosidad= ${fmt0(fxh.cloud,' %')}`); if(Number.isFinite(fxh.precip)) fxParts.push(`precipitaciones= ${fmt1(fxh.precip,' mm/h')}`); if(Number.isFinite(fxh.wind)&&!fakeZero(fxh.wind)) fxParts.push(`viento= ${fmt0(fxh.wind,' km/h')}`); if(Number.isFinite(fxh.temp)&&!fakeZero(fxh.temp)) fxParts.push(`temperatura= ${fmt1(fxh.temp,'°C')}`); if(Number.isFinite(fxh.hum)&&!fakeZero(fxh.hum)) fxParts.push(`humedad= ${fmt1(fxh.hum,'%')}`); if(Number.isFinite(fxh.vis)&&fxh.vis>0) fxParts.push(`visibilidad= ${fmt1(fxh.vis/1000,' km')}`); if(Number.isFinite(fxh.gust)&&!fakeZero(fxh.gust)&&(!Number.isFinite(fxh.wind)||fxh.gust>=fxh.wind)) fxParts.push(`racha= ${fmt0(fxh.gust,' km/h')}`); if(Number.isFinite(fxh.dir)&&fxh.dir!==0) fxParts.push(`dirección= ${dirText(fxh.dir)}`); lines.push(fxParts.length?`Variables previstas para la hora seleccionada: ${fxParts.join(', ')}.`:'Variables previstas para la hora seleccionada: sin datos horarios oficiales DMC suficientes para esa hora.'); lines.push('Se mantiene el monitoreo y seguimiento.'); lines.push(`Actualmente predominan condiciones de ${obsWx} en ${obs.station}.`); if(Number.isFinite(fxd.tmin)||Number.isFinite(fxd.tmax)) lines.push(`En ${obs.station} se estima una mínima de ${fmt0(fxd.tmin,'°C')} y una máxima del orden de ${fmt0(fxd.tmax,'°C')}.`); return lines.join('\n'); }
-  async function robustGenerate(ev){ if(ev){ev.preventDefault();ev.stopPropagation();} const iso=byId('finalQuickDate')?.value||byId('bulletinQuickDate')?.value||new Date().toISOString().slice(0,10); const hhmm=byId('finalQuickTime')?.value||byId('bulletinQuickTime')?.value||'08:00'; const pack=await ensureDmcPack(); const text=buildBulletin(pack, iso, hhmm); const area=byId('finalQuickText')||byId('quickBulletinText'); if(area) area.value=text; byId('finalQuickOut')?.classList.add('show'); byId('quickBulletinWrap')?.classList.add('show'); return false; }
+  async function robustGenerate(ev){ if(ev){ev.preventDefault();ev.stopPropagation();} const iso=byId('finalQuickDate')?.value||byId('bulletinQuickDate')?.value||new Date().toISOString().slice(0,10); const hhmm=byId('oaiBulletinTime')?.value||byId('finalQuickTime')?.value||byId('bulletinQuickTime')?.value||hmNow(); const pack=await ensureDmcPack(); const text=buildBulletin(pack, iso, hhmm); const area=byId('finalQuickText')||byId('quickBulletinText'); if(area) area.value=text; byId('finalQuickOut')?.classList.add('show'); byId('quickBulletinWrap')?.classList.add('show'); return false; }
   function bind(){ ['finalQuickGenerate','bulletinQuickGenerate'].forEach(id=>{ const el=byId(id); if(!el) return; el.onclick=robustGenerate; el.addEventListener('click', robustGenerate); }); window.generateQuickBulletin=robustGenerate; window.robustGenerateQuickBulletin=robustGenerate; }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', bind); else bind();
 })();
@@ -12648,7 +12648,7 @@ async function robustGenerate(ev){
   function forecastDaily(pack, iso){ const D=pack?.daily||{}; const t=Array.isArray(D.time)?D.time:[]; const i=t.findIndex(x=>String(x).slice(0,10)===String(iso).slice(0,10)); if(i<0) return {}; const pick=k=>Array.isArray(D[k])?num(D[k][i]):NaN; return {tmin:pick('temperature_2m_min'), tmax:pick('temperature_2m_max'), windMax:pick('wind_speed_10m_max'), gustMax:pick('wind_gusts_10m_max'), precip:pick('precipitation_sum')}; }
   function fakeZero(v){ return Number.isFinite(v) && Math.abs(v) < 0.001; }
   function buildBulletin(pack, iso, hhmm){ const obs=observed(pack), fxh=forecastHourly(pack,iso,hhmm), fxd=forecastDaily(pack,iso), obsWx=weatherText(obs.code,obs.cloud,obs.hum,obs.precip), fxWx=weatherText(fxh.code,fxh.cloud,fxh.hum,fxh.precip); const lines=[]; lines.push(longDateEs(iso,hhmm)); lines.push('Fuente: Dirección Meteorológica de Chile (DMC).'); lines.push('Se observa en estación oficial DMC más cercana:'); const obsParts=[]; if(Number.isFinite(obs.cloud)) obsParts.push(`nubosidad= ${fmt0(obs.cloud,' %')}`); if(Number.isFinite(obs.precip)) obsParts.push(`precipitaciones= ${fmt1(obs.precip,' mm')}`); if(Number.isFinite(obs.wind)) obsParts.push(`viento= ${fmt0(obs.wind,' km/h')}`); if(Number.isFinite(obs.temp)) obsParts.push(`temperatura= ${fmt1(obs.temp,'°C')}`); if(Number.isFinite(obs.hum)) obsParts.push(`humedad= ${fmt1(obs.hum,'%')}`); if(Number.isFinite(obs.vis)&&obs.vis>0) obsParts.push(`visibilidad= ${fmt1(obs.vis/1000,' km')}`); if(Number.isFinite(obs.gust)&&(!Number.isFinite(obs.wind)||obs.gust>=obs.wind)) obsParts.push(`racha= ${fmt0(obs.gust,' km/h')}`); if(Number.isFinite(obs.dir)&&obs.dir!==0) obsParts.push(`dirección= ${dirText(obs.dir)}`); if(Number.isFinite(obs.pres)&&obs.pres>100) obsParts.push(`presión= ${fmt1(obs.pres,' hPa')}`); lines.push(`• ${obs.station}, ${obsWx}, último dato oficial disponible ${String(obs.hora||'N/D').replace(/\s+/g,'')}${obsParts.length?', '+obsParts.join(', '):''}`); lines.push('Situación Meteorológica:'); let sit=`Se prevé ${fxWx}`; if(Number.isFinite(fxd.tmin)||Number.isFinite(fxd.tmax)) sit += `, con temperaturas entre ${fmt0(fxd.tmin,'°C')} y ${fmt0(fxd.tmax,'°C')}`; if(Number.isFinite(fxd.windMax)&&fxd.windMax>=1) sit += `, vientos del orden de ${fmt0(fxd.windMax,' km/h')}`; if(Number.isFinite(fxd.gustMax)&&fxd.gustMax>=1&&(!Number.isFinite(fxd.windMax)||fxd.gustMax>=fxd.windMax)) sit += ` y rachas de hasta ${fmt0(fxd.gustMax,' km/h')}`; lines.push(sit+'.'); if(Number.isFinite(fxd.precip)) lines.push(`La precipitación acumulada estimada para el periodo es de ${fmt1(fxd.precip,' mm')}.`); const fxParts=[]; if(Number.isFinite(fxh.cloud)&&!fakeZero(fxh.cloud)) fxParts.push(`nubosidad= ${fmt0(fxh.cloud,' %')}`); if(Number.isFinite(fxh.precip)) fxParts.push(`precipitaciones= ${fmt1(fxh.precip,' mm/h')}`); if(Number.isFinite(fxh.wind)&&!fakeZero(fxh.wind)) fxParts.push(`viento= ${fmt0(fxh.wind,' km/h')}`); if(Number.isFinite(fxh.temp)&&!fakeZero(fxh.temp)) fxParts.push(`temperatura= ${fmt1(fxh.temp,'°C')}`); if(Number.isFinite(fxh.hum)&&!fakeZero(fxh.hum)) fxParts.push(`humedad= ${fmt1(fxh.hum,'%')}`); if(Number.isFinite(fxh.vis)&&fxh.vis>0) fxParts.push(`visibilidad= ${fmt1(fxh.vis/1000,' km')}`); if(Number.isFinite(fxh.gust)&&!fakeZero(fxh.gust)&&(!Number.isFinite(fxh.wind)||fxh.gust>=fxh.wind)) fxParts.push(`racha= ${fmt0(fxh.gust,' km/h')}`); if(Number.isFinite(fxh.dir)&&fxh.dir!==0) fxParts.push(`dirección= ${dirText(fxh.dir)}`); lines.push(fxParts.length?`Variables previstas para la hora seleccionada: ${fxParts.join(', ')}.`:'Variables previstas para la hora seleccionada: sin datos horarios oficiales DMC suficientes para esa hora.'); lines.push('Se mantiene el monitoreo y seguimiento.'); lines.push(`Actualmente predominan condiciones de ${obsWx} en ${obs.station}.`); if(Number.isFinite(fxd.tmin)||Number.isFinite(fxd.tmax)) lines.push(`En ${obs.station} se estima una mínima de ${fmt0(fxd.tmin,'°C')} y una máxima del orden de ${fmt0(fxd.tmax,'°C')}.`); return lines.join('\n'); }
-  async function generate(){ const iso=byId('oaiBulletinDate').value||todayIso(); const hhmm=byId('oaiBulletinTime').value||'08:00'; const pack=await ensureDmcPack(); byId('oaiBulletinText').value = buildBulletin(pack, iso, hhmm); }
+  async function generate(){ const iso=byId('oaiBulletinDate').value||todayIso(); const hhmm=byId('oaiBulletinTime').value||hmNow(); const pack=await ensureDmcPack(); byId('oaiBulletinText').value = buildBulletin(pack, iso, hhmm); }
 
   function intercept(id, source){ const el=byId(id); if(!el || el.dataset.oaiIntercepted) return; el.dataset.oaiIntercepted='1'; el.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); openMenu(); return false; }, true); }
   function init(){ ensureRoot(); intercept('reportLaunchBtn','launch'); intercept('buildReportBtn','builder'); document.addEventListener('keydown', function(ev){ if(ev.key==='Escape') closeAll(); }); window.openBulletinMenu=openMenu; window.generateQuickBulletin=generate; }
@@ -12881,7 +12881,7 @@ async function robustGenerate(ev){
   }
   async function robustGenerateQuickBulletinContent(){
     const iso = normalizeIso(byId('finalQuickDate')?.value || byId('qbDate')?.value || todayIso());
-    const hhmm = byId('finalQuickTime')?.value || byId('qbTime')?.value || '08:00';
+    const hhmm = byId('finalQuickTime')?.value || byId('qbTime')?.value || hmNow();
     const pack = window.__dmcCurrentData || window.__dmcCurrent || {};
     const ta = byId('finalQuickText') || byId('quickBulletinText');
     if(ta) ta.value = 'Generando boletín...';
@@ -13088,7 +13088,7 @@ async function robustGenerate(ev){
     if(Number.isFinite(fxd.tmin) || Number.isFinite(fxd.tmax)) lines.push(`En ${obs.station} se estima una temperatura mínima de ${fmt0(fxd.tmin,'°C')} y una máxima cercana a ${fmt0(fxd.tmax,'°C')}.`);
     return lines.join('\n');
   }
-  async function overrideGenerate(ev){ if(ev){ev.preventDefault();ev.stopPropagation();} const iso=normalizeIso(byId('finalQuickDate')?.value||byId('bulletinQuickDate')?.value||todayIso()); const hhmm=byId('finalQuickTime')?.value||byId('bulletinQuickTime')?.value||'08:00'; const area=byId('finalQuickText')||byId('quickBulletinText'); if(area) area.value='Generando boletín...'; try{ const txt=await buildBulletin(iso,hhmm); if(area) area.value=txt; }catch(err){ console.error(err); if(area) area.value='No se pudo generar el boletín con datos DMC/AccuWeather.'; } byId('finalQuickOut')?.classList.add('show'); byId('quickBulletinWrap')?.classList.add('show'); return false; }
+  async function overrideGenerate(ev){ if(ev){ev.preventDefault();ev.stopPropagation();} const iso=normalizeIso(byId('finalQuickDate')?.value||byId('bulletinQuickDate')?.value||todayIso()); const hhmm=byId('oaiBulletinTime')?.value||byId('finalQuickTime')?.value||byId('bulletinQuickTime')?.value||hmNow(); const area=byId('finalQuickText')||byId('quickBulletinText'); if(area) area.value='Generando boletín...'; try{ const txt=await buildBulletin(iso,hhmm); if(area) area.value=txt; }catch(err){ console.error(err); if(area) area.value='No se pudo generar el boletín con datos DMC/AccuWeather.'; } byId('finalQuickOut')?.classList.add('show'); byId('quickBulletinWrap')?.classList.add('show'); return false; }
   function bind(){ ['finalQuickGenerate','bulletinQuickGenerate'].forEach(id=>{ const el=byId(id); if(!el) return; el.onclick=overrideGenerate; el.addEventListener('click', overrideGenerate); }); window.generateQuickBulletin=overrideGenerate; window.robustGenerateQuickBulletin=overrideGenerate; }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', bind); else bind();
 })();
@@ -13186,7 +13186,7 @@ async function robustGenerate(ev){
     lines.push(hv.length ? `Variables previstas para la hora seleccionada: ${hv.join(' | ')}.` : 'Variables previstas para la hora seleccionada: sin datos horarios oficiales DMC suficientes para esa hora.');
     lines.push('Se mantiene el monitoreo y seguimiento.'); lines.push(''); lines.push(`Actualmente predominan condiciones de ${obsWx} en ${obs.station}.`); if(Number.isFinite(fxd.tmin)||Number.isFinite(fxd.tmax)) lines.push(`En ${obs.station} se estima una mínima de ${fmt0(fxd.tmin,'°C')} y una máxima cercana a ${fmt0(fxd.tmax,'°C')}.`); return lines.join('\n');
   }
-  async function generate(ev){ if(ev){ev.preventDefault();ev.stopPropagation();} const iso=normalizeIso(byId('finalQuickDate')?.value || byId('bulletinQuickDate')?.value || byId('oaiBulletinDate')?.value || todayIso()); const hhmm=byId('finalQuickTime')?.value || byId('bulletinQuickTime')?.value || byId('oaiBulletinTime')?.value || '08:00'; const area=byId('finalQuickText')||byId('quickBulletinText')||byId('oaiBulletinText'); if(area) area.value='Generando boletín...'; const bundle=await ensureBundles(); const txt=buildText(bundle,iso,hhmm); if(area) area.value=txt; byId('finalQuickOut')?.classList.add('show'); byId('quickBulletinWrap')?.classList.add('show'); return false; }
+  async function generate(ev){ if(ev){ev.preventDefault();ev.stopPropagation();} const iso=normalizeIso(byId('finalQuickDate')?.value || byId('bulletinQuickDate')?.value || byId('oaiBulletinDate')?.value || todayIso()); const hhmm=byId('finalQuickTime')?.value || byId('bulletinQuickTime')?.value || byId('oaiBulletinTime')?.value || hmNow(); const area=byId('finalQuickText')||byId('quickBulletinText')||byId('oaiBulletinText'); if(area) area.value='Generando boletín...'; const bundle=await ensureBundles(); const txt=buildText(bundle,iso,hhmm); if(area) area.value=txt; byId('finalQuickOut')?.classList.add('show'); byId('quickBulletinWrap')?.classList.add('show'); return false; }
   function bind(){ ['finalQuickGenerate','bulletinQuickGenerate','oaiBulletinGenerate'].forEach(id=>{ const el=byId(id); if(!el) return; const neo=el.cloneNode(true); el.parentNode.replaceChild(neo, el); neo.addEventListener('click', generate, true); }); window.generateQuickBulletin=generate; window.robustGenerateQuickBulletin=generate; }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', bind); else bind();
 })();
@@ -13202,7 +13202,7 @@ async function robustGenerate(ev){
     if(ev){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); }
     const area = byId('finalQuickText') || byId('quickBulletinText') || byId('oaiBulletinText');
     const iso = normalizeIso((byId('finalQuickDate')||byId('bulletinQuickDate')||byId('oaiBulletinDate'))?.value || todayIso());
-    const hhmm = (byId('finalQuickTime')||byId('bulletinQuickTime')||byId('oaiBulletinTime'))?.value || '08:00';
+    const hhmm = (byId('finalQuickTime')||byId('bulletinQuickTime')||byId('oaiBulletinTime'))?.value || hmNow();
     if(area) area.value = 'Generando boletín...';
     try{
       let txt = '';
@@ -13975,7 +13975,17 @@ async function robustGenerate(ev){
   function pick(){ for(const v of arguments){ if(v!==null && v!==undefined && v!=='' && !(typeof v==='number' && !Number.isFinite(v))) return v; } return null; }
   function fakeZero(v){ const n=num(v); return n!==null && Math.abs(n) < 0.0001; }
   function weatherText(code, cloud, hum, precip){ const c=num(code), cl=num(cloud), h=num(hum), p=num(precip); if(c!==null){ if([95,96,99].includes(c)) return 'tormentas eléctricas'; if([61,63,65,80,81,82].includes(c)) return 'lluvias'; if([71,73,75,77,85,86].includes(c)) return 'nevadas'; if([45,48].includes(c)) return 'niebla'; if([1,2,3].includes(c)) return cl!==null && cl>=60 ? 'cielo nublado' : (cl!==null && cl>=25 ? 'nubosidad parcial' : 'despejado'); if(c===0) return 'despejado'; }
-    if(p!==null && p>0.5) return 'precipitación'; if(cl!==null && cl>=75) return 'cielo nublado'; if(cl!==null && cl>=25) return 'nubosidad parcial'; if(h!==null && h>=85) return 'condiciones variables'; return 'condiciones variables'; }
+    if(p!==null && p>2)  return 'precipitación activa';
+    if(p!==null && p>0.5) return 'precipitación ligera';
+    if(cl!==null && cl>=85) return 'cielo cubierto';
+    if(cl!==null && cl>=60) return 'cielo mayormente nublado';
+    if(cl!==null && cl>=30) return 'nubosidad parcial';
+    if(cl!==null && cl<15)  return 'cielo despejado';
+    if(h!==null && h>=90 && cl!==null && cl>=40) return 'ambiente húmedo con nubosidad';
+    if(h!==null && h>=85) return 'ambiente húmedo estable';
+    if(h!==null && h<35)  return 'ambiente seco, nubosidad escasa';
+    if(cl!==null) return cl>=50 ? 'nubosidad moderada' : 'nubosidad escasa con estabilidad relativa';
+    return 'escenario variable de baja criticidad'; }
   function dirText(v){ const n=num(v); if(n===null) return 'N/D'; const dirs=['N','NE','E','SE','S','SO','O','NO']; return `${Math.round(n)}° (${dirs[Math.round((((n%360)+360)%360)/45)%8]})`; }
   function cleanText(v){ return String(v||'').replace(/\s+/g,' ').trim(); }
   function observedDMC(pack){
@@ -14110,78 +14120,426 @@ async function robustGenerate(ev){
     if(out.dmc && Object.keys(out.dmc).length) window.__dmcCurrentData = out.dmc;
     return out;
   }
+  // ─── RESUMEN OPERACIONAL POR TICKET (datos reales) ───────────────────────────
   function buildSummary(tickets, obs, fc){
-    const lines=[]; const cond = pick(fc.condition, obs.condition, 'condiciones variables'); const wind = pick(fc.wind, obs.wind); const vis = pick(fc.vis, obs.vis); const precip = pick(fc.precip, obs.precip, 0);
-    lines.push('Resumen general:');
-    lines.push(`• Predominan ${String(cond||'condiciones variables').toLowerCase()}, con ${num(wind)!==null?(num(wind)<10?'viento débil':num(wind)<25?'viento moderado':'viento sensible'):'viento variable'} y visibilidad ${num(vis)!==null?((num(vis)<=1000)?'reducida':(num(vis)<=5000?'limitada':'adecuada')):'variable'} en la zona de interés.`);
-    lines.push(num(precip)!==null && num(precip)>0.5 ? '• Se aprecia señal de precipitación para el tramo evaluado, por lo que conviene mantener seguimiento continuo de su evolución.' : '• No se observan señales significativas de precipitación para el tramo evaluado.');
-    const map={telecom:'Telecomunicaciones: en general no se anticipa afectación crítica, aunque conviene mantener seguimiento por posibles variaciones locales del ambiente.',desplazamiento:'Desplazamiento a pie: condiciones en general operables, recomendándose control de exposición según evolución del viento, temperatura y visibilidad.',observacion:'Observación: la vigilancia y detección dependerán de la mantención de visibilidad y contraste atmosférico, por lo que corresponde monitoreo continuo de las condiciones efectivas.',vehiculos_livianos:'Vehículos livianos: tránsito normalmente operable, con atención preventiva en sectores expuestos a viento o visibilidad cambiante.',vehiculos_transporte:'Vehículos de transporte: condiciones aptas para desplazamiento general, sujetas a control por cambios puntuales del viento o de la visibilidad.',vehiculos_motorizados:'Veh. motorizados ligeros: presentan mayor sensibilidad al viento y a la variación de visibilidad, recomendándose conducción conservadora en espacios abiertos.',optronicos:'Sistemas optrónicos: el rendimiento puede variar según nubosidad, visibilidad y contraste ambiental, especialmente en vigilancia sostenida.',rpas:'RPAS: la ejecución debe validarse con especial atención a viento, rachas y visibilidad, manteniendo verificación inmediata antes de la operación.'};
-    (tickets||[]).forEach(k=>{ if(map[k]) lines.push(`• ${map[k]}`); });
+    const lines=[];
+    const cond   = pick(fc.condition, obs.condition) ||
+      (()=>{ const cl=num(pick(fc.cloud,obs.cloud)), p=num(pick(fc.precip,obs.precip,0)), w=num(pick(fc.wind,obs.wind));
+        if(p>2) return 'precipitación activa'; if(p>0.5) return 'precipitación ligera';
+        if(cl!==null&&cl>80) return 'cielo cubierto'; if(cl!==null&&cl>50) return 'nubosidad moderada';
+        if(cl!==null&&cl<20) return 'cielo despejado'; if(w!==null&&w>30) return 'viento sostenido, nubosidad variable';
+        return 'nubosidad parcial con estabilidad relativa'; })();
+    const windV  = num(pick(fc.wind,  obs.wind));
+    const gustV  = num(pick(fc.gust,  obs.gust));
+    const visV   = num(pick(fc.vis,   obs.vis));
+    const precipV= num(pick(fc.precip,obs.precip, 0));
+    const cloudV = num(pick(fc.cloud, obs.cloud));
+
+    const windLbl  = windV!==null  ? (windV<10?'débil':windV<25?'moderado':windV<40?'moderado a fuerte':'fuerte') : 'variable';
+    const visLbl   = visV!==null   ? (visV<=1000?'reducida (<1 km)':visV<=5000?'limitada (1–5 km)':'adecuada (>5 km)') : 'variable';
+    const precipSig= precipV!==null && precipV>0.5;
+    const highCloud= cloudV!==null  && cloudV>70;
+
+    lines.push(`• Condición dominante: ${String(cond||'condiciones variables').toLowerCase()}. Viento ${windLbl}${windV!==null?' ('+Math.round(windV)+' km/h)':''}${gustV!==null&&(windV===null||gustV>=windV)?', rachas '+Math.round(gustV)+' km/h':''}. Visibilidad ${visLbl}.`);
+    lines.push(precipSig ? '• Señal de precipitación activa en el periodo. Mantener seguimiento continuo.' : '• Sin señal significativa de precipitación en el periodo evaluado.');
+
+    if(!tickets||!tickets.length){ lines.push('• (Sin ámbito específico seleccionado.)'); lines.push('Se mantiene el monitoreo y seguimiento.'); return lines.join('\n'); }
+
+    if(tickets.includes('telecom')){
+      const f= windV!==null&&windV>=40?`viento fuerte (${Math.round(windV)} km/h) puede afectar enlaces en banda alta y líneas de vista`:(precipSig?'precipitación activa puede degradar calidad RF y satélite':'condiciones compatibles con enlace');
+      const r= windV!==null&&windV>=40?'verificar orientación de antenas y considerar redundancia de enlace':(precipSig?'monitorear atenuación en frecuencias >10 GHz':'seguimiento preventivo en sectores expuestos');
+      lines.push(`• Telecomunicaciones — Factor: ${f}. Acción: ${r}.`);
+    }
+    if(tickets.includes('patrulla')){
+      const f= windV!==null&&windV>=40?`viento fuerte (${Math.round(windV)} km/h) limita avance en zonas expuestas`:(visV!==null&&visV<=2000?`visibilidad reducida (${fmt1(visV/1000,' km')}) dificulta orientación`:precipSig?'precipitación activa incrementa riesgo de resbalamiento':'sin restricción dominante para desplazamiento');
+      const r= windV!==null&&windV>=40?'controlar tiempos de exposición, ajustar ritmo de avance':(visV!==null&&visV<=2000?'reforzar referencias visuales y distancias de control':'mantener vigilancia sobre evolución de viento y temperatura');
+      lines.push(`• Desplazamiento a pie — Factor: ${f}. Acción: ${r}.`);
+    }
+    if(tickets.includes('observacion')){
+      const f= visV!==null&&visV<=2000?`visibilidad reducida (${fmt1(visV/1000,' km')}) limita alcance visual`:(highCloud?`nubosidad alta (${Math.round(cloudV)}%) reduce contraste`:precipSig?'precipitación activa reduce contraste y alcance visual':'condiciones favorables para observación');
+      const r= visV!==null&&visV<=2000?'reducir distancias de referencia, priorizar observación próxima':(highCloud?'compensar contraste en equipos donde sea posible':'verificación continua de condiciones efectivas en punto');
+      lines.push(`• Observación — Factor: ${f}. Acción: ${r}.`);
+    }
+    if(tickets.includes('vehiculos_livianos')){
+      const f= windV!==null&&windV>=50?`viento fuerte (${Math.round(windV)} km/h) en sectores expuestos`:(visV!==null&&visV<=2000?`visibilidad reducida (${fmt1(visV/1000,' km')})`:precipSig?'precipitación reduce adherencia':'sin restricción dominante');
+      const r= windV!==null&&windV>=50?'conducción conservadora en sectores abiertos y expuestos':(precipSig?'reducir velocidad, aumentar distancia de frenado':'atención a variaciones locales de viento o visibilidad');
+      lines.push(`• Vehículos livianos — Factor: ${f}. Acción: ${r}.`);
+    }
+    if(tickets.includes('vehiculos_transporte')){
+      const f= windV!==null&&windV>=50?`viento fuerte (${Math.round(windV)} km/h) puede comprometer estabilidad en vehículos de mayor perfil`:(visV!==null&&visV<=3000?`visibilidad limitada (${fmt1(visV/1000,' km')}) en rutas expuestas`:'condiciones generalmente aptas para transporte');
+      const r= windV!==null&&windV>=50?'evaluar suspensión de tránsito en rutas de alta exposición al viento':(precipSig?'control de velocidad, atención a variaciones de calzada':'seguimiento de condiciones en ruta, especialmente en sectores de altura');
+      lines.push(`• Vehículos de transporte — Factor: ${f}. Acción: ${r}.`);
+    }
+    if(tickets.includes('vehiculos_motorizados')){
+      const f= windV!==null&&windV>=30?`viento (${Math.round(windV)} km/h) afecta estabilidad de motos y vehículos ligeros`:(precipSig?'precipitación reduce adherencia significativamente':visV!==null&&visV<=2000?`visibilidad reducida (${fmt1(visV/1000,' km')})`:'operable con atención preventiva');
+      const r= windV!==null&&windV>=30?'conducción conservadora, evitar sectores con rafagueo intenso':(precipSig?'velocidad reducida, calzada resbaladiza':'supervisión continua de condiciones locales');
+      lines.push(`• Veh. motorizados ligeros — Factor: ${f}. Acción: ${r}.`);
+    }
+    if(tickets.includes('optronicos')){
+      const f= cloudV!==null&&cloudV>80?`nubosidad alta (${Math.round(cloudV)}%) degrada resolución y contraste`:(precipSig?'precipitación activa afecta óptica y resolución':visV!==null&&visV<=3000?`visibilidad limitada (${fmt1(visV/1000,' km')})`:'condiciones generalmente favorables');
+      const r= cloudV!==null&&cloudV>80?'considerar modo alterno o ajuste de contraste':(precipSig?'protección activa de lentes, limpieza de óptica':'monitoreo de nubosidad para ventanas de mayor contraste');
+      lines.push(`• Sistemas optrónicos — Factor: ${f}. Acción: ${r}.`);
+    }
+    if(tickets.includes('rpas')){
+      const gT= gustV!==null&&gustV>=37;
+      const wT= windV!==null&&windV>=29;
+      const f= gT?`rachas ${Math.round(gustV)} km/h SUPERAN umbral conservador (37 km/h)`:wT?`viento ${Math.round(windV)} km/h requiere evaluación de margen operacional`:precipSig?'precipitación activa: riesgo directo sobre plataforma y óptica':visV!==null&&visV<=3000?`visibilidad limitada (${fmt1(visV/1000,' km')})`:'dentro de márgenes básicos';
+      const r= gT?'NO OPERAR. Verificar condición en sitio antes de cualquier decisión.':wT?'validar margen según plataforma, verificación local inmediata previa':precipSig?'posponer hasta ventana sin precipitación':'verificación final obligatoria en sitio antes de cada vuelo';
+      lines.push(`• RPAS — Factor: ${f}. Acción: ${r}.`);
+    }
     lines.push('Se mantiene el monitoreo y seguimiento.');
     return lines.join('\n');
   }
+
   function selectedTickets(){ return Array.from(document.querySelectorAll('#quickImpactOptions input[type="checkbox"]:checked')).map(el=>el.value); }
+
+  // ─── BOLETÍN RÁPIDO ESTRUCTURADO (v2 – profesional y operacional) ─────────────
+    function fixMojibake(s){
+    try{ return decodeURIComponent(escape(String(s||''))); }
+    catch(_e){ return String(s||''); }
+  }
   function buildQuickText(bundle, iso, hhmm){
-    const obs = observedDMC(bundle.dmc||{});
+    // Auto-corrección de hora: si viene vacío, leer del modal activo
+    if(!hhmm || hhmm==='08:00'){
+      var _oM=document.getElementById('oaiBulletinModal');
+      var _tSrc=(_oM&&_oM.classList.contains('show'))
+        ? document.getElementById('oaiBulletinTime')
+        : (document.getElementById('finalQuickTime')||document.getElementById('bulletinQuickTime')||document.getElementById('oaiBulletinTime'));
+      var _tv=_tSrc&&_tSrc.value;
+      if(_tv&&_tv!=='08:00') hhmm=_tv;
+      else hhmm=new Date().toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit',hour12:false});
+    }
+    // ── Fuentes de datos (lógica existente preservada) ──
+    const obs    = observedDMC(bundle.dmc||{});
     const obsAcc = accuCurrent(bundle);
     const pageFx = forecastFromPage(iso, hhmm);
     const dmcFxH = dmcHourly(bundle.dmcForecast||bundle.dmc||{}, iso, hhmm);
     const dmcFxD = dmcDaily(bundle.dmcForecast||bundle.dmc||{}, iso);
-    const accuFxH = accuHourly(bundle, iso, hhmm);
-    const accuFxD = accuDaily(bundle, iso, hhmm);
+    const accuFxH= accuHourly(bundle, iso, hhmm);
+    const accuFxD= accuDaily(bundle, iso, hhmm);
+
     const observed = {
-      temp: pick(obs.temp, obsAcc.temp), hum: pick(obs.hum, obsAcc.hum), wind: pick(obs.wind, obsAcc.wind), gust: pick(obs.gust, obsAcc.gust), dir: pick(obs.dir, obsAcc.dir), cloud: pick(obs.cloud, obsAcc.cloud), precip: pick(obs.precip, obsAcc.precip, 0), vis: pick(obs.vis, obsAcc.vis), pres: pick(obs.pres, obsAcc.pres), code: pick(obs.code), condition: weatherText(obs.code, obs.cloud, obs.hum, obs.precip)
+      temp:  pick(obs.temp,  obsAcc.temp),
+      hum:   pick(obs.hum,   obsAcc.hum),
+      wind:  pick(obs.wind,  obsAcc.wind),
+      gust:  pick(obs.gust,  obsAcc.gust),
+      dir:   pick(obs.dir,   obsAcc.dir),
+      cloud: pick(obs.cloud, obsAcc.cloud),
+      precip:pick(obs.precip,obsAcc.precip, 0),
+      vis:   pick(obs.vis,   obsAcc.vis),
+      pres:  pick(obs.pres,  obsAcc.pres),
+      code:  pick(obs.code),
+      condition: weatherText(obs.code, obs.cloud, obs.hum, obs.precip)
     };
-    const estTemp = estimateTempFromDaily(pick(pageFx.tmin, dmcFxD.tmin, accuFxD.tmin), pick(pageFx.tmax, dmcFxD.tmax, accuFxD.tmax), hhmm);
+    const estTemp = estimateTempFromDaily(pick(pageFx.tmin,dmcFxD.tmin,accuFxD.tmin), pick(pageFx.tmax,dmcFxD.tmax,accuFxD.tmax), hhmm);
     const forecast = {
-      temp: pick(pageFx.temp, dmcFxH.temp, accuFxH.temp, estTemp),
-      hum: pick(pageFx.hum, dmcFxH.hum, accuFxH.hum, observed.hum),
-      wind: pick(pageFx.wind, dmcFxH.wind, accuFxH.wind, accuFxD.wind, dmcFxD.windMax, observed.wind),
-      gust: pick(pageFx.gust, dmcFxH.gust, accuFxH.gust, accuFxD.gust, dmcFxD.gustMax, observed.gust),
-      dir: pick(pageFx.dir, dmcFxH.dir, accuFxH.dir, observed.dir),
-      precip: pick(pageFx.precip, dmcFxH.precip, accuFxH.precip, 0),
+      temp:  pick(pageFx.temp,  dmcFxH.temp,  accuFxH.temp,  estTemp),
+      hum:   pick(pageFx.hum,   dmcFxH.hum,   accuFxH.hum,   observed.hum),
+      wind:  pick(pageFx.wind,  dmcFxH.wind,  accuFxH.wind,  accuFxD.wind,  dmcFxD.windMax, observed.wind),
+      gust:  pick(pageFx.gust,  dmcFxH.gust,  accuFxH.gust,  accuFxD.gust,  dmcFxD.gustMax, observed.gust),
+      dir:   pick(pageFx.dir,   dmcFxH.dir,   accuFxH.dir,   observed.dir),
+      precip:pick(pageFx.precip,dmcFxH.precip,accuFxH.precip,0),
       cloud: pick(pageFx.cloud, dmcFxH.cloud, accuFxH.cloud, observed.cloud),
-      vis: pick(pageFx.vis, dmcFxH.vis, accuFxH.vis, observed.vis),
-      code: pick(pageFx.code, dmcFxH.code, accuFxH.code, accuFxD.code, observed.code),
+      vis:   pick(pageFx.vis,   dmcFxH.vis,   accuFxH.vis,   observed.vis),
+      code:  pick(pageFx.code,  dmcFxH.code,  accuFxH.code,  accuFxD.code,  observed.code),
       condition: pick(accuFxH.condition, accuFxD.condition, weatherText(pick(pageFx.code,dmcFxH.code,accuFxH.code), pick(pageFx.cloud,dmcFxH.cloud,accuFxH.cloud), pick(pageFx.hum,dmcFxH.hum,accuFxH.hum), pick(pageFx.precip,dmcFxH.precip,accuFxH.precip)))
     };
-    const tmin = pick(pageFx.tmin, dmcFxD.tmin, accuFxD.tmin);
-    const tmax = pick(pageFx.tmax, dmcFxD.tmax, accuFxD.tmax);
-    const _rawSt = obs.station;
-    const station = cleanText((_rawSt && _rawSt !== 'Estación DMC más cercana' ? _rawSt : null) || (window.__dmcCurrentData && (window.__dmcCurrentData.station_name || window.__dmcCurrentData.station)) || txt('valDmcStation') || txt('lblCity') || byId('cityInput')?.value || 'Estación oficial DMC');
-    const obsWx = upperFirst(weatherText(observed.code, observed.cloud, observed.hum, observed.precip));
-    const fxWx = String(pick(forecast.condition, weatherText(forecast.code, forecast.cloud, forecast.hum, forecast.precip), 'condiciones variables')).toLowerCase();
+    const tmin    = pick(pageFx.tmin, dmcFxD.tmin, accuFxD.tmin);
+    const tmax    = pick(pageFx.tmax, dmcFxD.tmax, accuFxD.tmax);
+    const windMax = pick(dmcFxD.windMax, accuFxD.wind,  forecast.wind);
+    const gustMax = pick(dmcFxD.gustMax, accuFxD.gust,  forecast.gust);
+
+    const _rawSt  = obs.station;
+    const _stRaw=(_rawSt&&_rawSt!=='Estación DMC más cercana'?_rawSt:null)||(window.__dmcCurrentData&&(window.__dmcCurrentData.station_name||window.__dmcCurrentData.station))||txt('valDmcStation')||txt('lblCity')||byId('cityInput')?.value||'Estación oficial DMC';
+    const station = cleanText(fixMojibake(_stRaw));
+    const obsWx   = upperFirst(weatherText(observed.code, observed.cloud, observed.hum, observed.precip));
+    const fxWx    = String(pick(forecast.condition, weatherText(forecast.code,forecast.cloud,forecast.hum,forecast.precip),'condiciones variables')).toLowerCase();
+
+    // ── Helpers para tramos horarios ──
+    function getTramoAvg(h0, h1){
+      const H    = (bundle.dmcForecast||bundle.dmc||{})?.hourly || {};
+      const times= Array.isArray(H.time)?H.time:[];
+      const keys = ['temperature_2m','wind_speed_10m','wind_gusts_10m','cloud_cover','precipitation','visibility'];
+      const sums = {}, counts = {};
+      times.forEach((t,i)=>{
+        const s=String(t||'');
+        if(s.slice(0,10)!==iso) return;
+        const h=Number(s.slice(11,13));
+        if(h<h0||h>=h1) return;
+        keys.forEach(k=>{ const arr=H[k]; const v=Array.isArray(arr)?num(arr[i]):null; if(v!==null){ sums[k]=(sums[k]||0)+v; counts[k]=(counts[k]||0)+1; } });
+      });
+      const avg={};
+      keys.forEach(k=>{ avg[k]=counts[k]?sums[k]/counts[k]:null; });
+      if(avg.temperature_2m===null&&(tmin!==null||tmax!==null)){
+        const mh=(h0+h1)/2;
+        avg.temperature_2m=estimateTempFromDaily(tmin,tmax,String(Math.round(mh)).padStart(2,'0')+':00');
+      }
+      if(avg.wind_speed_10m===null) avg.wind_speed_10m=windMax;
+      if(avg.wind_gusts_10m===null) avg.wind_gusts_10m=gustMax;
+      return avg;
+    }
+    function tramoRow(label, d){
+      const T  = d&&d.temperature_2m!==null ? fmt1(d.temperature_2m,'°C')  : '—';
+      const V  = d&&d.wind_speed_10m!==null ? fmt0(d.wind_speed_10m,' km/h'): '—';
+      const R  = d&&d.wind_gusts_10m!==null ? fmt0(d.wind_gusts_10m,' km/h'): '—';
+      const N  = d&&d.cloud_cover!==null    ? fmt0(d.cloud_cover,'%')       : '—';
+      const Pp = d&&d.precipitation!==null  ? fmt1(d.precipitation,' mm')   : '0,0 mm';
+      const wD = d&&d.wind_speed_10m!==null ? (d.wind_speed_10m<10?'débil':d.wind_speed_10m<25?'mod':'fuerte') : '';
+      const nD = d&&d.cloud_cover!==null    ? (d.cloud_cover<20?'despej':d.cloud_cover<50?'parcial':d.cloud_cover<80?'nublado':'cubierto') : '—';
+      // Formato compacto de 2 líneas: encabezado + datos
+      return [
+        `▸ ${label}`,
+        `  T:${T}  V:${V}${wD?' ('+wD+')':''}  R:${R}  Nub:${nD}  Pp:${Pp}`
+      ].join('\n');
+    }
+
+    // ── Análisis de riesgo y tendencia ──
+    const gustN = num(forecast.gust); const windN = num(forecast.wind);
+    const precipN = num(forecast.precip); const visN = num(forecast.vis);
+    function buildRiskLabel(wN,gN,pN,vN,clN){
+      const reasons=[];
+      let level='BAJO';
+      if(pN!==null&&pN>5)   { level='ALTO';        reasons.push('precipitación intensa'); }
+      if(gN!==null&&gN>=50) { level='ALTO';        reasons.push(`rachas ${Math.round(gN)} km/h`); }
+      if(wN!==null&&wN>=45) { level=level==='BAJO'?'MODERADO-ALTO':level; reasons.push(`viento sostenido ${Math.round(wN)} km/h`); }
+      if(vN!==null&&vN<=1000){ level=level==='BAJO'?'ALTO':level; reasons.push('visibilidad muy reducida'); }
+      if(gN!==null&&gN>=37&&gN<50) { if(level==='BAJO') level='MODERADO-ALTO'; reasons.push(`rachas ${Math.round(gN)} km/h`); }
+      if(pN!==null&&pN>1&&pN<=5)   { if(level==='BAJO') level='MODERADO'; reasons.push('precipitación moderada'); }
+      if(wN!==null&&wN>=30&&wN<45) { if(level==='BAJO') level='MODERADO'; reasons.push(`viento ${Math.round(wN)} km/h`); }
+      if(vN!==null&&vN>1000&&vN<=3000){ if(level==='BAJO') level='MODERADO'; reasons.push('visibilidad limitada'); }
+      if(clN!==null&&clN>85&&level==='BAJO') reasons.push('cobertura nubosa elevada');
+      if(!reasons.length) reasons.push('viento débil, visibilidad adecuada, sin precipitación');
+      return `${level} — ${reasons.join(', ')}`;
+    }
+    const riskLbl = buildRiskLabel(gustN, windN, precipN, visN, num(forecast.cloud));
+    const obsWind = num(observed.wind);
+    const tendLbl = (windN!==null&&obsWind!==null) ? (windN>obsWind+5?'Viento en aumento respecto al observado':windN<obsWind-5?'Viento en descenso respecto al observado':'Estable respecto al observado') : 'Sin datos suficientes para evaluar tendencia';
+    const hSel = Number(String(hhmm||'08:00').slice(0,2));
+    const ventanaLbl = hSel>=0&&hSel<6?'Madrugada: condiciones habitualmente más calmas, menor convección':hSel>=6&&hSel<10?'Mañana temprana (06–10 hrs): tramo usualmente más estable del día':hSel>=10&&hSel<13?'Media mañana: aumento de inestabilidad térmica, evaluar evolución':hSel>=13&&hSel<18?'Tarde: posible repunte de viento, priorizar actividades matutinas':'Noche: menor actividad convectiva, seguimiento preventivo';
+
+    // ── Alertas vigentes ──
+    function alertasBlock(){
+      // 1. Obtener pool de alertas desde estado global o DOM
+      var pool=(Array.isArray(window.__alertsState&&window.__alertsState.items)&&window.__alertsState.items.length)
+        ? window.__alertsState.items
+        : Array.from(document.querySelectorAll('#alertsList .alert-item')).map(function(el){
+            return {
+              titulo:(el.querySelector('.alert-title')&&el.querySelector('.alert-title').textContent.trim())||'ALERTA',
+              contenido:el.textContent&&el.textContent.trim()||''
+            };
+          });
+      if(!pool.length) return ['  Sin alertas vigentes identificadas en el sistema.'];
+
+      // 2. Coordenadas del punto seleccionado
+      var ptLat=NaN, ptLon=NaN;
+      try{
+        if(typeof parseDMS==='function'){
+          ptLat=parseDMS((byId('latDms')&&byId('latDms').value)||'','lat');
+          ptLon=parseDMS((byId('lonDms')&&byId('lonDms').value)||'','lon');
+        }
+        if(!isFinite(ptLat)){ ptLat=window.lastLat||NaN; ptLon=window.lastLon||NaN; }
+      }catch(_e){}
+
+      // 3. Decodificador de entidades HTML
+      function dec(s){
+        return String(s||'').replace(/&([a-zA-Z]+);/g,function(m,e){
+          return {eacute:'é',iacute:'í',oacute:'ó',aacute:'á',uacute:'ú',ntilde:'ñ',
+                  Eacute:'É',Iacute:'Í',Oacute:'Ó',Aacute:'Á',Uacute:'Ú',Ntilde:'Ñ',
+                  amp:'&',lt:'<',gt:'>',nbsp:' '}[e]||m;
+        });
+      }
+
+      // 4. Quitar tildes para comparación
+      function sa(s){
+        return String(s||'').toLowerCase()
+          .replace(/[áàäâ]/g,'a').replace(/[éèëê]/g,'e').replace(/[íìïî]/g,'i')
+          .replace(/[óòöô]/g,'o').replace(/[úùüû]/g,'u').replace(/[ñ]/g,'n');
+      }
+
+      // 5. Haversine
+      function hav(la1,lo1,la2,lo2){
+        var R=6371,dL=(la2-la1)*Math.PI/180,dO=(lo2-lo1)*Math.PI/180;
+        var a=Math.sin(dL/2)*Math.sin(dL/2)+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dO/2)*Math.sin(dO/2);
+        return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+      }
+
+      // 6. Mapa de regiones chilenas
+      var REGS=[
+        {n:'arica',lat:-18.5,lon:-70.3},{n:'parinacota',lat:-18.5,lon:-70.3},
+        {n:'tarapaca',lat:-20.2,lon:-69.3},{n:'iquique',lat:-20.2,lon:-70.1},
+        {n:'antofagasta',lat:-23.7,lon:-70.4},{n:'atacama',lat:-27.4,lon:-70.3},
+        {n:'coquimbo',lat:-30.0,lon:-71.3},{n:'valparaiso',lat:-33.0,lon:-71.6},
+        {n:'metropolitana',lat:-33.5,lon:-70.7},{n:'ohiggins',lat:-34.5,lon:-71.0},
+        {n:'maule',lat:-35.8,lon:-71.7},{n:'nuble',lat:-36.8,lon:-72.0},
+        {n:'biobio',lat:-37.5,lon:-72.0},{n:'araucania',lat:-39.0,lon:-72.5},
+        {n:'los rios',lat:-40.3,lon:-72.8},{n:'los lagos',lat:-42.5,lon:-73.5},
+        {n:'aysen',lat:-46.0,lon:-73.0},{n:'magallanes',lat:-52.0,lon:-72.0},
+        {n:'pascua',lat:-27.1,lon:-109.4}
+      ];
+
+      // 7. Clasificar alerta según texto y distancia al punto
+      function classify(rawText){
+        var t=sa(rawText);
+        var minD=Infinity, minR=null;
+        for(var i=0;i<REGS.length;i++){
+          var r=REGS[i];
+          if(t.indexOf(sa(r.n))>=0){
+            if(isFinite(ptLat)){
+              var d=hav(ptLat,ptLon,r.lat,r.lon);
+              if(d<minD){minD=d;minR=r;}
+            } else {minD=0;minR=r;}
+          }
+        }
+        if(!minR) return {cat:'REGIONAL / REFERENCIAL',km:null};
+        if(minD<=80)  return {cat:'DIRECTA',km:Math.round(minD)};
+        if(minD<=400) return {cat:'CERCANA',km:Math.round(minD)};
+        if(minD<=800) return {cat:'REGIONAL / REFERENCIAL',km:Math.round(minD)};
+        return null; // muy lejos — omitir
+      }
+
+      // 8. Procesar cada alerta
+      var out=[];
+      for(var i=0;i<pool.length;i++){
+        var it=pool[i];
+        var title=dec(it.titulo||it.title||'ALERTA').trim();
+        var body =dec(it.contenido||it.descripcion||'');
+        var cl=null;
+        try{
+          if(typeof alertMatchesPoint==='function'&&isFinite(ptLat)&&alertMatchesPoint(it,{lat:ptLat,lon:ptLon}))
+            cl={cat:'DIRECTA',km:0};
+        }catch(_e){}
+        if(!cl) cl=classify(title+' '+body);
+        if(!cl) continue; // omitir alertas muy lejanas
+        var kmStr=cl.km&&cl.km>0?' (~'+cl.km+' km)':'';
+        out.push({cat:cl.cat,km:cl.km||9999,line:'  ['+cl.cat+kmStr+'] '+title});
+      }
+      if(!out.length) return ['  Sin alertas relevantes para la ubicación seleccionada.'];
+      var ord={'DIRECTA':0,'CERCANA':1,'REGIONAL / REFERENCIAL':2};
+      out.sort(function(a,b){return (ord[a.cat]||3)-(ord[b.cat]||3)||a.km-b.km;});
+      return out.slice(0,5).map(function(x){return x.line;});
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  COMPOSICIÓN DEL BOLETÍN RÁPIDO
+    // ══════════════════════════════════════════════════════════
     const lines=[];
     lines.push(longDateEs(iso, hhmm));
     lines.push('Fuente: Dirección Meteorológica de Chile (DMC).');
     lines.push('Complemento de variables faltantes: AccuWeather.');
+
+    // ── 1. RESUMEN DMC ESTRUCTURADO ──
     lines.push('');
-    lines.push(`Se observa en ${station}:`);
-    const obsParts=[]; if(observed.temp!==null) obsParts.push(`Temperatura: ${fmt1(observed.temp,'°C')}`); if(observed.hum!==null) obsParts.push(`Humedad relativa: ${fmt1(observed.hum,'%')}`); if(observed.wind!==null) obsParts.push(`Viento: ${fmt0(observed.wind,' km/h')}`); if(observed.gust!==null && (observed.wind===null || observed.gust>=observed.wind)) obsParts.push(`Racha: ${fmt0(observed.gust,' km/h')}`); if(observed.dir!==null && observed.dir!==0) obsParts.push(`Dirección: ${dirText(observed.dir)}`); if(observed.cloud!==null) obsParts.push(`Nubosidad: ${fmt0(observed.cloud,' %')}`); if(observed.precip!==null) obsParts.push(`Precipitación: ${fmt1(observed.precip,' mm')}`); if(observed.vis!==null) obsParts.push(`Visibilidad: ${fmt1((observed.vis>=1000?observed.vis/1000:observed.vis),' km')}`); if(observed.pres!==null) obsParts.push(`Presión: ${fmt1(observed.pres,' hPa')}`);
-    lines.push(`• ${station}. Último dato oficial disponible: ${obs.hora || 'N/D'}.${obsParts.length ? ' ' + obsParts.join(' | ') : ''}`);
+    lines.push('══ RESUMEN DMC ════════════════════════════════════');
+    lines.push(`  Estación           : ${station}`);
+    (function(){
+      const obsH   = obs.hora && obs.hora!=='N/D' ? Number(String(obs.hora).slice(0,2)) : NaN;
+      const selH   = Number(String(hhmm||'08:00').slice(0,2));
+      let horaLbl  = obs.hora||'N/D';
+      if(Number.isFinite(obsH)&&Number.isFinite(selH)){
+        if(obsH > selH+1)
+          horaLbl += ` (dato posterior al tramo seleccionado ${hhmm} — zona horaria o latencia API)`;
+        else if(obsH < selH-3)
+          horaLbl += ` (dato previo al tramo seleccionado — última obs. disponible)`;
+      }
+      lines.push(`  Último dato oficial: ${horaLbl}`);
+    })();
+    lines.push(`  Condición actual   : ${obsWx}`);
+    lines.push(`  Condición prevista : ${upperFirst(fxWx)}`);
+    lines.push(`  Riesgo principal   : ${riskLbl}`);
+    lines.push(`  Tendencia          : ${tendLbl}`);
+    lines.push(`  Ventana favorable  : ${ventanaLbl}`);
+
+    // ── 2. OBSERVADO OFICIAL ──
     lines.push('');
+    lines.push('── OBSERVADO OFICIAL ──────────────────────────────');
+    const obsParts=[];
+    if(observed.temp!==null) obsParts.push(`Temperatura: ${fmt1(observed.temp,'°C')}`);
+    if(observed.hum!==null) obsParts.push(`HR: ${fmt1(observed.hum,'%')}`);
+    if(observed.wind!==null) obsParts.push(`Viento: ${fmt0(observed.wind,' km/h')}`);
+    if(observed.gust!==null&&(observed.wind===null||observed.gust>=observed.wind)) obsParts.push(`Racha: ${fmt0(observed.gust,' km/h')}`);
+    if(observed.dir!==null&&observed.dir!==0) obsParts.push(`Dir: ${dirText(observed.dir)}`);
+    if(observed.cloud!==null) obsParts.push(`Nubosidad: ${fmt0(observed.cloud,' %')}`);
+    if(observed.precip!==null) obsParts.push(`Pp: ${fmt1(observed.precip,' mm')}`);
+    if(observed.vis!==null) obsParts.push(`Vis: ${fmt1((observed.vis>=1000?observed.vis/1000:observed.vis),' km')}`);
+    if(observed.pres!==null) obsParts.push(`Presión: ${fmt1(observed.pres,' hPa')}`);
+    lines.push(`• ${station} — ${obs.hora||'N/D'}`);
+    lines.push(obsParts.length?'  '+obsParts.join(' | '):'  Variables no disponibles en este momento.');
+
+    // ── 3. VARIABLES EXTREMAS DEL DÍA ──
+    lines.push('');
+    lines.push('── EXTREMOS DEL DÍA ───────────────────────────────');
+    if(tmin!==null)    lines.push(`  T mínima prevista  : ${fmt0(tmin,'°C')}   (probable ~05:00–07:00 hrs)`);
+    if(tmax!==null)    lines.push(`  T máxima prevista  : ${fmt0(tmax,'°C')}   (probable ~13:00–15:00 hrs)`);
+    if(windMax!==null) lines.push(`  Viento máx previsto: ${fmt0(windMax,' km/h')} (probable ~13:00–17:00 hrs)`);
+    if(gustMax!==null) lines.push(`  Racha máx prevista : ${fmt0(gustMax,' km/h')} (probable ~13:00–17:00 hrs)`);
+    if(tmin===null&&tmax===null&&windMax===null) lines.push(`  Sin datos de extremos diarios disponibles para ${iso}.`);
+
+    // ── 4. PRONÓSTICO POR TRAMO ──
+    lines.push('');
+    lines.push('── PRONÓSTICO HORARIO POR TRAMO ───────────────────');
+    lines.push('  Tramo · T°C · Viento · Racha · Nubosidad · Precip.');
+    [['Madrugada',0,6],['Mañana',6,12],['Tarde',12,18],['Noche',18,24]].forEach(([lbl,h0,h1])=>{
+      lines.push(tramoRow(lbl, getTramoAvg(h0,h1)));
+    });
+
+    // ── 5. PREVISTO PARA HORA SELECCIONADA ──
+    lines.push('');
+    lines.push(`── HORA SELECCIONADA: ${hhmm} HRS ────────────────────`);
     lines.push('Situación Meteorológica:');
-    let sit=`Para el periodo evaluado se prevé ${fxWx || 'un comportamiento atmosférico variable'}`;
-    if(tmin!==null || tmax!==null) sit += `, con temperaturas entre ${fmt0(tmin,'°C')} y ${fmt0(tmax,'°C')}`;
-    if(forecast.wind!==null) sit += ` y viento ${num(forecast.wind)<10?'débil':num(forecast.wind)<25?'moderado':'sensible'} del orden de ${fmt0(forecast.wind,' km/h')}`;
-    if(forecast.gust!==null && (forecast.wind===null || forecast.gust>=forecast.wind)) sit += `, con rachas de hasta ${fmt0(forecast.gust,' km/h')}`;
-    lines.push(sit + '.');
+    let sit=`Para el periodo evaluado se prevé ${fxWx||'un comportamiento atmosférico variable'}`;
+    if(tmin!==null||tmax!==null) sit+=`, con temperaturas entre ${fmt0(tmin,'°C')} y ${fmt0(tmax,'°C')}`;
+    if(forecast.wind!==null) sit+=` y viento ${num(forecast.wind)<10?'débil':num(forecast.wind)<25?'moderado':'sensible'} del orden de ${fmt0(forecast.wind,' km/h')}`;
+    if(forecast.gust!==null&&(forecast.wind===null||forecast.gust>=forecast.wind)) sit+=`, con rachas de hasta ${fmt0(forecast.gust,' km/h')}`;
+    lines.push(sit+'.');
     if(forecast.precip!==null) lines.push(`La precipitación estimada para el periodo evaluado es de ${fmt1(forecast.precip,' mm')}.`);
+    const hv=[];
+    if(forecast.temp!==null)  hv.push(`• Temperatura: ${fmt1(forecast.temp,'°C')}`);
+    if(forecast.hum!==null)   hv.push(`• HR: ${fmt1(forecast.hum,'%')}`);
+    if(forecast.wind!==null)  hv.push(`• Viento: ${fmt0(forecast.wind,' km/h')}`);
+    if(forecast.gust!==null&&(forecast.wind===null||forecast.gust>=forecast.wind)) hv.push(`• Racha: ${fmt0(forecast.gust,' km/h')}`);
+    if(forecast.dir!==null&&forecast.dir!==0) hv.push(`• Dirección: ${dirText(forecast.dir)}`);
+    if(forecast.cloud!==null) hv.push(`• Nubosidad: ${fmt0(forecast.cloud,' %')}`);
+    if(forecast.precip!==null)hv.push(`• Precipitación: ${fmt1(forecast.precip,' mm/h')}`);
+    if(forecast.vis!==null)   hv.push(`• Visibilidad: ${fmt1((forecast.vis>=1000?forecast.vis/1000:forecast.vis),' km')}`);
+    lines.push(hv.length?hv.join('\n'):'• Sin datos horarios suficientes para esa fecha/hora.');
+
+    // ── 6. RESUMEN OPERACIONAL POR TICKET ──
     lines.push('');
-    lines.push('Variables previstas para la hora seleccionada:');
-    const hv=[]; if(forecast.temp!==null) hv.push(`• Temperatura: ${fmt1(forecast.temp,'°C')}`); if(forecast.hum!==null) hv.push(`• Humedad relativa: ${fmt1(forecast.hum,'%')}`); if(forecast.wind!==null) hv.push(`• Viento: ${fmt0(forecast.wind,' km/h')}`); if(forecast.gust!==null && (forecast.wind===null || forecast.gust>=forecast.wind)) hv.push(`• Racha: ${fmt0(forecast.gust,' km/h')}`); if(forecast.dir!==null && forecast.dir!==0) hv.push(`• Dirección: ${dirText(forecast.dir)}`); if(forecast.cloud!==null) hv.push(`• Nubosidad: ${fmt0(forecast.cloud,' %')}`); if(forecast.precip!==null) hv.push(`• Precipitación: ${fmt1(forecast.precip,' mm/h')}`); if(forecast.vis!==null) hv.push(`• Visibilidad: ${fmt1((forecast.vis>=1000?forecast.vis/1000:forecast.vis),' km')}`);
-    lines.push(hv.length?hv.join('\n'):'• Sin datos suficientes para esa fecha/hora.');
-    lines.push('');
+    lines.push('── RESUMEN ────────────────────────────');
     lines.push(buildSummary(selectedTickets(), observed, forecast));
+
+    // ── 7. ALERTAS DMC / SENAPRED ──
     lines.push('');
-    lines.push(`Actualmente predominan condiciones de ${String(obsWx||'condiciones variables').toLowerCase()} en ${station}.`);
-    if(tmin!==null || tmax!==null) lines.push(`En ${station} se estima una mínima de ${fmt0(tmin,'°C')} y una máxima cercana a ${fmt0(tmax,'°C')}.`);
+    lines.push('── ALERTAS DMC / SENAPRED ─────────────────────────');
+    alertasBlock().forEach(a=>lines.push(a));
+
+    // ── CIERRE ──
+    lines.push('');
+    lines.push(`Síntesis meteorológica en ${station}: ${String(obsWx||'escenario variable de baja criticidad').toLowerCase()}.`);
+    if(tmin!==null||tmax!==null) lines.push(`Extremos del día: mínima ${fmt0(tmin,'°C')} / máxima ${fmt0(tmax,'°C')} (estimación DMC/AccuWeather).`);
     return lines.join('\n');
   }
   async function generateUpdatedQuick(ev){
     if(ev){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); }
-    const iso = normalizeIso((byId('finalQuickDate')||byId('bulletinQuickDate')||byId('oaiBulletinDate'))?.value || todayIso());
-    const hhmm = (byId('finalQuickTime')||byId('bulletinQuickTime')||byId('oaiBulletinTime'))?.value || hmNow();
+    // oaiBulletinModal es HIJO de finalQuickModal → ambos tienen .show juntos.
+    // Priorizar de más específico a más general.
+    var _iso_val, _hhmm_val;
+    if(byId('oaiBulletinModal')&&byId('oaiBulletinModal').classList.contains('show')){
+      _iso_val  = byId('oaiBulletinDate')&&byId('oaiBulletinDate').value;
+      _hhmm_val = byId('oaiBulletinTime')&&byId('oaiBulletinTime').value;
+    } else if(byId('bulletinQuickModal')&&byId('bulletinQuickModal').classList.contains('show')){
+      _iso_val  = byId('bulletinQuickDate')&&byId('bulletinQuickDate').value;
+      _hhmm_val = byId('bulletinQuickTime')&&byId('bulletinQuickTime').value;
+    } else {
+      // finalQuickModal — ignorar el value="08:00" hardcodeado si no fue editado
+      var _fqt = byId('finalQuickTime');
+      var _fqd = byId('finalQuickDate');
+      _iso_val  = _fqd&&_fqd.value;
+      // Si el valor es exactamente 08:00 (hardcodeado), preferir hora actual
+      _hhmm_val = (_fqt&&_fqt.value&&_fqt.value!=='08:00') ? _fqt.value : null;
+    }
+    const iso  = normalizeIso(_iso_val || todayIso());
+    const hhmm = _hhmm_val || hmNow();
     const area = byId('finalQuickText') || byId('quickBulletinText') || byId('oaiBulletinText');
     if(area) area.value = 'Generando boletín...';
     try{
@@ -14196,7 +14554,92 @@ async function robustGenerate(ev){
   function validHttp(u){ return /^https?:\/\//i.test(String(u||'').trim()); }
   function sanitizeAlertLinks(root){ (root||document).querySelectorAll('.alert-link').forEach(el=>{ const oc=el.getAttribute('onclick')||''; const m=oc.match(/window\.open\(['\"]([^'\"]+)/i); const href=el.getAttribute('href')|| (m?m[1]:''); if(!validHttp(href)){ el.remove(); } }); }
   function observeLinks(){ sanitizeAlertLinks(document); const target=byId('alertsList')||document.body; const mo=new MutationObserver(muts=>{ muts.forEach(m=>m.addedNodes.forEach(n=>{ if(n.nodeType===1) sanitizeAlertLinks(n); })); }); mo.observe(target,{childList:true,subtree:true}); }
+  // Exponer para el script de anclaje final
+  window.__quickBuildText = buildQuickText;
+  window.__ensureBundlesFresh = ensureBundlesFresh;
+  window.__generateUpdatedQuick = generateUpdatedQuick;
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', function(){ bindQuick(); observeLinks(); }); else { bindQuick(); observeLinks(); }
+})();
+</script>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     ANCLAJE DEFINITIVO DEL BOLETÍN RÁPIDO ESTRUCTURADO
+     Garantiza que la versión mejorada se imponga sobre todos los
+     listeners y timers previos, sin tocar nada fuera del boletín.
+═════════════════════════════════════════════════════════════════ -->
+<script id="quick-bulletin-final-anchor">
+(function(){
+  var BTNS    = ['finalQuickGenerate','bulletinQuickGenerate','oaiBulletinGenerate'];
+  var OUTPUTS = ['finalQuickText','quickBulletinText','oaiBulletinText'];
+
+  /* ── Función maestra de generación ─────────────────────────── */
+  async function masterGenerate(ev){
+    if(ev){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); }
+    var d   = document;
+    var isoRaw = (d.getElementById('finalQuickDate')||d.getElementById('bulletinQuickDate')||d.getElementById('oaiBulletinDate'))?.value;
+    // Leer hora del modal ACTIVO — oaiBulletinModal tiene prioridad si está visible
+    var _oaiM = d.getElementById('oaiBulletinModal');
+    var _oaiOpen = _oaiM && _oaiM.classList.contains('show');
+    var _tEl = _oaiOpen
+      ? d.getElementById('oaiBulletinTime')
+      : (d.getElementById('finalQuickTime') || d.getElementById('bulletinQuickTime') || d.getElementById('oaiBulletinTime'));
+    var _isoEl = _oaiOpen
+      ? d.getElementById('oaiBulletinDate')
+      : (d.getElementById('finalQuickDate') || d.getElementById('bulletinQuickDate') || d.getElementById('oaiBulletinDate'));
+    if(_isoEl && _isoEl.value) isoRaw = _isoEl.value;
+    var hhmm = (_tEl && _tEl.value) || (new Date().toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit',hour12:false}));
+    var iso = isoRaw || (new Date().toISOString().slice(0,10));
+    var m = String(iso).match(/^(\d{2})-(\d{2})-(\d{4})$/);
+    if(m) iso = m[3]+'-'+m[2]+'-'+m[1];
+
+    OUTPUTS.forEach(function(id){ var el=d.getElementById(id); if(el) el.value='Generando boletín estructurado...'; });
+
+    try{
+      var bundle = (typeof window.__ensureBundlesFresh==='function') ? await window.__ensureBundlesFresh() : (window.__dmcCurrentData ? {dmc:window.__dmcCurrentData} : {});
+      var txt = (typeof window.__quickBuildText==='function') ? window.__quickBuildText(bundle, iso, hhmm) : null;
+      if(!txt) txt = 'No se pudo generar el boletín con datos DMC/AccuWeather.';
+      OUTPUTS.forEach(function(id){ var el=d.getElementById(id); if(el) el.value=txt; });
+      d.getElementById('finalQuickOut')?.classList.add('show');
+      d.getElementById('quickBulletinWrap')?.classList.add('show');
+    }catch(err){
+      console.error('[Boletín rápido]', err);
+      OUTPUTS.forEach(function(id){ var el=d.getElementById(id); if(el && el.value.indexOf('Generando')===0) el.value='No se pudo generar el boletín con datos DMC/AccuWeather.'; });
+    }
+    return false;
+  }
+
+  /* ── Interceptor captura en documento (corre tras todos los previos) ─ */
+  // stopPropagation en handlers anteriores NO detiene handlers en el
+  // mismo nodo; este listener también ejecuta y sobreescribe el textarea.
+  document.addEventListener('click', function(ev){
+    var id = ev.target && ev.target.id;
+    if(BTNS.indexOf(id) >= 0){
+      ev.preventDefault();
+      ev.stopPropagation();
+      masterGenerate(ev);
+    }
+  }, true);
+
+  /* ── Re-vinculación a 1200ms (supera el timer de 900ms existente) ─── */
+  function rebindAll(){
+    BTNS.forEach(function(id){
+      var old = document.getElementById(id);
+      if(!old || !old.parentNode) return;
+      var neo = old.cloneNode(true);
+      old.parentNode.replaceChild(neo, old);
+      neo.addEventListener('click', masterGenerate, true);
+      neo.onclick = masterGenerate;
+    });
+    window.generateQuickBulletin       = masterGenerate;
+    window.robustGenerateQuickBulletin = masterGenerate;
+    window.__generateUpdatedQuick      = masterGenerate;
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', function(){ setTimeout(rebindAll, 1200); });
+  } else {
+    setTimeout(rebindAll, 1200);
+  }
 })();
 </script>
 
