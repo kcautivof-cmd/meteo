@@ -3543,6 +3543,25 @@ input, select {
 }
 </style>
 
+<script>
+/* UTC→America/Santiago helper for DMC observation times */
+window.__dmcTimeLocal = function(raw) {
+  if (!raw) return null;
+  var s = String(raw).trim();
+  // Already HH:MM or HH:MMh format (local) — return normalised
+  if (/^\d{1,2}:\d{2}(h\.?)?$/.test(s)) return s.replace(/h\.?$/, '') + 'h';
+  // Force UTC: if no timezone indicator (Z or +HH:MM), append Z
+  var utc = s;
+  if (!/[Zz]|[+-]\d{2}:?\d{2}$/.test(s)) utc = s.replace(' ', 'T') + 'Z';
+  var d = new Date(utc);
+  if (isNaN(d.getTime())) return s.slice(11,16) || s;
+  try {
+    return d.toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit', hour12:false, timeZone:'America/Santiago'}) + 'h';
+  } catch(e) {
+    return ('0'+d.getUTCHours()).slice(-2) + ':' + ('0'+d.getUTCMinutes()).slice(-2) + 'h';
+  }
+};
+</script>
 </head>
 <body>
 
@@ -7373,9 +7392,8 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
                 );
                 let hora='--';
                 if(summ.latest_time){
-                    const dt = new Date(String(summ.latest_time).replace(' ','T'));
-                    if(!isNaN(dt.getTime())) hora = String(dt.getHours()).padStart(2,'0')+':'+String(dt.getMinutes()).padStart(2,'0')+'h';
-                    else hora = String(summ.latest_time).slice(11,16) || '--';
+                    const _hLocal = window.__dmcTimeLocal(summ.latest_time);
+                    if(_hLocal) hora = _hLocal.replace(/h$/,'')+'h';
                 }
                 return { stationName, hora, obsTemp, obsWind, obsGust, obsHum, obsPres, obsPrecip, current: cur, today };
             }catch(_e){
@@ -9706,8 +9724,8 @@ async function _uDMAW(lat,lon){
   // Hora del dato observado
   let horaObs='';
   if(summ.latest_time){
-    const d=new Date(String(summ.latest_time).replace(' ','T'));
-    if(!isNaN(d.getTime())) horaObs=' · Obs '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+'h';
+    const _hl1=window.__dmcTimeLocal(summ.latest_time);
+    if(_hl1) horaObs=' · Obs '+_hl1;
   }
 
   // Datos extra de estación para nota (humedad, presión, rocío)
@@ -9774,8 +9792,8 @@ async function _uDMCObs(lat,lon){
   // Hora del dato
   let horaObs='—';
   if(summ.latest_time){
-    const d=new Date(String(summ.latest_time).replace(' ','T'));
-    if(!isNaN(d.getTime())) horaObs=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+'h';
+    const _hl2=window.__dmcTimeLocal(summ.latest_time);
+    if(_hl2) horaObs=_hl2;
   }
 
   return{
@@ -11362,7 +11380,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const station = String(obs.stationName || pack?.official_station?.nombre || pack?.official_station?.name || byId('lblCity')?.textContent || 'Estación DMC más cercana').trim();
     const horaObs = obs.hora && obs.hora !== '--'
       ? String(obs.hora).replace(/\s+/g,'')
-      : (pack?.official_recent_summary?.latest_time ? String(pack.official_recent_summary.latest_time).slice(11,16)+'h' : 'N/D');
+      : (pack?.official_recent_summary?.latest_time ? window.__dmcTimeLocal(pack.official_recent_summary.latest_time) : 'N/D');
 
     const obsTemp = choose(n(obs.obsTemp), n(pack?.current?.temperature_2m), n(pack?.current?.temp_c));
     const obsHum = choose(n(obs.obsHum), n(pack?.current?.relative_humidity_2m), n(pack?.current?.humidity));
@@ -11697,7 +11715,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const station = String(obs.stationName || pack?.official_station?.nombre || pack?.official_station?.name || byId('lblCity')?.textContent || 'Estación DMC más cercana').trim();
     const horaObs = obs.hora && obs.hora !== '--'
       ? String(obs.hora).replace(/\s+/g,'')
-      : (pack?.official_recent_summary?.latest_time ? String(pack.official_recent_summary.latest_time).slice(11,16)+'h' : 'N/D');
+      : (pack?.official_recent_summary?.latest_time ? window.__dmcTimeLocal(pack.official_recent_summary.latest_time) : 'N/D');
 
     const obsTemp = choose(n(obs.obsTemp), n(pack?.current?.temperature_2m), n(pack?.current?.temp_c));
     const obsHum = choose(n(obs.obsHum), n(pack?.current?.relative_humidity_2m), n(pack?.current?.humidity));
@@ -12167,7 +12185,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const latest = pack?.official_recent_summary?.latest || pack?.official_recent_summary || {};
     return {
       stationName: latest.station_name || pack?.official_station?.nombre || pack?.official_station?.name || '',
-      hora: latest.time_local || latest.hour_local || (latest.time ? String(latest.time).slice(11,16)+'h' : '--'),
+      hora: latest.time_local || latest.hour_local || (latest.time ? window.__dmcTimeLocal(latest.time) : '--'),
       obsTemp: choose(n(latest.temperature_2m), n(latest.temp_c)),
       obsHum: choose(n(latest.relative_humidity_2m), n(latest.humidity)),
       obsWind: choose(n(latest.wind_speed_10m), n(latest.wind_kmh)),
@@ -12384,7 +12402,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const station = latest.station_name || pack?.official_station?.nombre || pack?.official_station?.name || byId('valDmcStation')?.textContent || 'Estación DMC más cercana';
     const out = {
       station: String(station).trim(),
-      hora: latest.time_local || latest.hour_local || latest.hora_local || (latest.time ? String(latest.time).slice(11,16)+'h' : (byId('valDmcHora')?.textContent || 'N/D')),
+      hora: latest.time_local || latest.hour_local || latest.hora_local || (latest.time ? window.__dmcTimeLocal(latest.time) : (byId('valDmcHora')?.textContent || 'N/D')),
       temp: Number.isFinite(num(latest.temperature_2m)) ? num(latest.temperature_2m) : num(latest.temp_c),
       hum: Number.isFinite(num(latest.relative_humidity_2m)) ? num(latest.relative_humidity_2m) : num(latest.humidity),
       wind: Number.isFinite(num(latest.wind_speed_10m)) ? num(latest.wind_speed_10m) : num(latest.wind_kmh),
@@ -12521,7 +12539,7 @@ async function robustGenerate(ev){
   function dirText(v){ if(!Number.isFinite(v)) return 'N/D'; const dirs=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSO','SO','OSO','O','ONO','NO','NNO']; return `${Math.round(v)}° (${dirs[Math.round(v/22.5)%16]})`; }
   function parseLatLon(){ try{ let lat=(typeof window.lastLat==='number'&&Number.isFinite(window.lastLat))?window.lastLat:NaN; let lon=(typeof window.lastLon==='number'&&Number.isFinite(window.lastLon))?window.lastLon:NaN; if((!Number.isFinite(lat)||!Number.isFinite(lon))&&typeof window.parseDMS==='function'){ lat=window.parseDMS(byId('latDms')?.value||'','lat'); lon=window.parseDMS(byId('lonDms')?.value||'','lon'); } return {lat,lon}; }catch(_e){ return {lat:NaN,lon:NaN}; } }
   async function ensureDmcPack(){ let p=window.__dmcCurrentData||{}; if(p&&Object.keys(p).length) return p; const {lat,lon}=parseLatLon(); const base=String(window.WORKER_BASE_URL||'').replace(/\/$/,''); if(!Number.isFinite(lat)||!Number.isFinite(lon)||!base) return {}; try{ const r=await fetch(`${base}/dmc/current?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`, {cache:'no-store'}); if(!r.ok) return {}; p=await r.json(); window.__dmcCurrentData=p||{}; return window.__dmcCurrentData; }catch(_e){ return {}; } }
-  function observed(pack){ const latest=pack?.official_recent_summary?.latest||pack?.official_recent_summary||{}; const station=latest.station_name||pack?.official_station?.nombre||pack?.official_station?.name||byId('valDmcStation')?.textContent||'Estación DMC más cercana'; return { station:String(station).trim(), hora:latest.time_local||latest.hour_local||latest.hora_local||(latest.time?String(latest.time).slice(11,16)+'h':(byId('valDmcHora')?.textContent||'N/D')), temp:Number.isFinite(num(latest.temperature_2m))?num(latest.temperature_2m):num(latest.temp_c), hum:Number.isFinite(num(latest.relative_humidity_2m))?num(latest.relative_humidity_2m):num(latest.humidity), wind:Number.isFinite(num(latest.wind_speed_10m))?num(latest.wind_speed_10m):num(latest.wind_kmh), gust:Number.isFinite(num(latest.wind_gusts_10m))?num(latest.wind_gusts_10m):num(latest.gust_kmh), dir:Number.isFinite(num(latest.wind_direction_10m))?num(latest.wind_direction_10m):num(latest.wind_dir_deg), pres:Number.isFinite(num(latest.pressure_msl))?num(latest.pressure_msl):num(latest.surface_pressure), precip:Number.isFinite(num(latest.precipitation))?num(latest.precipitation):num(latest.precip_mm), cloud:Number.isFinite(num(latest.cloud_cover))?num(latest.cloud_cover):num(latest.cloudiness), vis:Number.isFinite(num(latest.visibility))?num(latest.visibility):num(latest.visibility_m), code:latest.weather_code}; }
+  function observed(pack){ const latest=pack?.official_recent_summary?.latest||pack?.official_recent_summary||{}; const station=latest.station_name||pack?.official_station?.nombre||pack?.official_station?.name||byId('valDmcStation')?.textContent||'Estación DMC más cercana'; return { station:String(station).trim(), hora:latest.time_local||latest.hour_local||latest.hora_local||(latest.time?window.__dmcTimeLocal(latest.time):(byId('valDmcHora')?.textContent||'N/D')), temp:Number.isFinite(num(latest.temperature_2m))?num(latest.temperature_2m):num(latest.temp_c), hum:Number.isFinite(num(latest.relative_humidity_2m))?num(latest.relative_humidity_2m):num(latest.humidity), wind:Number.isFinite(num(latest.wind_speed_10m))?num(latest.wind_speed_10m):num(latest.wind_kmh), gust:Number.isFinite(num(latest.wind_gusts_10m))?num(latest.wind_gusts_10m):num(latest.gust_kmh), dir:Number.isFinite(num(latest.wind_direction_10m))?num(latest.wind_direction_10m):num(latest.wind_dir_deg), pres:Number.isFinite(num(latest.pressure_msl))?num(latest.pressure_msl):num(latest.surface_pressure), precip:Number.isFinite(num(latest.precipitation))?num(latest.precipitation):num(latest.precip_mm), cloud:Number.isFinite(num(latest.cloud_cover))?num(latest.cloud_cover):num(latest.cloudiness), vis:Number.isFinite(num(latest.visibility))?num(latest.visibility):num(latest.visibility_m), code:latest.weather_code}; }
   function forecastHourly(pack, iso, hhmm){ const H=pack?.hourly||{}; const times=Array.isArray(H.time)?H.time:[]; const target=Number(String(hhmm||'08:00').slice(0,2)); let best=-1,diff=Infinity; times.forEach((t,i)=>{ const s=String(t||''); if(s.slice(0,10)!==iso) return; const h=Number(s.slice(11,13)); const d=Math.abs(h-target); if(d<diff){diff=d; best=i;} }); if(best<0) return {}; const pick=k=>Array.isArray(H[k])?num(H[k][best]):NaN; return {temp:pick('temperature_2m'), hum:pick('relative_humidity_2m'), wind:pick('wind_speed_10m'), gust:pick('wind_gusts_10m'), dir:pick('wind_direction_10m'), cloud:pick('cloud_cover'), precip:pick('precipitation'), vis:pick('visibility'), code:pick('weather_code')}; }
   function forecastDaily(pack, iso){ const D=pack?.daily||{}; const t=Array.isArray(D.time)?D.time:[]; const i=t.findIndex(x=>String(x).slice(0,10)===String(iso).slice(0,10)); if(i<0) return {}; const pick=k=>Array.isArray(D[k])?num(D[k][i]):NaN; return {tmin:pick('temperature_2m_min'), tmax:pick('temperature_2m_max'), windMax:pick('wind_speed_10m_max'), gustMax:pick('wind_gusts_10m_max'), precip:pick('precipitation_sum')}; }
   function fakeZero(v){ return Number.isFinite(v) && Math.abs(v) < 0.001; }
@@ -12625,7 +12643,7 @@ async function robustGenerate(ev){
   function dirText(v){ if(!Number.isFinite(v)) return 'N/D'; const dirs=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSO','SO','OSO','O','ONO','NO','NNO']; return `${Math.round(v)}° (${dirs[Math.round(v/22.5)%16]})`; }
   function parseLatLon(){ try{ let lat=(typeof window.lastLat==='number'&&Number.isFinite(window.lastLat))?window.lastLat:NaN; let lon=(typeof window.lastLon==='number'&&Number.isFinite(window.lastLon))?window.lastLon:NaN; if((!Number.isFinite(lat)||!Number.isFinite(lon))&&typeof window.parseDMS==='function'){ lat=window.parseDMS(byId('latDms')?.value||'','lat'); lon=window.parseDMS(byId('lonDms')?.value||'','lon'); } return {lat,lon}; }catch(_e){ return {lat:NaN,lon:NaN}; } }
   async function ensureDmcPack(){ let p=window.__dmcCurrentData||{}; if(p&&Object.keys(p).length) return p; const {lat,lon}=parseLatLon(); const base=String(window.WORKER_BASE_URL||'').replace(/\/$/,''); if(!Number.isFinite(lat)||!Number.isFinite(lon)||!base) return {}; try{ const r=await fetch(`${base}/dmc/current?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`, {cache:'no-store'}); if(!r.ok) return {}; p=await r.json(); window.__dmcCurrentData=p||{}; return window.__dmcCurrentData; }catch(_e){ return {}; } }
-  function observed(pack){ const latest=pack?.official_recent_summary?.latest||pack?.official_recent_summary||{}; const station=latest.station_name||pack?.official_station?.nombre||pack?.official_station?.name||'Estación DMC más cercana'; return { station:String(station).trim(), hora:latest.time_local||latest.hour_local||latest.hora_local||(latest.time?String(latest.time).slice(11,16)+'h':'N/D'), temp:Number.isFinite(num(latest.temperature_2m))?num(latest.temperature_2m):num(latest.temp_c), hum:Number.isFinite(num(latest.relative_humidity_2m))?num(latest.relative_humidity_2m):num(latest.humidity), wind:Number.isFinite(num(latest.wind_speed_10m))?num(latest.wind_speed_10m):num(latest.wind_kmh), gust:Number.isFinite(num(latest.wind_gusts_10m))?num(latest.wind_gusts_10m):num(latest.gust_kmh), dir:Number.isFinite(num(latest.wind_direction_10m))?num(latest.wind_direction_10m):num(latest.wind_dir_deg), pres:Number.isFinite(num(latest.pressure_msl))?num(latest.pressure_msl):num(latest.surface_pressure), precip:Number.isFinite(num(latest.precipitation))?num(latest.precipitation):num(latest.precip_mm), cloud:Number.isFinite(num(latest.cloud_cover))?num(latest.cloud_cover):num(latest.cloudiness), vis:Number.isFinite(num(latest.visibility))?num(latest.visibility):num(latest.visibility_m), code:latest.weather_code}; }
+  function observed(pack){ const latest=pack?.official_recent_summary?.latest||pack?.official_recent_summary||{}; const station=latest.station_name||pack?.official_station?.nombre||pack?.official_station?.name||'Estación DMC más cercana'; return { station:String(station).trim(), hora:latest.time_local||latest.hour_local||latest.hora_local||(latest.time?window.__dmcTimeLocal(latest.time):'N/D'), temp:Number.isFinite(num(latest.temperature_2m))?num(latest.temperature_2m):num(latest.temp_c), hum:Number.isFinite(num(latest.relative_humidity_2m))?num(latest.relative_humidity_2m):num(latest.humidity), wind:Number.isFinite(num(latest.wind_speed_10m))?num(latest.wind_speed_10m):num(latest.wind_kmh), gust:Number.isFinite(num(latest.wind_gusts_10m))?num(latest.wind_gusts_10m):num(latest.gust_kmh), dir:Number.isFinite(num(latest.wind_direction_10m))?num(latest.wind_direction_10m):num(latest.wind_dir_deg), pres:Number.isFinite(num(latest.pressure_msl))?num(latest.pressure_msl):num(latest.surface_pressure), precip:Number.isFinite(num(latest.precipitation))?num(latest.precipitation):num(latest.precip_mm), cloud:Number.isFinite(num(latest.cloud_cover))?num(latest.cloud_cover):num(latest.cloudiness), vis:Number.isFinite(num(latest.visibility))?num(latest.visibility):num(latest.visibility_m), code:latest.weather_code}; }
   function forecastHourly(pack, iso, hhmm){ const H=pack?.hourly||{}; const times=Array.isArray(H.time)?H.time:[]; const target=Number(String(hhmm||'08:00').slice(0,2)); let best=-1,diff=Infinity; times.forEach((t,i)=>{ const s=String(t||''); if(s.slice(0,10)!==iso) return; const h=Number(s.slice(11,13)); const d=Math.abs(h-target); if(d<diff){diff=d; best=i;} }); if(best<0) return {}; const pick=k=>Array.isArray(H[k])?num(H[k][best]):NaN; return {temp:pick('temperature_2m'), hum:pick('relative_humidity_2m'), wind:pick('wind_speed_10m'), gust:pick('wind_gusts_10m'), dir:pick('wind_direction_10m'), cloud:pick('cloud_cover'), precip:pick('precipitation'), vis:pick('visibility'), code:pick('weather_code')}; }
   function forecastDaily(pack, iso){ const D=pack?.daily||{}; const t=Array.isArray(D.time)?D.time:[]; const i=t.findIndex(x=>String(x).slice(0,10)===String(iso).slice(0,10)); if(i<0) return {}; const pick=k=>Array.isArray(D[k])?num(D[k][i]):NaN; return {tmin:pick('temperature_2m_min'), tmax:pick('temperature_2m_max'), windMax:pick('wind_speed_10m_max'), gustMax:pick('wind_gusts_10m_max'), precip:pick('precipitation_sum')}; }
   function fakeZero(v){ return Number.isFinite(v) && Math.abs(v) < 0.001; }
@@ -12709,7 +12727,7 @@ async function robustGenerate(ev){
     const station = cleanText(pick(latest,['station_name','station','name']) || pick(pack?.official_station||{},['nombre','name','ciudad']) || byId('valDmcStation')?.textContent || 'Estación DMC más cercana');
     return {
       station,
-      hora: cleanText(pick(latest,['time_local','hour_local','hora_local']) || (pick(latest,['time']) ? String(pick(latest,['time'])).slice(11,16)+' h' : (byId('valDmcHora')?.textContent || 'N/D'))),
+      hora: cleanText(pick(latest,['time_local','hour_local','hora_local']) || (pick(latest,['time']) ? window.__dmcTimeLocal(pick(latest,['time'])) : (byId('valDmcHora')?.textContent || 'N/D'))),
       temp: num(pick(latest,['temperature_2m','temp_c','temperature'])),
       hum: num(pick(latest,['relative_humidity_2m','humidity','hr'])),
       wind: num(pick(latest,['wind_speed_10m','wind_kmh','wind_speed'])),
@@ -12950,7 +12968,7 @@ async function robustGenerate(ev){
     const station = cleanText(pick(latest,['station_name','station','name']) || pick(pack?.official_station||{},['nombre','name','ciudad']) || byId('valDmcStation')?.textContent || 'Estación DMC más cercana');
     return {
       station,
-      hora: cleanText(pick(latest,['time_local','hour_local','hora_local']) || (pick(latest,['time']) ? String(pick(latest,['time'])).slice(11,16)+' h' : (byId('valDmcHora')?.textContent || 'N/D'))),
+      hora: cleanText(pick(latest,['time_local','hour_local','hora_local']) || (pick(latest,['time']) ? window.__dmcTimeLocal(pick(latest,['time'])) : (byId('valDmcHora')?.textContent || 'N/D'))),
       temp: num(pick(latest,['temperature_2m','temp_c','temperature'])),
       hum: num(pick(latest,['relative_humidity_2m','humidity','hr'])),
       wind: num(pick(latest,['wind_speed_10m','wind_kmh','wind_speed'])),
@@ -13128,7 +13146,7 @@ async function robustGenerate(ev){
     const n=(...keys)=>{ for(const k of keys){ const v=num(latest[k]); if(Number.isFinite(v)) return v; } return NaN; };
     let hora='N/D';
     const lt=summ.latest_time||latest.fecha_hora||latest.hora;
-    if(lt){ const d=new Date(String(lt).replace(' ','T')); if(!isNaN(d)) hora=`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}h`; }
+    if(lt){ const _hl3=window.__dmcTimeLocal(lt); if(_hl3) hora=_hl3; }
     const cloudOct=num(pickFirst(latest,['nubosidad_octas','octas','cloud_octas','n_octas']));
     const cloud=Number.isFinite(cloudOct)?Math.round((cloudOct/8)*100):num(cur.cloud_cover);
     const visRaw=num(pickFirst(latest,['visibilidad_km','visibilidad_m','visibility_m','visibility','vis_km','vis_m','vis']));
@@ -13295,7 +13313,7 @@ async function robustGenerate(ev){
     const station = cleanText(pick(latest,['station_name','station','name']) || pick(pack?.official_station||{},['nombre','name','ciudad']) || byId('valDmcStation')?.textContent || 'Estación DMC más cercana');
     return {
       station,
-      hora: cleanText(pick(latest,['time_local','hour_local','hora_local']) || (pick(latest,['time']) ? String(pick(latest,['time'])).slice(11,16)+' h' : (byId('valDmcHora')?.textContent || 'N/D'))),
+      hora: cleanText(pick(latest,['time_local','hour_local','hora_local']) || (pick(latest,['time']) ? window.__dmcTimeLocal(pick(latest,['time'])) : (byId('valDmcHora')?.textContent || 'N/D'))),
       temp: num(pick(latest,['temperature_2m','temp_c','temperature'])),
       hum: num(pick(latest,['relative_humidity_2m','humidity','hr'])),
       wind: num(pick(latest,['wind_speed_10m','wind_kmh','wind_speed'])),
@@ -13453,7 +13471,8 @@ async function robustGenerate(ev){
     const blocks = [pack.official_recent_summary, pack.latest, pack.current, pack.today, pack.station, pack.observed].filter(Boolean);
     const first = blocks[0] || {};
     const stationName = pack.station_name || first.station_name || first.name || first.station || visibleVal('valDmcStation') || visibleVal('lblCity') || 'Estación DMC más cercana';
-    const when = first.time_local || first.local_time || first.observed_at || first.time || visibleVal('valDmcHora') || null;
+    const _whenRaw = first.time_local || first.local_time || first.observed_at || first.time || visibleVal('valDmcHora') || null;
+    const when = window.__dmcTimeLocal(_whenRaw) || null;
     const cond = first.condition_text || first.condition || first.weather || first.wx || visibleVal('valDmcObs') || visibleVal('valWeatherDesc') || 'condición variable';
     const obs = {
       stationName, when, condition: upperFirst(cond),
@@ -13964,7 +13983,7 @@ async function robustGenerate(ev){
     const station = cleanText(latest.station_name || latest.station || latest.name || pack?.station_name || txt('valDmcStation') || txt('lblCity') || 'Estación DMC más cercana');
     return {
       station,
-      hora: cleanText(latest.time_local || latest.hour_local || latest.hora_local || (latest.time?String(latest.time).slice(11,16)+' h':'') || txt('valDmcHora') || 'N/D'),
+      hora: cleanText(latest.time_local || latest.hour_local || latest.hora_local || (latest.time?window.__dmcTimeLocal(latest.time):'') || txt('valDmcHora') || 'N/D'),
       temp: pick(num(latest.temperature_2m), num(latest.temp_c), num(latest.temperature), visibleNum('valTemp')),
       hum: pick(num(latest.relative_humidity_2m), num(latest.humidity), num(latest.hr), visibleNum('valHum')),
       wind: pick(num(latest.wind_speed_10m), num(latest.wind_kmh), num(latest.wind_speed), visibleNum('valWind')),
