@@ -15106,5 +15106,21 @@ function applyRoleUI(){
 })();
 </script>
 <!-- ADMIN PANEL END -->
+
+<script>
+/* Bulletin menu stubs */
+window.openBulletinMenu = function(){
+  var m = document.getElementById('bulletinMenu');
+  if(m) m.style.display = 'block';
+  var bd = document.getElementById('bulletinMenuBackdrop');
+  if(bd) bd.style.display = 'block';
+};
+window.closeBulletinMenu = function(){
+  var m = document.getElementById('bulletinMenu');
+  if(m) m.style.display = 'none';
+  var bd = document.getElementById('bulletinMenuBackdrop');
+  if(bd) bd.style.display = 'none';
+};
+</script>
 </body>
 </html>
