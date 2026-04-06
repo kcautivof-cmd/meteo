@@ -14976,11 +14976,18 @@ async function adminLoadUsers(){
     if(!js.users||!js.users.length){ el.innerHTML='<div style="color:var(--muted);font-size:11px;">No hay usuarios registrados.</div>'; return; }
     const rows = js.users.map(u=>`<tr>
       <td style="font-weight:700">${u.username}</td>
-      <td><span style="font-weight:700;${u.role==='admin'?'color:var(--text)':'color:var(--muted)'}">${(u.role||'user').toUpperCase()}</span></td>
+      <td>
+        <select onchange="adminChangeRole('${u.username}',this.value)" style="font-size:9px;padding:2px 4px;background:var(--bg);color:var(--text);border:1px solid var(--border);font-family:Consolas,monospace;" ${u.username===AUTH_USER?'disabled':''}>
+          <option value="user" ${(u.role||'user')==='user'?'selected':''}>USER</option>
+          <option value="admin" ${u.role==='admin'?'selected':''}>ADMIN</option>
+        </select>
+      </td>
       <td style="font-size:9px;color:var(--muted)">${u.createdAt?new Date(u.createdAt).toLocaleString('es-CL'):'—'}</td>
-      <td>${u.username!==AUTH_USER?`<button class="user-del-btn" onclick="adminDeleteUser('${u.username}')">ELIMINAR</button>`:'<span style="color:var(--muted);font-size:9px;">(tú)</span>'}</td>
+      <td style="display:flex;gap:4px;">
+        ${u.username!==AUTH_USER?`<button class="user-del-btn" onclick="adminResetPassword('${u.username}')" title="Resetear contraseña">🔑</button><button class="user-del-btn" onclick="adminDeleteUser('${u.username}')">✕</button>`:'<span style="color:var(--muted);font-size:9px;">(tú)</span>'}
+      </td>
     </tr>`).join('');
-    el.innerHTML=`<table class="user-list-table"><thead><tr><th>USUARIO</th><th>ROL</th><th>CREADO</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+    el.innerHTML=`<table class="user-list-table"><thead><tr><th>USUARIO</th><th>ROL</th><th>CREADO</th><th>ACCIONES</th></tr></thead><tbody>${rows}</tbody></table>`;
   }catch(e){ el.innerHTML=`<div style="color:#b10000;font-size:11px;">Error: ${e.message}</div>`; }
 }
 async function adminDeleteUser(username){
@@ -15029,6 +15036,75 @@ async function adminLoadLogs(){
   }catch(e){ el.innerHTML=`<div style="color:#b10000;font-size:11px;">Error: ${e.message}</div>`; }
 }
 document.addEventListener('click',function(e){ if(e.target&&e.target.id==='adminPanelModal') closeAdminPanel(); });
+
+// ── ADMIN PANEL EXTENSIONES ───────────────────────────────────────────────
+async function adminChangePassword(){
+  const oldPw = document.getElementById('cpOld')?.value||'';
+  const newPw = document.getElementById('cpNew')?.value||'';
+  const cfPw  = document.getElementById('cpConfirm')?.value||'';
+  const msg   = document.getElementById('cpMsg');
+  if(!oldPw||!newPw||!cfPw){if(msg){msg.textContent='Completa todos los campos.';msg.className='admin-msg err';} return;}
+  if(newPw!==cfPw){if(msg){msg.textContent='Las contraseñas nuevas no coinciden.';msg.className='admin-msg err';} return;}
+  if(newPw.length<6){if(msg){msg.textContent='Mínimo 6 caracteres.';msg.className='admin-msg err';} return;}
+  try{
+    const [oldHash,newHash] = await Promise.all([hashPassword(oldPw),hashPassword(newPw)]);
+    const r = await fetch(authUrl('/auth/change-password'),{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+AUTH_TOKEN},body:JSON.stringify({oldPassword:oldHash,newPassword:newHash})});
+    const js = await r.json();
+    if(js.ok){
+      if(msg){msg.textContent='✔ Contraseña cambiada. Vuelve a iniciar sesión.';msg.className='admin-msg ok';}
+      document.getElementById('cpOld').value='';
+      document.getElementById('cpNew').value='';
+      document.getElementById('cpConfirm').value='';
+    }else throw new Error(js.error||'Error');
+  }catch(e){if(msg){msg.textContent='Error: '+e.message;msg.className='admin-msg err';}}
+}
+
+async function adminResetPassword(username){
+  const newPw = prompt('Nueva contraseña para "'+username+'":');
+  if(!newPw||newPw.length<6){alert('Mínimo 6 caracteres.'); return;}
+  const msg = document.getElementById('adminCreateMsg');
+  try{
+    const pwHash = await hashPassword(newPw);
+    const r = await fetch(authUrl('/auth/reset-password'),{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+AUTH_TOKEN},body:JSON.stringify({username,newPassword:pwHash})});
+    const js = await r.json();
+    if(js.ok){if(msg){msg.textContent='Contraseña de "'+username+'" reseteada.';msg.className='admin-msg ok';}}
+    else throw new Error(js.error||'Error');
+  }catch(e){if(msg){msg.textContent='Error: '+e.message;msg.className='admin-msg err';}}
+}
+
+async function adminChangeRole(username,newRole){
+  const msg = document.getElementById('adminCreateMsg');
+  try{
+    const r = await fetch(authUrl('/auth/change-role'),{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+AUTH_TOKEN},body:JSON.stringify({username,role:newRole})});
+    const js = await r.json();
+    if(js.ok){if(msg){msg.textContent='Rol de "'+username+'" cambiado a '+newRole+'.';msg.className='admin-msg ok';}}
+    else throw new Error(js.error||'Error');
+  }catch(e){if(msg){msg.textContent='Error: '+e.message;msg.className='admin-msg err';}}
+}
+
+function adminLoadSessionInfo(){
+  const el = document.getElementById('adminSessionInfo');
+  if(!el) return;
+  try{
+    const parts = AUTH_TOKEN.split('.');
+    const payload = JSON.parse(atob(parts[1]));
+    const exp = new Date(payload.exp);
+    const mins = Math.round((payload.exp - Date.now())/60000);
+    el.innerHTML = `
+      <div><span style="color:var(--muted);font-size:9px;">USUARIO</span><br><strong>${AUTH_USER}</strong></div>
+      <div><span style="color:var(--muted);font-size:9px;">ROL</span><br><strong>${AUTH_ROLE.toUpperCase()}</strong></div>
+      <div><span style="color:var(--muted);font-size:9px;">SESIÓN EXPIRA</span><br><strong>${exp.toLocaleString('es-CL')}</strong></div>
+      <div><span style="color:var(--muted);font-size:9px;">TIEMPO RESTANTE</span><br><strong style="color:${mins<30?'#b10000':'#2a7a2a'}">${mins} minutos</strong></div>
+    `;
+  }catch(e){ el.innerHTML='<span style="color:var(--muted);">No disponible</span>'; }
+}
+
+// Sobrescribir adminTab para cargar session info al abrir MI CUENTA
+const _adminTabOrig = adminTab;
+function adminTab(tab){
+  _adminTabOrig(tab);
+  if(tab==='Account') adminLoadSessionInfo();
+}
 </script>
 
 
@@ -15042,6 +15118,7 @@ document.addEventListener('click',function(e){ if(e.target&&e.target.id==='admin
     <div class="admin-tabs">
       <div class="admin-tab active" onclick="adminTab('Users')" id="adminTabUsers">USUARIOS</div>
       <div class="admin-tab" onclick="adminTab('Logs')" id="adminTabLogs">REGISTRO DE ACCESOS</div>
+      <div class="admin-tab" onclick="adminTab('Account')" id="adminTabAccount">MI CUENTA</div>
     </div>
     <div class="admin-body">
       <div id="adminSectionUsers" class="admin-section active">
@@ -15065,6 +15142,30 @@ document.addEventListener('click',function(e){ if(e.target&&e.target.id==='admin
           <span style="font-size:9px;color:var(--muted);">Últimos 50 accesos</span>
         </div>
         <div id="adminLogsList"><div style="color:var(--muted);font-size:11px;">Cargando logs...</div></div>
+      </div>
+      <div id="adminSectionAccount" class="admin-section">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+          <div class="admin-create-form">
+            <h4>CAMBIAR MI CONTRASEÑA</h4>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div><label style="display:block;font-size:9px;color:var(--muted);margin-bottom:2px;letter-spacing:.5px;">CONTRASEÑA ACTUAL</label>
+                <input id="cpOld" type="password" placeholder="contraseña actual" style="width:100%;padding:6px 8px;font-size:10px;font-family:Consolas,monospace;background:var(--bg);color:var(--text);border:1px solid var(--border);box-sizing:border-box;">
+              </div>
+              <div><label style="display:block;font-size:9px;color:var(--muted);margin-bottom:2px;letter-spacing:.5px;">NUEVA CONTRASEÑA</label>
+                <input id="cpNew" type="password" placeholder="nueva contraseña" style="width:100%;padding:6px 8px;font-size:10px;font-family:Consolas,monospace;background:var(--bg);color:var(--text);border:1px solid var(--border);box-sizing:border-box;">
+              </div>
+              <div><label style="display:block;font-size:9px;color:var(--muted);margin-bottom:2px;letter-spacing:.5px;">CONFIRMAR NUEVA CONTRASEÑA</label>
+                <input id="cpConfirm" type="password" placeholder="confirmar contraseña" style="width:100%;padding:6px 8px;font-size:10px;font-family:Consolas,monospace;background:var(--bg);color:var(--text);border:1px solid var(--border);box-sizing:border-box;">
+              </div>
+              <button class="admin-submit-btn" onclick="adminChangePassword()" style="margin-top:4px;width:100%;">✔ CAMBIAR CONTRASEÑA</button>
+              <div id="cpMsg" class="admin-msg"></div>
+            </div>
+          </div>
+          <div class="admin-create-form">
+            <h4>INFORMACIÓN DE SESIÓN</h4>
+            <div id="adminSessionInfo" style="font-size:11px;line-height:2.2;color:var(--text);"></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
