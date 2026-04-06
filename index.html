@@ -3606,6 +3606,7 @@ window.__dmcTimeLocal = function(raw) {
                 </div>
             </div>
         </div>
+        <button id="adminPanelBtn" onclick="openAdminPanel()" title="Panel de Administración">⚙ ADMIN</button>
 
         <div class="source-bar" id="sourceInfo"></div>
 
@@ -10118,6 +10119,7 @@ async function doLogin(){
     localStorage.setItem("auth_role", AUTH_ROLE);
 
     hideLogin();
+    if(typeof applyRoleUI==="function") applyRoleUI();
 
     try{ if (typeof enterSystem === "function") enterSystem(); }catch(e){}
   }catch(e){
@@ -12099,7 +12101,42 @@ document.addEventListener('DOMContentLoaded', () => {
           #bulletinMenuPop3{position:fixed;z-index:10061;display:none;min-width:270px;background:#fff;border:1px solid #b9b9b9;border-radius:14px;box-shadow:0 18px 40px rgba(0,0,0,.18);padding:10px;}
           #bulletinMenuPop3 .bm3-btn{width:100%;display:block;background:#f4f4f4;border:1px solid #b9b9b9;border-radius:10px;padding:14px 16px;margin:0 0 8px 0;text-align:left;font-family:Consolas,monospace;font-size:12px;font-weight:700;cursor:pointer;color:#111;}
           #bulletinMenuPop3 .bm3-btn:last-child{margin-bottom:0;}
-        </style>
+        
+/* ── ADMIN PANEL ───────────────────────────────────────── */
+#adminPanelBtn{position:absolute;top:8px;right:8px;display:none;background:var(--panel2);color:var(--text);border:1px solid var(--border);padding:4px 10px;font-family:Consolas,monospace;font-size:10px;font-weight:700;text-transform:uppercase;cursor:pointer;letter-spacing:1px;z-index:10;}
+#adminPanelBtn:hover{filter:brightness(0.96);}
+#adminPanelModal{position:fixed;inset:0;z-index:99998;background:rgba(0,0,0,0.55);display:none;align-items:center;justify-content:center;}
+#adminPanelModal.show{display:flex;}
+.admin-dialog{width:min(660px,96vw);max-height:92vh;overflow:auto;background:var(--bg,#fff);color:var(--text,#111);border:1px solid var(--border,#999);border-radius:8px;}
+.admin-head{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--panel);font-weight:800;font-size:13px;letter-spacing:1.2px;position:sticky;top:0;z-index:2;}
+.admin-tabs{display:flex;border-bottom:1px solid var(--border);background:var(--panel);}
+.admin-tab{padding:8px 18px;cursor:pointer;font-size:10px;font-weight:700;letter-spacing:1px;border-right:1px solid var(--border);background:var(--panel);color:var(--muted);border-bottom:2px solid transparent;transition:0.15s;}
+.admin-tab.active{color:var(--text);border-bottom-color:var(--text);}
+.admin-tab:hover{background:var(--panel2);}
+.admin-body{padding:14px;}
+.admin-section{display:none;}
+.admin-section.active{display:block;}
+.user-list-table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:14px;}
+.user-list-table th{text-align:left;padding:6px 8px;border-bottom:2px solid var(--border);font-size:10px;color:var(--muted);letter-spacing:1px;}
+.user-list-table td{padding:7px 8px;border-bottom:1px solid var(--border);}
+.user-del-btn{font-size:10px;padding:2px 8px;cursor:pointer;border:1px solid var(--border);background:var(--panel2);color:var(--text);font-family:Consolas,monospace;}
+.user-del-btn:hover{border-color:#b10000;color:#b10000;}
+.admin-create-form{border:1px solid var(--border);padding:12px;background:var(--panel);margin-top:10px;}
+.admin-create-form h4{margin:0 0 10px 0;font-size:10px;letter-spacing:1px;color:var(--muted);}
+.admin-create-row{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;}
+.admin-create-row input,.admin-create-row select{width:100%;padding:6px 8px;font-size:10px;font-family:Consolas,monospace;background:var(--bg);color:var(--text);border:1px solid var(--border);}
+.admin-create-row label{font-size:9px;color:var(--muted);display:block;margin-bottom:2px;letter-spacing:.5px;}
+.admin-submit-btn{padding:7px 14px;font-weight:700;font-size:10px;cursor:pointer;border:1px solid var(--text);background:var(--panel2);color:var(--text);font-family:Consolas,monospace;white-space:nowrap;}
+.admin-msg{font-size:10px;margin-top:8px;min-height:14px;}
+.admin-msg.ok{color:#2a7a2a;}
+.admin-msg.err{color:#b10000;}
+.log-table{width:100%;border-collapse:collapse;font-size:10px;}
+.log-table th{text-align:left;padding:5px 6px;border-bottom:2px solid var(--border);font-size:9px;color:var(--muted);letter-spacing:1px;}
+.log-table td{padding:5px 6px;border-bottom:1px solid var(--panel);}
+.log-ok{color:#2a7a2a;font-weight:700;}
+.log-fail{color:#b10000;font-weight:700;}
+.admin-rate-badge{display:inline-block;font-size:9px;padding:2px 6px;border-radius:3px;font-weight:700;}
+</style>
         <div id="bulletinMenuBackdrop3"></div>
         <div id="bulletinMenuPop3" role="menu" aria-hidden="true">
           <button type="button" class="bm3-btn" id="bulletinQuickBtn3">BOLETÍN RÁPIDO</button>
@@ -14906,7 +14943,131 @@ async function robustGenerate(ev){
     setTimeout(rebindAll, 1200);
   }
 })();
+
+// ── ADMIN PANEL ─────────────────────────────────────────────────────────
+function applyRoleUI(){
+  const btn = document.getElementById('adminPanelBtn');
+  if(btn) btn.style.display = (typeof AUTH_ROLE !== 'undefined' && AUTH_ROLE === 'admin') ? 'block' : 'none';
+}
+function openAdminPanel(){
+  const modal = document.getElementById('adminPanelModal');
+  if(modal){ modal.classList.add('show'); adminTab('Users'); adminLoadUsers(); }
+}
+function closeAdminPanel(){
+  const modal = document.getElementById('adminPanelModal');
+  if(modal) modal.classList.remove('show');
+}
+function adminTab(tab){
+  document.querySelectorAll('.admin-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.admin-section').forEach(s=>s.classList.remove('active'));
+  const tEl = document.getElementById('adminTab'+tab);
+  const sEl = document.getElementById('adminSection'+tab);
+  if(tEl) tEl.classList.add('active');
+  if(sEl) sEl.classList.add('active');
+  if(tab==='Logs') adminLoadLogs();
+}
+async function adminLoadUsers(){
+  const el = document.getElementById('adminUserList');
+  if(!el) return;
+  el.innerHTML = '<div style="color:var(--muted);font-size:11px;">Cargando...</div>';
+  try{
+    const r = await fetch(authUrl('/auth/list-users'),{headers:{'Authorization':'Bearer '+AUTH_TOKEN}});
+    const js = await r.json();
+    if(!js.users||!js.users.length){ el.innerHTML='<div style="color:var(--muted);font-size:11px;">No hay usuarios registrados.</div>'; return; }
+    const rows = js.users.map(u=>`<tr>
+      <td style="font-weight:700">${u.username}</td>
+      <td><span style="font-weight:700;${u.role==='admin'?'color:var(--text)':'color:var(--muted)'}">${(u.role||'user').toUpperCase()}</span></td>
+      <td style="font-size:9px;color:var(--muted)">${u.createdAt?new Date(u.createdAt).toLocaleString('es-CL'):'—'}</td>
+      <td>${u.username!==AUTH_USER?`<button class="user-del-btn" onclick="adminDeleteUser('${u.username}')">ELIMINAR</button>`:'<span style="color:var(--muted);font-size:9px;">(tú)</span>'}</td>
+    </tr>`).join('');
+    el.innerHTML=`<table class="user-list-table"><thead><tr><th>USUARIO</th><th>ROL</th><th>CREADO</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  }catch(e){ el.innerHTML=`<div style="color:#b10000;font-size:11px;">Error: ${e.message}</div>`; }
+}
+async function adminDeleteUser(username){
+  if(!confirm('¿Eliminar usuario "'+username+'"?')) return;
+  const msg = document.getElementById('adminCreateMsg');
+  try{
+    const r = await fetch(authUrl('/auth/remove-user'),{method:'DELETE',headers:{'Content-Type':'application/json','Authorization':'Bearer '+AUTH_TOKEN},body:JSON.stringify({username})});
+    const js = await r.json();
+    if(js.ok){ if(msg){msg.textContent='Usuario "'+username+'" eliminado.';msg.className='admin-msg ok';} adminLoadUsers(); }
+    else throw new Error(js.error||'Error');
+  }catch(e){ if(msg){msg.textContent='Error: '+e.message;msg.className='admin-msg err';} }
+}
+async function adminCreateUser(){
+  const username = (document.getElementById('newUsername')?.value||'').trim();
+  const password = document.getElementById('newPassword')?.value||'';
+  const role = document.getElementById('newRole')?.value||'user';
+  const msg = document.getElementById('adminCreateMsg');
+  if(!username||!password){ if(msg){msg.textContent='Completa usuario y contraseña.';msg.className='admin-msg err';} return; }
+  try{
+    const pwHash = await hashPassword(password);
+    const r = await fetch(authUrl('/auth/add-user'),{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+AUTH_TOKEN},body:JSON.stringify({username,password:pwHash,role})});
+    const js = await r.json();
+    if(js.ok){
+      if(msg){msg.textContent='Usuario "'+username+'" creado correctamente.';msg.className='admin-msg ok';}
+      document.getElementById('newUsername').value='';
+      document.getElementById('newPassword').value='';
+      adminLoadUsers();
+    }else throw new Error(js.error||'Error');
+  }catch(e){ if(msg){msg.textContent='Error: '+e.message;msg.className='admin-msg err';} }
+}
+async function adminLoadLogs(){
+  const el = document.getElementById('adminLogsList');
+  if(!el) return;
+  el.innerHTML='<div style="color:var(--muted);font-size:11px;">Cargando...</div>';
+  try{
+    const r = await fetch(authUrl('/auth/logs'),{headers:{'Authorization':'Bearer '+AUTH_TOKEN}});
+    const js = await r.json();
+    if(!js.logs||!js.logs.length){ el.innerHTML='<div style="color:var(--muted);font-size:11px;">Sin registros aún.</div>'; return; }
+    const rows = js.logs.map(l=>`<tr>
+      <td style="font-size:9px;color:var(--muted)">${new Date(l.timestamp).toLocaleString('es-CL')}</td>
+      <td>${l.username}</td>
+      <td class="${l.success?'log-ok':'log-fail'}">${l.success?'✓ OK':'✗ FALLO'}</td>
+      <td style="font-size:9px;color:var(--muted)">${l.ip||'—'}</td>
+    </tr>`).join('');
+    el.innerHTML=`<table class="log-table"><thead><tr><th>FECHA/HORA</th><th>USUARIO</th><th>ESTADO</th><th>IP</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }catch(e){ el.innerHTML=`<div style="color:#b10000;font-size:11px;">Error: ${e.message}</div>`; }
+}
+document.addEventListener('click',function(e){ if(e.target&&e.target.id==='adminPanelModal') closeAdminPanel(); });
 </script>
 
+
+<!-- ── ADMIN PANEL MODAL ─────────────────────────────────────────────── -->
+<div id="adminPanelModal">
+  <div class="admin-dialog">
+    <div class="admin-head">
+      <span>PANEL DE ADMINISTRACIÓN</span>
+      <button onclick="closeAdminPanel()" style="background:var(--bg);color:var(--text);border:1px solid var(--border);padding:3px 10px;cursor:pointer;font-weight:700;font-family:Consolas,monospace;font-size:11px;">✕</button>
+    </div>
+    <div class="admin-tabs">
+      <div class="admin-tab active" onclick="adminTab('Users')" id="adminTabUsers">USUARIOS</div>
+      <div class="admin-tab" onclick="adminTab('Logs')" id="adminTabLogs">REGISTRO DE ACCESOS</div>
+    </div>
+    <div class="admin-body">
+      <div id="adminSectionUsers" class="admin-section active">
+        <div id="adminUserList"><div style="color:var(--muted);font-size:11px;">Cargando usuarios...</div></div>
+        <div class="admin-create-form">
+          <h4>CREAR NUEVO USUARIO</h4>
+          <div class="admin-create-row">
+            <div><label>USUARIO</label><input id="newUsername" type="text" placeholder="nombre" autocomplete="off"></div>
+            <div><label>CONTRASEÑA</label><input id="newPassword" type="password" placeholder="clave segura"></div>
+            <div><label>ROL</label><select id="newRole"><option value="user">USER</option><option value="admin">ADMIN</option></select></div>
+          </div>
+          <div style="margin-top:8px;display:flex;gap:10px;align-items:center;">
+            <button class="admin-submit-btn" onclick="adminCreateUser()">+ CREAR USUARIO</button>
+            <div id="adminCreateMsg" class="admin-msg"></div>
+          </div>
+        </div>
+      </div>
+      <div id="adminSectionLogs" class="admin-section">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <button onclick="adminLoadLogs()" style="padding:5px 12px;font-size:10px;cursor:pointer;border:1px solid var(--border);background:var(--panel2);color:var(--text);font-family:Consolas,monospace;font-weight:700;">↻ ACTUALIZAR</button>
+          <span style="font-size:9px;color:var(--muted);">Últimos 50 accesos</span>
+        </div>
+        <div id="adminLogsList"><div style="color:var(--muted);font-size:11px;">Cargando logs...</div></div>
+      </div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
