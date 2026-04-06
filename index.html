@@ -11991,7 +11991,12 @@ document.addEventListener('DOMContentLoaded', () => {
   function closeMenu(){ hide(byId('bulletinMenuBackdrop')); hide(byId('bulletinMenuPop')); }
   function closeQuick(){ hide(byId('bulletinQuickModal')); }
   function closeBuilder(){ hide(byId('reportBuilderModal')); }
-  function openMenu(){ ensureMenuUi(); closeBuilder(); closeQuick(); setMenuPosition(); byId('bulletinMenuBackdrop')?.classList.add('show'); byId('bulletinMenuPop')?.classList.add('show'); }
+  function openMenu(){
+    if(typeof AUTH_ROLE !== 'undefined' && AUTH_ROLE !== 'admin'){
+      openQuick(); return;
+    }
+    ensureMenuUi(); closeBuilder(); closeQuick(); setMenuPosition(); byId('bulletinMenuBackdrop')?.classList.add('show'); byId('bulletinMenuPop')?.classList.add('show');
+  }
   function openQuick(){ ensureMenuUi(); closeBuilder(); closeMenu(); const d=byId('bulletinQuickDate'); const t=byId('bulletinQuickTime'); const now=new Date(); if(d && !d.value) d.value=now.toISOString().slice(0,10); if(t && !t.value) t.value=hmNow(); byId('bulletinQuickModal')?.classList.add('show'); }
   function bind(){
     ensureMenuUi();
@@ -14969,16 +14974,7 @@ function applyRoleUI(){
   document.body.classList.toggle('role-user', !isAdmin);
   document.body.classList.toggle('role-admin', isAdmin);
 
-  // Para user: al clickar "BOLETÍN METEOROLÓGICO" va directo al rápido sin mostrar menú
-  if(!isAdmin){
-    window.__origOpenBulletinMenu = window.__origOpenBulletinMenu || window.openBulletinMenu;
-    window.openBulletinMenu = function(){
-      if(typeof window.openQuickBulletinModal === 'function') window.openQuickBulletinModal();
-    };
-    window.openReportBuilder = function(){ /* bloqueado para user */ };
-  } else {
-    if(window.__origOpenBulletinMenu) window.openBulletinMenu = window.__origOpenBulletinMenu;
-  }
+  // Boletín COMPLETO bloqueado para user directamente en openMenu()
 
   // Consultar Datos (control del mapa) solo para admin
   setTimeout(function(){
