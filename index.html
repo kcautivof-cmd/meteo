@@ -3566,7 +3566,7 @@ window.__dmcTimeLocal = function(raw) {
 <body>
 
 <!-- LOGIN MODAL (meteo-auth) -->
-<div id="loginModal" style="position:fixed;inset:0;z-index:99999;display:none;background:rgba(0,0,0,.55);align-items:center;justify-content:center;">
+<div id="loginModal" style="position:fixed;inset:0;z-index:99999;display:none;background:rgba(0,0,0,.6);align-items:center;justify-content:center;">
   <div style="width:340px;max-width:92vw;background:var(--bg,#111);color:var(--text,#fff);border:1px solid var(--border,#333);padding:14px;border-radius:10px;">
     <div style="font-weight:800;margin-bottom:10px;letter-spacing:1px;">ACCESO</div>
     <input id="loginUser" placeholder="USUARIO" autocomplete="username" style="width:100%;margin-bottom:8px;padding:8px;">
@@ -14954,43 +14954,43 @@ function applyRoleUI(){
 </script>
 
 <!-- ADMIN PANEL START -->
-<div id="adminPanelModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);z-index:99998">
-  <div style="width:min(960px,96vw);max-height:90vh;overflow:auto;background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.45)">
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #334155">
+<div id="adminPanelModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6);z-index:99998">
+  <div style="width:min(960px,96vw);max-height:90vh;overflow:auto;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.45)">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--border)">
       <div style="font:700 14px Consolas,monospace;letter-spacing:.12em">PANEL DE ADMINISTRACIÓN</div>
-      <button onclick="closeAdminPanel()" style="background:#111827;color:#fff;border:1px solid #334155;width:34px;height:28px;border-radius:6px;cursor:pointer">✕</button>
+      <button onclick="closeAdminPanel()" style="background:var(--bg2,var(--bg));color:#fff;border:1px solid var(--border);width:34px;height:28px;border-radius:6px;cursor:pointer">✕</button>
     </div>
-    <div style="display:flex;border-bottom:1px solid #334155">
-      <div class="admin-tab active" id="adminTabUsers" onclick="adminTab('Users')" style="padding:12px 16px;font:700 11px Consolas,monospace;cursor:pointer;border-right:1px solid #334155;user-select:none">USUARIOS</div>
-      <div class="admin-tab" id="adminTabLogs" onclick="adminTab('Logs')" style="padding:12px 16px;font:700 11px Consolas,monospace;cursor:pointer;border-right:1px solid #334155;user-select:none">REGISTRO DE ACCESOS</div>
+    <div style="display:flex;border-bottom:1px solid var(--border)">
+      <div class="admin-tab active" id="adminTabUsers" onclick="adminTab('Users')" style="padding:12px 16px;font:700 11px Consolas,monospace;cursor:pointer;border-right:1px solid var(--border);user-select:none">USUARIOS</div>
+      <div class="admin-tab" id="adminTabLogs" onclick="adminTab('Logs')" style="padding:12px 16px;font:700 11px Consolas,monospace;cursor:pointer;border-right:1px solid var(--border);user-select:none">REGISTRO DE ACCESOS</div>
       <div class="admin-tab" id="adminTabAccount" onclick="adminTab('Account')" style="padding:12px 16px;font:700 11px Consolas,monospace;cursor:pointer;user-select:none">MI CUENTA</div>
     </div>
     <div style="padding:18px">
       <div id="adminSectionUsers" class="admin-section" style="display:block">
-        <div id="adminUserList"><div style="color:#94a3b8;font-size:11px">Cargando...</div></div>
-        <div style="margin-top:16px;border:1px solid #334155;border-radius:12px;padding:14px;background:#111827">
+        <div id="adminUserList"><div style="color:var(--muted);font-size:11px">Cargando...</div></div>
+        <div style="margin-top:16px;border:1px solid var(--border);border-radius:12px;padding:14px;background:var(--bg)">
           <div style="font:700 12px Consolas,monospace;letter-spacing:.12em;margin-bottom:12px">CREAR NUEVO USUARIO</div>
           <div style="display:grid;grid-template-columns:2fr 2fr 1fr;gap:12px;align-items:end">
-            <div><div style="font:700 9px Consolas,monospace;color:#94a3b8;margin-bottom:4px">USUARIO</div><input id="newUserName" type="text" placeholder="NOMBRE" style="width:100%;padding:9px 10px;border:1px solid #334155;background:#0b1220;color:#e2e8f0;border-radius:8px;box-sizing:border-box;font:12px Consolas,monospace"></div>
-            <div><div style="font:700 9px Consolas,monospace;color:#94a3b8;margin-bottom:4px">CONTRASEÑA</div><input id="newUserPass" type="password" placeholder="CLAVE SEGURA" style="width:100%;padding:9px 10px;border:1px solid #334155;background:#0b1220;color:#e2e8f0;border-radius:8px;box-sizing:border-box;font:12px Consolas,monospace"></div>
-            <div><div style="font:700 9px Consolas,monospace;color:#94a3b8;margin-bottom:4px">ROL</div><select id="newUserRole" style="width:100%;padding:9px 10px;border:1px solid #334155;background:#0b1220;color:#e2e8f0;border-radius:8px;box-sizing:border-box;font:12px Consolas,monospace"><option value="user">USER</option><option value="admin">ADMIN</option></select></div>
+            <div><div style="font:700 9px Consolas,monospace;color:var(--muted);margin-bottom:4px">USUARIO</div><input id="newUserName" type="text" placeholder="NOMBRE" style="width:100%;padding:9px 10px;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:8px;box-sizing:border-box;font:12px Consolas,monospace"></div>
+            <div><div style="font:700 9px Consolas,monospace;color:var(--muted);margin-bottom:4px">CONTRASEÑA</div><input id="newUserPass" type="password" placeholder="CLAVE SEGURA" style="width:100%;padding:9px 10px;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:8px;box-sizing:border-box;font:12px Consolas,monospace"></div>
+            <div><div style="font:700 9px Consolas,monospace;color:var(--muted);margin-bottom:4px">ROL</div><select id="newUserRole" style="width:100%;padding:9px 10px;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:8px;box-sizing:border-box;font:12px Consolas,monospace"><option value="user">USER</option><option value="admin">ADMIN</option></select></div>
           </div>
-          <button onclick="adminCreateUser()" style="margin-top:12px;padding:10px 14px;border-radius:10px;border:1px solid #94a3b8;background:#e2e8f0;color:#0f172a;font:700 12px Consolas,monospace;cursor:pointer">+ CREAR USUARIO</button>
+          <button onclick="adminCreateUser()" style="margin-top:12px;padding:10px 14px;border-radius:10px;border:1px solid var(--muted);background:var(--text);color:var(--bg);font:700 12px Consolas,monospace;cursor:pointer">+ CREAR USUARIO</button>
           <div id="adminCreateMsg" style="margin-top:10px;font:11px Consolas,monospace;min-height:14px"></div>
         </div>
       </div>
       <div id="adminSectionLogs" class="admin-section" style="display:none">
-        <div id="adminLogsList"><div style="color:#94a3b8;font-size:11px">Cargando logs...</div></div>
+        <div id="adminLogsList"><div style="color:var(--muted);font-size:11px">Cargando logs...</div></div>
       </div>
       <div id="adminSectionAccount" class="admin-section" style="display:none">
-        <div style="border:1px solid #334155;border-radius:12px;padding:14px;background:#111827">
+        <div style="border:1px solid var(--border);border-radius:12px;padding:14px;background:var(--bg)">
           <div style="font:700 12px Consolas,monospace;letter-spacing:.12em;margin-bottom:12px">CAMBIAR MI CONTRASEÑA</div>
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;align-items:end">
-            <div><div style="font:700 9px Consolas,monospace;color:#94a3b8;margin-bottom:4px">CONTRASEÑA ACTUAL</div><input id="cpOld" type="password" placeholder="actual" style="width:100%;padding:9px 10px;border:1px solid #334155;background:#0b1220;color:#e2e8f0;border-radius:8px;box-sizing:border-box;font:12px Consolas,monospace"></div>
-            <div><div style="font:700 9px Consolas,monospace;color:#94a3b8;margin-bottom:4px">NUEVA CONTRASEÑA</div><input id="cpNew" type="password" placeholder="nueva" style="width:100%;padding:9px 10px;border:1px solid #334155;background:#0b1220;color:#e2e8f0;border-radius:8px;box-sizing:border-box;font:12px Consolas,monospace"></div>
-            <div><div style="font:700 9px Consolas,monospace;color:#94a3b8;margin-bottom:4px">CONFIRMAR</div><input id="cpConfirm" type="password" placeholder="repite" style="width:100%;padding:9px 10px;border:1px solid #334155;background:#0b1220;color:#e2e8f0;border-radius:8px;box-sizing:border-box;font:12px Consolas,monospace"></div>
+            <div><div style="font:700 9px Consolas,monospace;color:var(--muted);margin-bottom:4px">CONTRASEÑA ACTUAL</div><input id="cpOld" type="password" placeholder="actual" style="width:100%;padding:9px 10px;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:8px;box-sizing:border-box;font:12px Consolas,monospace"></div>
+            <div><div style="font:700 9px Consolas,monospace;color:var(--muted);margin-bottom:4px">NUEVA CONTRASEÑA</div><input id="cpNew" type="password" placeholder="nueva" style="width:100%;padding:9px 10px;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:8px;box-sizing:border-box;font:12px Consolas,monospace"></div>
+            <div><div style="font:700 9px Consolas,monospace;color:var(--muted);margin-bottom:4px">CONFIRMAR</div><input id="cpConfirm" type="password" placeholder="repite" style="width:100%;padding:9px 10px;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:8px;box-sizing:border-box;font:12px Consolas,monospace"></div>
           </div>
-          <button onclick="adminChangePassword()" style="margin-top:12px;padding:10px 14px;border-radius:10px;border:1px solid #94a3b8;background:#e2e8f0;color:#0f172a;font:700 12px Consolas,monospace;cursor:pointer">CAMBIAR CONTRASEÑA</button>
+          <button onclick="adminChangePassword()" style="margin-top:12px;padding:10px 14px;border-radius:10px;border:1px solid var(--muted);background:var(--text);color:var(--bg);font:700 12px Consolas,monospace;cursor:pointer">CAMBIAR CONTRASEÑA</button>
           <div id="cpMsg" style="margin-top:10px;font:11px Consolas,monospace;min-height:14px"></div>
         </div>
       </div>
@@ -15007,7 +15007,7 @@ function applyRoleUI(){
     document.querySelectorAll('.admin-tab').forEach(function(t){t.style.background='';t.classList.remove('active');});
     ['adminSectionUsers','adminSectionLogs','adminSectionAccount'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});
     var t=document.getElementById('adminTab'+tab),s=document.getElementById('adminSection'+tab);
-    if(t){t.style.background='#111827';t.classList.add('active');}
+    if(t){t.style.background='var(--border)';t.classList.add('active');}
     if(s)s.style.display='block';
     busy=false;
     if(tab==='Users')setTimeout(window.adminLoadUsers,20);
@@ -15015,56 +15015,56 @@ function applyRoleUI(){
   };
   window.adminLoadUsers=async function(){
     var el=document.getElementById('adminUserList');if(!el)return;
-    el.innerHTML='<div style="color:#94a3b8;font-size:11px">Cargando...</div>';
+    el.innerHTML='<div style="color:var(--muted);font-size:11px">Cargando...</div>';
     try{
       var token=(window.AUTH_TOKEN||localStorage.getItem('auth_token')||'').trim();
       var ctrl=new AbortController();var tid=setTimeout(function(){ctrl.abort();},7000);
       var r=await fetch(authUrl('/auth/list-users'),{headers:{Authorization:'Bearer '+token},signal:ctrl.signal});
       clearTimeout(tid);
       var txt=await r.text();var js;try{js=JSON.parse(txt);}catch(e){js={error:txt};}
-      if(!r.ok){el.innerHTML='<div style="color:#fca5a5;font-size:11px">Error '+r.status+': '+(js.error||txt)+'</div>';return;}
+      if(!r.ok){el.innerHTML='<div style="color:#e05c5c;font-size:11px">Error '+r.status+': '+(js.error||txt)+'</div>';return;}
       var users=Array.isArray(js.users)?js.users:[];
-      if(!users.length){el.innerHTML='<div style="color:#94a3b8;font-size:11px">No hay usuarios registrados.</div>';return;}
+      if(!users.length){el.innerHTML='<div style="color:var(--muted);font-size:11px">No hay usuarios registrados.</div>';return;}
       var cur=(window.AUTH_USER||localStorage.getItem('auth_user')||'').trim();
       var rows=users.map(function(u){
-        return '<tr><td style="font-weight:700;padding:8px 6px;border-bottom:1px solid #334155;font:11px Consolas,monospace">'+u.username+'</td>'
-        +'<td style="padding:8px 6px;border-bottom:1px solid #334155"><select onchange="adminChangeRole(\''+u.username+'\',this.value)" style="font-size:9px;padding:2px 4px;background:#0b1220;color:#e2e8f0;border:1px solid #334155;font-family:Consolas,monospace"><option value="user" '+((u.role||'user')==='user'?'selected':'')+'>USER</option><option value="admin" '+(u.role==='admin'?'selected':'')+'>ADMIN</option></select></td>'
-        +'<td style="font-size:9px;color:#94a3b8;padding:8px 6px;border-bottom:1px solid #334155">'+(u.createdAt?new Date(u.createdAt).toLocaleString('es-CL'):'—')+'</td>'
-        +'<td style="padding:8px 6px;border-bottom:1px solid #334155">'+(u.username!==cur
-          ?'<button onclick="adminResetPassword(\''+u.username+'\')" style="background:#111827;color:#fff;border:1px solid #334155;border-radius:6px;padding:4px 7px;cursor:pointer;margin-right:4px">🔑</button><button onclick="adminDeleteUser(\''+u.username+'\')" style="background:#111827;color:#fff;border:1px solid #334155;border-radius:6px;padding:4px 7px;cursor:pointer">✕</button>'
-          :'<span style="color:#94a3b8;font-size:9px">(tú)</span>')
+        return '<tr><td style="font-weight:700;padding:8px 6px;border-bottom:1px solid var(--border);font:11px Consolas,monospace">'+u.username+'</td>'
+        +'<td style="padding:8px 6px;border-bottom:1px solid var(--border)"><select onchange="adminChangeRole(\''+u.username+'\',this.value)" style="font-size:9px;padding:2px 4px;background:var(--bg);color:var(--text);border:1px solid var(--border);font-family:Consolas,monospace"><option value="user" '+((u.role||'user')==='user'?'selected':'')+'>USER</option><option value="admin" '+(u.role==='admin'?'selected':'')+'>ADMIN</option></select></td>'
+        +'<td style="font-size:9px;color:var(--muted);padding:8px 6px;border-bottom:1px solid var(--border)">'+(u.createdAt?new Date(u.createdAt).toLocaleString('es-CL'):'—')+'</td>'
+        +'<td style="padding:8px 6px;border-bottom:1px solid var(--border)">'+(u.username!==cur
+          ?'<button onclick="adminResetPassword(\''+u.username+'\')" style="background:var(--bg2,var(--bg));color:#fff;border:1px solid var(--border);border-radius:6px;padding:4px 7px;cursor:pointer;margin-right:4px">🔑</button><button onclick="adminDeleteUser(\''+u.username+'\')" style="background:var(--bg2,var(--bg));color:#fff;border:1px solid var(--border);border-radius:6px;padding:4px 7px;cursor:pointer">✕</button>'
+          :'<span style="color:var(--muted);font-size:9px">(tú)</span>')
         +'</td></tr>';
       }).join('');
-      el.innerHTML='<table style="width:100%;border-collapse:collapse;font:11px Consolas,monospace"><thead><tr><th style="text-align:left;padding:8px 6px;border-bottom:1px solid #334155">USUARIO</th><th style="text-align:left;padding:8px 6px;border-bottom:1px solid #334155">ROL</th><th style="text-align:left;padding:8px 6px;border-bottom:1px solid #334155">CREADO</th><th style="text-align:left;padding:8px 6px;border-bottom:1px solid #334155">ACCIONES</th></tr></thead><tbody>'+rows+'</tbody></table>';
-    }catch(e){el.innerHTML='<div style="color:#fca5a5;font-size:11px">'+(e.name==='AbortError'?'Timeout cargando usuarios':e.message)+'</div>';}
+      el.innerHTML='<table style="width:100%;border-collapse:collapse;font:11px Consolas,monospace"><thead><tr><th style="text-align:left;padding:8px 6px;border-bottom:1px solid var(--border)">USUARIO</th><th style="text-align:left;padding:8px 6px;border-bottom:1px solid var(--border)">ROL</th><th style="text-align:left;padding:8px 6px;border-bottom:1px solid var(--border)">CREADO</th><th style="text-align:left;padding:8px 6px;border-bottom:1px solid var(--border)">ACCIONES</th></tr></thead><tbody>'+rows+'</tbody></table>';
+    }catch(e){el.innerHTML='<div style="color:#e05c5c;font-size:11px">'+(e.name==='AbortError'?'Timeout cargando usuarios':e.message)+'</div>';}
   };
   window.adminLoadLogs=async function(){
     var el=document.getElementById('adminLogsList');if(!el)return;
-    el.innerHTML='<div style="color:#94a3b8;font-size:11px">Cargando logs...</div>';
+    el.innerHTML='<div style="color:var(--muted);font-size:11px">Cargando logs...</div>';
     try{
       var token=(window.AUTH_TOKEN||localStorage.getItem('auth_token')||'').trim();
       var r=await fetch(authUrl('/auth/logs'),{headers:{Authorization:'Bearer '+token}});
       var txt=await r.text();var js;try{js=JSON.parse(txt);}catch(e){js={error:txt};}
-      if(!r.ok){el.innerHTML='<div style="color:#fca5a5;font-size:11px">Error '+r.status+': '+(js.error||txt)+'</div>';return;}
+      if(!r.ok){el.innerHTML='<div style="color:#e05c5c;font-size:11px">Error '+r.status+': '+(js.error||txt)+'</div>';return;}
       var logs=Array.isArray(js.logs)?js.logs:[];
-      if(!logs.length){el.innerHTML='<div style="color:#94a3b8;font-size:11px">No hay registros.</div>';return;}
+      if(!logs.length){el.innerHTML='<div style="color:var(--muted);font-size:11px">No hay registros.</div>';return;}
       el.innerHTML='<pre style="white-space:pre-wrap;font-size:10px;line-height:1.4">'+logs.map(function(x){return JSON.stringify(x,null,2);}).join('\n\n')+'</pre>';
-    }catch(e){el.innerHTML='<div style="color:#fca5a5;font-size:11px">'+e.message+'</div>';}
+    }catch(e){el.innerHTML='<div style="color:#e05c5c;font-size:11px">'+e.message+'</div>';}
   };
   window.adminCreateUser=async function(){
     var u=(document.getElementById('newUserName')||{}).value||'';u=u.trim();
     var p=(document.getElementById('newUserPass')||{}).value||'';
     var role=(document.getElementById('newUserRole')||{}).value||'user';
     var msg=document.getElementById('adminCreateMsg');
-    if(!u||!p){if(msg){msg.textContent='Completa usuario y contraseña';msg.style.color='#fca5a5';}return;}
+    if(!u||!p){if(msg){msg.textContent='Completa usuario y contraseña';msg.style.color='#e05c5c';}return;}
     try{
       var token=(window.AUTH_TOKEN||localStorage.getItem('auth_token')||'').trim();
       var res=await fetch(authUrl('/auth/add-user'),{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({username:u,password:p,role:role})});
       var js=await res.json().catch(function(){return{};});
       if(!res.ok)throw new Error(js.error||'Error');
-      if(msg){msg.textContent='✔ Usuario creado';msg.style.color='#86efac';}
+      if(msg){msg.textContent='✔ Usuario creado';msg.style.color='#2ecc71';}
       window.adminLoadUsers();
-    }catch(e){if(msg){msg.textContent='Error: '+e.message;msg.style.color='#fca5a5';}}
+    }catch(e){if(msg){msg.textContent='Error: '+e.message;msg.style.color='#e05c5c';}}
   };
   window.adminChangeRole=async function(username,newRole){
     try{
@@ -15094,14 +15094,14 @@ function applyRoleUI(){
     var newPw=(document.getElementById('cpNew')||{}).value||'';
     var cfPw=(document.getElementById('cpConfirm')||{}).value||'';
     var msg=document.getElementById('cpMsg');
-    if(!oldPw||!newPw||!cfPw){if(msg){msg.textContent='Completa todos los campos.';msg.style.color='#fca5a5';}return;}
-    if(newPw!==cfPw){if(msg){msg.textContent='Las contraseñas nuevas no coinciden.';msg.style.color='#fca5a5';}return;}
+    if(!oldPw||!newPw||!cfPw){if(msg){msg.textContent='Completa todos los campos.';msg.style.color='#e05c5c';}return;}
+    if(newPw!==cfPw){if(msg){msg.textContent='Las contraseñas nuevas no coinciden.';msg.style.color='#e05c5c';}return;}
     try{
       var token=(window.AUTH_TOKEN||localStorage.getItem('auth_token')||'').trim();
       var r=await fetch(authUrl('/auth/change-password'),{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({oldPassword:oldPw,newPassword:newPw})});
       var js=await r.json().catch(function(){return{};});if(!r.ok)throw new Error(js.error||'Error');
-      if(msg){msg.textContent='✔ Contraseña cambiada';msg.style.color='#86efac';}
-    }catch(e){if(msg){msg.textContent='Error: '+e.message;msg.style.color='#fca5a5';}}
+      if(msg){msg.textContent='✔ Contraseña cambiada';msg.style.color='#2ecc71';}
+    }catch(e){if(msg){msg.textContent='Error: '+e.message;msg.style.color='#e05c5c';}}
   };
 })();
 </script>
