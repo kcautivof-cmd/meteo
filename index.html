@@ -3902,9 +3902,11 @@ window.__dmcTimeLocal = function(raw) {
                         <button class="analysis-btn" id="btnToggleAnalysis" type="button">VER ANÁLISIS</button>
                     </div>
                     <div class="analysis-body" id="analysisBody">
+                        <div id="anexo1Block">
                         <div class="anexo-tag">ANÁLISIS · ANEXO 1</div>
                         <div class="analysis-grid" id="analysisGrid"></div>
                         <div class="analysis-note" id="analysisNote"></div>
+                        </div>
 
                         <div class="anexo-sep"><span class="anexo-tag">ANEXO 2 – EVOLUCIÓN TEMPORAL</span></div>
                         <div id="temp7dWrap" style="border:1px solid var(--border); background:#fff;">
@@ -14947,8 +14949,15 @@ async function robustGenerate(ev){
 
 // ── ADMIN PANEL ─────────────────────────────────────────────────────────
 function applyRoleUI(){
+  const isAdmin = (typeof AUTH_ROLE !== 'undefined' && AUTH_ROLE === 'admin');
+
+  // Botón panel admin
   const btn = document.getElementById('adminPanelBtn');
-  if(btn) btn.style.display = (typeof AUTH_ROLE !== 'undefined' && AUTH_ROLE === 'admin') ? 'block' : 'none';
+  if(btn) btn.style.display = isAdmin ? 'block' : 'none';
+
+  // Anexo 1 solo visible para admin
+  const anexo1 = document.getElementById('anexo1Block');
+  if(anexo1) anexo1.style.display = isAdmin ? '' : 'none';
 }
 
 </script>
