@@ -14972,8 +14972,12 @@ async function adminLoadUsers(){
   if(!el) return;
   el.innerHTML = '<div style="color:var(--muted);font-size:11px;">Cargando...</div>';
   try{
-    const r = await fetch(authUrl('/auth/list-users'),{headers:{'Authorization':'Bearer '+AUTH_TOKEN}});
-    if(!r.ok){ const err=await r.text(); el.innerHTML=`<div style="color:#b10000;font-size:11px;">Error ${r.status}: ${err}</div>`; return; }
+    const ctrl = new AbortController();
+    const tid = setTimeout(()=>ctrl.abort(), 8000);
+    const _tok = AUTH_TOKEN || localStorage.getItem('auth_token') || '';
+    const r = await fetch(authUrl('/auth/list-users'),{headers:{'Authorization':'Bearer '+_tok}, signal:ctrl.signal});
+    clearTimeout(tid);
+    if(!r.ok){ const err=await r.text(); el.innerHTML=`<div style="color:#b10000;font-size:11px;">Error ${r.status}: ${err}<br><small>Cierra sesión y vuelve a ingresar.</small></div>`; return; }
     const js = await r.json();
     if(!js.users||!js.users.length){ el.innerHTML='<div style="color:var(--muted);font-size:11px;">No hay usuarios registrados.</div>'; return; }
     const rows = js.users.map(u=>`<tr>
@@ -14990,13 +14994,16 @@ async function adminLoadUsers(){
       </td>
     </tr>`).join('');
     el.innerHTML=`<table class="user-list-table"><thead><tr><th>USUARIO</th><th>ROL</th><th>CREADO</th><th>ACCIONES</th></tr></thead><tbody>${rows}</tbody></table>`;
-  }catch(e){ el.innerHTML=`<div style="color:#b10000;font-size:11px;">Error: ${e.message}<br><small>¿Está el Worker v3 desplegado?</small></div>`; }
+  }catch(e){ 
+    const msg = e.name==='AbortError' ? 'Timeout: Worker no responde (8s). Verifica Cloudflare.' : e.message;
+    el.innerHTML=`<div style="color:#b10000;font-size:11px;">Error: ${msg}<br><small>F12 → Console para más detalles.</small></div>`; 
+  }
 }
 async function adminDeleteUser(username){
   if(!confirm('¿Eliminar usuario "'+username+'"?')) return;
   const msg = document.getElementById('adminCreateMsg');
   try{
-    const r = await fetch(authUrl('/auth/remove-user'),{method:'DELETE',headers:{'Content-Type':'application/json','Authorization':'Bearer '+AUTH_TOKEN},body:JSON.stringify({username})});
+    const r = await fetch(authUrl('/auth/remove-user'),{method:'DELETE',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(AUTH_TOKEN||localStorage.getItem('auth_token')||'')},body:JSON.stringify({username})});
     const js = await r.json();
     if(js.ok){ if(msg){msg.textContent='Usuario "'+username+'" eliminado.';msg.className='admin-msg ok';} adminLoadUsers(); }
     else throw new Error(js.error||'Error');
@@ -15010,7 +15017,7 @@ async function adminCreateUser(){
   if(!username||!password){ if(msg){msg.textContent='Completa usuario y contraseña.';msg.className='admin-msg err';} return; }
   try{
     const pwHash = await hashPassword(password);
-    const r = await fetch(authUrl('/auth/add-user'),{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+AUTH_TOKEN},body:JSON.stringify({username,password:pwHash,role})});
+    const r = await fetch(authUrl('/auth/add-user'),{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(AUTH_TOKEN||localStorage.getItem('auth_token')||'')},body:JSON.stringify({username,password:pwHash,role})});
     const js = await r.json();
     if(js.ok){
       if(msg){msg.textContent='Usuario "'+username+'" creado correctamente.';msg.className='admin-msg ok';}
@@ -15025,7 +15032,7 @@ async function adminLoadLogs(){
   if(!el) return;
   el.innerHTML='<div style="color:var(--muted);font-size:11px;">Cargando...</div>';
   try{
-    const r = await fetch(authUrl('/auth/logs'),{headers:{'Authorization':'Bearer '+AUTH_TOKEN}});
+    const r = await fetch(authUrl('/auth/logs'),{headers:{'Authorization':'Bearer '+(AUTH_TOKEN||localStorage.getItem('auth_token')||'')}});
     const js = await r.json();
     if(!js.logs||!js.logs.length){ el.innerHTML='<div style="color:var(--muted);font-size:11px;">Sin registros aún.</div>'; return; }
     const rows = js.logs.map(l=>`<tr>
@@ -15050,7 +15057,7 @@ async function adminChangePassword(){
   if(newPw.length<6){if(msg){msg.textContent='Mínimo 6 caracteres.';msg.className='admin-msg err';} return;}
   try{
     const [oldHash,newHash] = await Promise.all([hashPassword(oldPw),hashPassword(newPw)]);
-    const r = await fetch(authUrl('/auth/change-password'),{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+AUTH_TOKEN},body:JSON.stringify({oldPassword:oldHash,newPassword:newHash})});
+    const r = await fetch(authUrl('/auth/change-password'),{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(AUTH_TOKEN||localStorage.getItem('auth_token')||'')},body:JSON.stringify({oldPassword:oldHash,newPassword:newHash})});
     const js = await r.json();
     if(js.ok){
       if(msg){msg.textContent='✔ Contraseña cambiada. Vuelve a iniciar sesión.';msg.className='admin-msg ok';}
@@ -15067,7 +15074,7 @@ async function adminResetPassword(username){
   const msg = document.getElementById('adminCreateMsg');
   try{
     const pwHash = await hashPassword(newPw);
-    const r = await fetch(authUrl('/auth/reset-password'),{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+AUTH_TOKEN},body:JSON.stringify({username,newPassword:pwHash})});
+    const r = await fetch(authUrl('/auth/reset-password'),{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(AUTH_TOKEN||localStorage.getItem('auth_token')||'')},body:JSON.stringify({username,newPassword:pwHash})});
     const js = await r.json();
     if(js.ok){if(msg){msg.textContent='Contraseña de "'+username+'" reseteada.';msg.className='admin-msg ok';}}
     else throw new Error(js.error||'Error');
@@ -15077,7 +15084,7 @@ async function adminResetPassword(username){
 async function adminChangeRole(username,newRole){
   const msg = document.getElementById('adminCreateMsg');
   try{
-    const r = await fetch(authUrl('/auth/change-role'),{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+AUTH_TOKEN},body:JSON.stringify({username,role:newRole})});
+    const r = await fetch(authUrl('/auth/change-role'),{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(AUTH_TOKEN||localStorage.getItem('auth_token')||'')},body:JSON.stringify({username,role:newRole})});
     const js = await r.json();
     if(js.ok){if(msg){msg.textContent='Rol de "'+username+'" cambiado a '+newRole+'.';msg.className='admin-msg ok';}}
     else throw new Error(js.error||'Error');
