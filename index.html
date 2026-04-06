@@ -14965,9 +14965,20 @@ function applyRoleUI(){
   const anexo1 = document.getElementById('anexo1Block');
   if(anexo1) anexo1.style.display = isAdmin ? '' : 'none';
 
-  // Boletín COMPLETO solo para admin — vía clase CSS (aplica a botones dinámicos también)
+  // Boletín COMPLETO solo para admin — vía clase CSS y parche de función
   document.body.classList.toggle('role-user', !isAdmin);
   document.body.classList.toggle('role-admin', isAdmin);
+
+  // Para user: al clickar "BOLETÍN METEOROLÓGICO" va directo al rápido sin mostrar menú
+  if(!isAdmin){
+    window.__origOpenBulletinMenu = window.__origOpenBulletinMenu || window.openBulletinMenu;
+    window.openBulletinMenu = function(){
+      if(typeof window.openQuickBulletinModal === 'function') window.openQuickBulletinModal();
+    };
+    window.openReportBuilder = function(){ /* bloqueado para user */ };
+  } else {
+    if(window.__origOpenBulletinMenu) window.openBulletinMenu = window.__origOpenBulletinMenu;
+  }
 
   // Consultar Datos (control del mapa) solo para admin
   setTimeout(function(){
