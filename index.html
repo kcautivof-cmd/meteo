@@ -10140,6 +10140,7 @@ async function doLogin(){
       showLogin("Ingresa credenciales.");
       return;
     }
+    if(typeof applyRoleUI === "function") applyRoleUI();
     if(typeof _prevOnload === "function"){
       try{
         const r = _prevOnload();
@@ -14972,6 +14973,7 @@ async function adminLoadUsers(){
   el.innerHTML = '<div style="color:var(--muted);font-size:11px;">Cargando...</div>';
   try{
     const r = await fetch(authUrl('/auth/list-users'),{headers:{'Authorization':'Bearer '+AUTH_TOKEN}});
+    if(!r.ok){ const err=await r.text(); el.innerHTML=`<div style="color:#b10000;font-size:11px;">Error ${r.status}: ${err}</div>`; return; }
     const js = await r.json();
     if(!js.users||!js.users.length){ el.innerHTML='<div style="color:var(--muted);font-size:11px;">No hay usuarios registrados.</div>'; return; }
     const rows = js.users.map(u=>`<tr>
@@ -14988,7 +14990,7 @@ async function adminLoadUsers(){
       </td>
     </tr>`).join('');
     el.innerHTML=`<table class="user-list-table"><thead><tr><th>USUARIO</th><th>ROL</th><th>CREADO</th><th>ACCIONES</th></tr></thead><tbody>${rows}</tbody></table>`;
-  }catch(e){ el.innerHTML=`<div style="color:#b10000;font-size:11px;">Error: ${e.message}</div>`; }
+  }catch(e){ el.innerHTML=`<div style="color:#b10000;font-size:11px;">Error: ${e.message}<br><small>¿Está el Worker v3 desplegado?</small></div>`; }
 }
 async function adminDeleteUser(username){
   if(!confirm('¿Eliminar usuario "'+username+'"?')) return;
