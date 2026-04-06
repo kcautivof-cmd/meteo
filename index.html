@@ -4155,6 +4155,7 @@ window.__dmcTimeLocal = function(raw) {
                 <option value="ma5">MEDIA 5</option>
             </select>
         </div>
+
     </div>
 </div>
                     </div>
@@ -6144,7 +6145,13 @@ if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
 
                             <div>
                                 <div style="font-size:10px; margin-bottom:4px;">MODO</div>
-                                <select id="dqMode" style="width:100%;">
+                                <select id="dqMode" style="width:100%;" onchange="
+                                    var fw=document.getElementById('dqFuenteWrap');
+                                    var bd=document.getElementById('dqSourceBadge');
+                                    var ds=document.getElementById('dqSource');
+                                    if(fw) fw.style.display=(this.value==='forecast'?'block':'none');
+                                    if(bd) bd.style.display='none';
+                                    if(ds) ds.value='openmeteo';">
                                     <option value="historico" selected>HISTÓRICO (ARCHIVE)</option>
                                     <option value="forecast">PRONÓSTICO (FORECAST)</option>
                                 </select>
@@ -6183,6 +6190,15 @@ if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
                                     <option value="daily">DÍA</option>
                                     <option value="hourly">HORA</option>
                                 </select>
+                            </div>
+
+                            <div id="dqFuenteWrap" style="display:none;">
+                                <div style="font-size:10px; margin-bottom:4px;">FUENTE PRONÓSTICO</div>
+                                <select id="dqSource" style="width:100%;" onchange="var b=document.getElementById('dqSourceBadge');if(b)b.style.display=(this.value==='dmc'?'block':'none');">
+                                    <option value="openmeteo" selected>OPEN-METEO</option>
+                                    <option value="dmc">DMC OFICIAL</option>
+                                </select>
+                                <div id="dqSourceBadge" style="display:none;font-size:9px;color:#0f5f50;background:#e9fff8;border:1px solid #9adbc9;border-radius:3px;padding:2px 5px;margin-top:3px;">&#x2713; DMC WRF</div>
                             </div>
 
                             <div>
@@ -6470,7 +6486,26 @@ function __dqDailyMinFromHourly(js, field){
                     const reqDays = Number(document.getElementById('dqFcDays')?.value || 16);
                     const useDays = Math.min(16, Math.max(1, reqDays));
                     if(reqDays > 16) __dqSetMsg("Open‑Meteo permite hasta 16 días. Usando 16.");
-                    js = await __dqFetchForecast(lat, lon, useDays);
+                    const _dqSrcFcast = document.getElementById('dqSource')?.value || 'openmeteo';
+                    const _dqBadgeFcast = document.getElementById('dqSourceBadge');
+                    if (_dqSrcFcast === 'dmc') {
+                        try {
+                            const _wbf = (typeof WORKER_BASE_URL === 'string' ? WORKER_BASE_URL : '').replace(/\/$/, '');
+                            if (!_wbf) throw new Error('WORKER_BASE_URL no definida');
+                            const _laf = encodeURIComponent(lat), _lof = encodeURIComponent(lon);
+                            const _rawFcast = await workerFetchJSON(_wbf + '/dmc/forecast?lat=' + _laf + '&lon=' + _lof);
+                            // Normalizar: puede ser {hourly,daily} o {dmc:{hourly,daily}}
+                            js = (_rawFcast && !_rawFcast.daily && _rawFcast.dmc) ? _rawFcast.dmc : _rawFcast;
+                            if (_dqBadgeFcast) { _dqBadgeFcast.style.display='block'; _dqBadgeFcast.textContent='\u2713 DMC WRF OFICIAL'; _dqBadgeFcast.style.color='#0f5f50'; _dqBadgeFcast.style.background='#e9fff8'; }
+                        } catch(_ef) {
+                            console.warn('DMC forecast fallback Open-Meteo:', _ef);
+                            js = await __dqFetchForecast(lat, lon, useDays);
+                            if (_dqBadgeFcast) { _dqBadgeFcast.style.display='block'; _dqBadgeFcast.textContent='\u26A0 DMC no disp. \u2014 Open-Meteo'; _dqBadgeFcast.style.color='#7a5500'; _dqBadgeFcast.style.background='#fff8e1'; }
+                        }
+                    } else {
+                        js = await __dqFetchForecast(lat, lon, useDays);
+                        if (_dqBadgeFcast) _dqBadgeFcast.style.display='none';
+                    }
                     __dqSetDatesForForecast(useDays);
                 }else{
                     js = await __dqFetchArchive(lat, lon, from, to);
@@ -8468,7 +8503,7 @@ function __updateAnalysisPanel(variableKey, rawLabels, rawSeries, yLabelText){
             return { labels, values: out };
         }
 
-        async function fetchArchiveDaily(lat, lon, from, to, variable) {
+                async function fetchArchiveDaily(lat, lon, from, to, variable) {
             // Por rendimiento pedimos un set mínimo de variables diarias.
             // Para variables no soportadas directamente en daily, pedimos hourly y agregamos.
             const base = "https://archive-api.open-meteo.com/v1/archive";
