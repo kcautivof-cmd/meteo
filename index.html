@@ -14950,237 +14950,161 @@ function applyRoleUI(){
   const btn = document.getElementById('adminPanelBtn');
   if(btn) btn.style.display = (typeof AUTH_ROLE !== 'undefined' && AUTH_ROLE === 'admin') ? 'block' : 'none';
 }
-function openAdminPanel(){
-  const modal = document.getElementById('adminPanelModal');
-  if(modal){ modal.classList.add('show'); adminTab('Users'); adminLoadUsers(); }
-}
-function closeAdminPanel(){
-  const modal = document.getElementById('adminPanelModal');
-  if(modal) modal.classList.remove('show');
-}
-function adminTab(tab){
-  document.querySelectorAll('.admin-tab').forEach(t=>t.classList.remove('active'));
-  document.querySelectorAll('.admin-section').forEach(s=>s.classList.remove('active'));
-  const tEl = document.getElementById('adminTab'+tab);
-  const sEl = document.getElementById('adminSection'+tab);
-  if(tEl) tEl.classList.add('active');
-  if(sEl) sEl.classList.add('active');
-  if(tab==='Users') adminLoadUsers();
-  if(tab==='Logs') adminLoadLogs();
-}
-async function adminLoadUsers(){
-  const el = document.getElementById('adminUserList');
-  if(!el) return;
-  el.innerHTML = '<div style="color:var(--muted);font-size:11px;">Cargando...</div>';
-  try{
-    const ctrl = new AbortController();
-    const tid = setTimeout(()=>ctrl.abort(), 8000);
-    const _tok = AUTH_TOKEN || localStorage.getItem('auth_token') || '';
-    const r = await fetch(authUrl('/auth/list-users'),{headers:{'Authorization':'Bearer '+_tok}, signal:ctrl.signal});
-    clearTimeout(tid);
-    if(!r.ok){ const err=await r.text(); el.innerHTML=`<div style="color:#b10000;font-size:11px;">Error ${r.status}: ${err}<br><small>Cierra sesión y vuelve a ingresar.</small></div>`; return; }
-    const js = await r.json();
-    if(!js.users||!js.users.length){ el.innerHTML='<div style="color:var(--muted);font-size:11px;">No hay usuarios registrados.</div>'; return; }
-    const rows = js.users.map(u=>`<tr>
-      <td style="font-weight:700">${u.username}</td>
-      <td>
-        <select onchange="adminChangeRole('${u.username}',this.value)" style="font-size:9px;padding:2px 4px;background:var(--bg);color:var(--text);border:1px solid var(--border);font-family:Consolas,monospace;" ${u.username===AUTH_USER?'disabled':''}>
-          <option value="user" ${(u.role||'user')==='user'?'selected':''}>USER</option>
-          <option value="admin" ${u.role==='admin'?'selected':''}>ADMIN</option>
-        </select>
-      </td>
-      <td style="font-size:9px;color:var(--muted)">${u.createdAt?new Date(u.createdAt).toLocaleString('es-CL'):'—'}</td>
-      <td style="display:flex;gap:4px;">
-        ${u.username!==AUTH_USER?`<button class="user-del-btn" onclick="adminResetPassword('${u.username}')" title="Resetear contraseña">🔑</button><button class="user-del-btn" onclick="adminDeleteUser('${u.username}')">✕</button>`:'<span style="color:var(--muted);font-size:9px;">(tú)</span>'}
-      </td>
-    </tr>`).join('');
-    el.innerHTML=`<table class="user-list-table"><thead><tr><th>USUARIO</th><th>ROL</th><th>CREADO</th><th>ACCIONES</th></tr></thead><tbody>${rows}</tbody></table>`;
-  }catch(e){ 
-    const msg = e.name==='AbortError' ? 'Timeout: Worker no responde (8s). Verifica Cloudflare.' : e.message;
-    el.innerHTML=`<div style="color:#b10000;font-size:11px;">Error: ${msg}<br><small>F12 → Console para más detalles.</small></div>`; 
-  }
-}
-async function adminDeleteUser(username){
-  if(!confirm('¿Eliminar usuario "'+username+'"?')) return;
-  const msg = document.getElementById('adminCreateMsg');
-  try{
-    const r = await fetch(authUrl('/auth/remove-user'),{method:'DELETE',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(AUTH_TOKEN||localStorage.getItem('auth_token')||'')},body:JSON.stringify({username})});
-    const js = await r.json();
-    if(js.ok){ if(msg){msg.textContent='Usuario "'+username+'" eliminado.';msg.className='admin-msg ok';} adminLoadUsers(); }
-    else throw new Error(js.error||'Error');
-  }catch(e){ if(msg){msg.textContent='Error: '+e.message;msg.className='admin-msg err';} }
-}
-async function adminCreateUser(){
-  const username = (document.getElementById('newUsername')?.value||'').trim();
-  const password = document.getElementById('newPassword')?.value||'';
-  const role = document.getElementById('newRole')?.value||'user';
-  const msg = document.getElementById('adminCreateMsg');
-  if(!username||!password){ if(msg){msg.textContent='Completa usuario y contraseña.';msg.className='admin-msg err';} return; }
-  try{
-    const pwHash = await hashPassword(password);
-    const r = await fetch(authUrl('/auth/add-user'),{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(AUTH_TOKEN||localStorage.getItem('auth_token')||'')},body:JSON.stringify({username,password:pwHash,role})});
-    const js = await r.json();
-    if(js.ok){
-      if(msg){msg.textContent='Usuario "'+username+'" creado correctamente.';msg.className='admin-msg ok';}
-      document.getElementById('newUsername').value='';
-      document.getElementById('newPassword').value='';
-      adminLoadUsers();
-    }else throw new Error(js.error||'Error');
-  }catch(e){ if(msg){msg.textContent='Error: '+e.message;msg.className='admin-msg err';} }
-}
-async function adminLoadLogs(){
-  const el = document.getElementById('adminLogsList');
-  if(!el) return;
-  el.innerHTML='<div style="color:var(--muted);font-size:11px;">Cargando...</div>';
-  try{
-    const r = await fetch(authUrl('/auth/logs'),{headers:{'Authorization':'Bearer '+(AUTH_TOKEN||localStorage.getItem('auth_token')||'')}});
-    const js = await r.json();
-    if(!js.logs||!js.logs.length){ el.innerHTML='<div style="color:var(--muted);font-size:11px;">Sin registros aún.</div>'; return; }
-    const rows = js.logs.map(l=>`<tr>
-      <td style="font-size:9px;color:var(--muted)">${new Date(l.timestamp).toLocaleString('es-CL')}</td>
-      <td>${l.username}</td>
-      <td class="${l.success?'log-ok':'log-fail'}">${l.success?'✓ OK':'✗ FALLO'}</td>
-      <td style="font-size:9px;color:var(--muted)">${l.ip||'—'}</td>
-    </tr>`).join('');
-    el.innerHTML=`<table class="log-table"><thead><tr><th>FECHA/HORA</th><th>USUARIO</th><th>ESTADO</th><th>IP</th></tr></thead><tbody>${rows}</tbody></table>`;
-  }catch(e){ el.innerHTML=`<div style="color:#b10000;font-size:11px;">Error: ${e.message}</div>`; }
-}
-document.addEventListener('click',function(e){ if(e.target&&e.target.id==='adminPanelModal') closeAdminPanel(); });
 
-// ── ADMIN PANEL EXTENSIONES ───────────────────────────────────────────────
-async function adminChangePassword(){
-  const oldPw = document.getElementById('cpOld')?.value||'';
-  const newPw = document.getElementById('cpNew')?.value||'';
-  const cfPw  = document.getElementById('cpConfirm')?.value||'';
-  const msg   = document.getElementById('cpMsg');
-  if(!oldPw||!newPw||!cfPw){if(msg){msg.textContent='Completa todos los campos.';msg.className='admin-msg err';} return;}
-  if(newPw!==cfPw){if(msg){msg.textContent='Las contraseñas nuevas no coinciden.';msg.className='admin-msg err';} return;}
-  if(newPw.length<6){if(msg){msg.textContent='Mínimo 6 caracteres.';msg.className='admin-msg err';} return;}
-  try{
-    const [oldHash,newHash] = await Promise.all([hashPassword(oldPw),hashPassword(newPw)]);
-    const r = await fetch(authUrl('/auth/change-password'),{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(AUTH_TOKEN||localStorage.getItem('auth_token')||'')},body:JSON.stringify({oldPassword:oldHash,newPassword:newHash})});
-    const js = await r.json();
-    if(js.ok){
-      if(msg){msg.textContent='✔ Contraseña cambiada. Vuelve a iniciar sesión.';msg.className='admin-msg ok';}
-      document.getElementById('cpOld').value='';
-      document.getElementById('cpNew').value='';
-      document.getElementById('cpConfirm').value='';
-    }else throw new Error(js.error||'Error');
-  }catch(e){if(msg){msg.textContent='Error: '+e.message;msg.className='admin-msg err';}}
-}
-
-async function adminResetPassword(username){
-  const newPw = prompt('Nueva contraseña para "'+username+'":');
-  if(!newPw||newPw.length<6){alert('Mínimo 6 caracteres.'); return;}
-  const msg = document.getElementById('adminCreateMsg');
-  try{
-    const pwHash = await hashPassword(newPw);
-    const r = await fetch(authUrl('/auth/reset-password'),{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(AUTH_TOKEN||localStorage.getItem('auth_token')||'')},body:JSON.stringify({username,newPassword:pwHash})});
-    const js = await r.json();
-    if(js.ok){if(msg){msg.textContent='Contraseña de "'+username+'" reseteada.';msg.className='admin-msg ok';}}
-    else throw new Error(js.error||'Error');
-  }catch(e){if(msg){msg.textContent='Error: '+e.message;msg.className='admin-msg err';}}
-}
-
-async function adminChangeRole(username,newRole){
-  const msg = document.getElementById('adminCreateMsg');
-  try{
-    const r = await fetch(authUrl('/auth/change-role'),{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(AUTH_TOKEN||localStorage.getItem('auth_token')||'')},body:JSON.stringify({username,role:newRole})});
-    const js = await r.json();
-    if(js.ok){if(msg){msg.textContent='Rol de "'+username+'" cambiado a '+newRole+'.';msg.className='admin-msg ok';}}
-    else throw new Error(js.error||'Error');
-  }catch(e){if(msg){msg.textContent='Error: '+e.message;msg.className='admin-msg err';}}
-}
-
-function adminLoadSessionInfo(){
-  const el = document.getElementById('adminSessionInfo');
-  if(!el) return;
-  try{
-    const parts = AUTH_TOKEN.split('.');
-    const payload = JSON.parse(atob(parts[1]));
-    const exp = new Date(payload.exp);
-    const mins = Math.round((payload.exp - Date.now())/60000);
-    el.innerHTML = `
-      <div><span style="color:var(--muted);font-size:9px;">USUARIO</span><br><strong>${AUTH_USER}</strong></div>
-      <div><span style="color:var(--muted);font-size:9px;">ROL</span><br><strong>${AUTH_ROLE.toUpperCase()}</strong></div>
-      <div><span style="color:var(--muted);font-size:9px;">SESIÓN EXPIRA</span><br><strong>${exp.toLocaleString('es-CL')}</strong></div>
-      <div><span style="color:var(--muted);font-size:9px;">TIEMPO RESTANTE</span><br><strong style="color:${mins<30?'#b10000':'#2a7a2a'}">${mins} minutos</strong></div>
-    `;
-  }catch(e){ el.innerHTML='<span style="color:var(--muted);">No disponible</span>'; }
-}
-
-// Sobrescribir adminTab para cargar session info al abrir MI CUENTA
-const _adminTabOrig = adminTab;
-function adminTab(tab){
-  _adminTabOrig(tab);
-  if(tab==='Account') adminLoadSessionInfo();
-}
 </script>
 
-
-<!-- ── ADMIN PANEL MODAL ─────────────────────────────────────────────── -->
-<div id="adminPanelModal">
-  <div class="admin-dialog">
-    <div class="admin-head">
-      <span>PANEL DE ADMINISTRACIÓN</span>
-      <button onclick="closeAdminPanel()" style="background:var(--bg);color:var(--text);border:1px solid var(--border);padding:3px 10px;cursor:pointer;font-weight:700;font-family:Consolas,monospace;font-size:11px;">✕</button>
+<!-- ADMIN PANEL START -->
+<div id="adminPanelModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);z-index:99998">
+  <div style="width:min(960px,96vw);max-height:90vh;overflow:auto;background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.45)">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #334155">
+      <div style="font:700 14px Consolas,monospace;letter-spacing:.12em">PANEL DE ADMINISTRACIÓN</div>
+      <button onclick="closeAdminPanel()" style="background:#111827;color:#fff;border:1px solid #334155;width:34px;height:28px;border-radius:6px;cursor:pointer">✕</button>
     </div>
-    <div class="admin-tabs">
-      <div class="admin-tab active" onclick="adminTab('Users')" id="adminTabUsers">USUARIOS</div>
-      <div class="admin-tab" onclick="adminTab('Logs')" id="adminTabLogs">REGISTRO DE ACCESOS</div>
-      <div class="admin-tab" onclick="adminTab('Account')" id="adminTabAccount">MI CUENTA</div>
+    <div style="display:flex;border-bottom:1px solid #334155">
+      <div class="admin-tab active" id="adminTabUsers" onclick="adminTab('Users')" style="padding:12px 16px;font:700 11px Consolas,monospace;cursor:pointer;border-right:1px solid #334155;user-select:none">USUARIOS</div>
+      <div class="admin-tab" id="adminTabLogs" onclick="adminTab('Logs')" style="padding:12px 16px;font:700 11px Consolas,monospace;cursor:pointer;border-right:1px solid #334155;user-select:none">REGISTRO DE ACCESOS</div>
+      <div class="admin-tab" id="adminTabAccount" onclick="adminTab('Account')" style="padding:12px 16px;font:700 11px Consolas,monospace;cursor:pointer;user-select:none">MI CUENTA</div>
     </div>
-    <div class="admin-body">
-      <div id="adminSectionUsers" class="admin-section active">
-        <div id="adminUserList"><div style="color:var(--muted);font-size:11px;">Cargando usuarios...</div></div>
-        <div class="admin-create-form">
-          <h4>CREAR NUEVO USUARIO</h4>
-          <div class="admin-create-row">
-            <div><label>USUARIO</label><input id="newUsername" type="text" placeholder="nombre" autocomplete="off"></div>
-            <div><label>CONTRASEÑA</label><input id="newPassword" type="password" placeholder="clave segura"></div>
-            <div><label>ROL</label><select id="newRole"><option value="user">USER</option><option value="admin">ADMIN</option></select></div>
+    <div style="padding:18px">
+      <div id="adminSectionUsers" class="admin-section" style="display:block">
+        <div id="adminUserList"><div style="color:#94a3b8;font-size:11px">Cargando...</div></div>
+        <div style="margin-top:16px;border:1px solid #334155;border-radius:12px;padding:14px;background:#111827">
+          <div style="font:700 12px Consolas,monospace;letter-spacing:.12em;margin-bottom:12px">CREAR NUEVO USUARIO</div>
+          <div style="display:grid;grid-template-columns:2fr 2fr 1fr;gap:12px;align-items:end">
+            <div><div style="font:700 9px Consolas,monospace;color:#94a3b8;margin-bottom:4px">USUARIO</div><input id="newUserName" type="text" placeholder="NOMBRE" style="width:100%;padding:9px 10px;border:1px solid #334155;background:#0b1220;color:#e2e8f0;border-radius:8px;box-sizing:border-box;font:12px Consolas,monospace"></div>
+            <div><div style="font:700 9px Consolas,monospace;color:#94a3b8;margin-bottom:4px">CONTRASEÑA</div><input id="newUserPass" type="password" placeholder="CLAVE SEGURA" style="width:100%;padding:9px 10px;border:1px solid #334155;background:#0b1220;color:#e2e8f0;border-radius:8px;box-sizing:border-box;font:12px Consolas,monospace"></div>
+            <div><div style="font:700 9px Consolas,monospace;color:#94a3b8;margin-bottom:4px">ROL</div><select id="newUserRole" style="width:100%;padding:9px 10px;border:1px solid #334155;background:#0b1220;color:#e2e8f0;border-radius:8px;box-sizing:border-box;font:12px Consolas,monospace"><option value="user">USER</option><option value="admin">ADMIN</option></select></div>
           </div>
-          <div style="margin-top:8px;display:flex;gap:10px;align-items:center;">
-            <button class="admin-submit-btn" onclick="adminCreateUser()">+ CREAR USUARIO</button>
-            <div id="adminCreateMsg" class="admin-msg"></div>
-          </div>
+          <button onclick="adminCreateUser()" style="margin-top:12px;padding:10px 14px;border-radius:10px;border:1px solid #94a3b8;background:#e2e8f0;color:#0f172a;font:700 12px Consolas,monospace;cursor:pointer">+ CREAR USUARIO</button>
+          <div id="adminCreateMsg" style="margin-top:10px;font:11px Consolas,monospace;min-height:14px"></div>
         </div>
       </div>
-      <div id="adminSectionLogs" class="admin-section">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-          <button onclick="adminLoadLogs()" style="padding:5px 12px;font-size:10px;cursor:pointer;border:1px solid var(--border);background:var(--panel2);color:var(--text);font-family:Consolas,monospace;font-weight:700;">↻ ACTUALIZAR</button>
-          <span style="font-size:9px;color:var(--muted);">Últimos 50 accesos</span>
-        </div>
-        <div id="adminLogsList"><div style="color:var(--muted);font-size:11px;">Cargando logs...</div></div>
+      <div id="adminSectionLogs" class="admin-section" style="display:none">
+        <div id="adminLogsList"><div style="color:#94a3b8;font-size:11px">Cargando logs...</div></div>
       </div>
-      <div id="adminSectionAccount" class="admin-section">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
-          <div class="admin-create-form">
-            <h4>CAMBIAR MI CONTRASEÑA</h4>
-            <div style="display:flex;flex-direction:column;gap:8px;">
-              <div><label style="display:block;font-size:9px;color:var(--muted);margin-bottom:2px;letter-spacing:.5px;">CONTRASEÑA ACTUAL</label>
-                <input id="cpOld" type="password" placeholder="contraseña actual" style="width:100%;padding:6px 8px;font-size:10px;font-family:Consolas,monospace;background:var(--bg);color:var(--text);border:1px solid var(--border);box-sizing:border-box;">
-              </div>
-              <div><label style="display:block;font-size:9px;color:var(--muted);margin-bottom:2px;letter-spacing:.5px;">NUEVA CONTRASEÑA</label>
-                <input id="cpNew" type="password" placeholder="nueva contraseña" style="width:100%;padding:6px 8px;font-size:10px;font-family:Consolas,monospace;background:var(--bg);color:var(--text);border:1px solid var(--border);box-sizing:border-box;">
-              </div>
-              <div><label style="display:block;font-size:9px;color:var(--muted);margin-bottom:2px;letter-spacing:.5px;">CONFIRMAR NUEVA CONTRASEÑA</label>
-                <input id="cpConfirm" type="password" placeholder="confirmar contraseña" style="width:100%;padding:6px 8px;font-size:10px;font-family:Consolas,monospace;background:var(--bg);color:var(--text);border:1px solid var(--border);box-sizing:border-box;">
-              </div>
-              <button class="admin-submit-btn" onclick="adminChangePassword()" style="margin-top:4px;width:100%;">✔ CAMBIAR CONTRASEÑA</button>
-              <div id="cpMsg" class="admin-msg"></div>
-            </div>
+      <div id="adminSectionAccount" class="admin-section" style="display:none">
+        <div style="border:1px solid #334155;border-radius:12px;padding:14px;background:#111827">
+          <div style="font:700 12px Consolas,monospace;letter-spacing:.12em;margin-bottom:12px">CAMBIAR MI CONTRASEÑA</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;align-items:end">
+            <div><div style="font:700 9px Consolas,monospace;color:#94a3b8;margin-bottom:4px">CONTRASEÑA ACTUAL</div><input id="cpOld" type="password" placeholder="actual" style="width:100%;padding:9px 10px;border:1px solid #334155;background:#0b1220;color:#e2e8f0;border-radius:8px;box-sizing:border-box;font:12px Consolas,monospace"></div>
+            <div><div style="font:700 9px Consolas,monospace;color:#94a3b8;margin-bottom:4px">NUEVA CONTRASEÑA</div><input id="cpNew" type="password" placeholder="nueva" style="width:100%;padding:9px 10px;border:1px solid #334155;background:#0b1220;color:#e2e8f0;border-radius:8px;box-sizing:border-box;font:12px Consolas,monospace"></div>
+            <div><div style="font:700 9px Consolas,monospace;color:#94a3b8;margin-bottom:4px">CONFIRMAR</div><input id="cpConfirm" type="password" placeholder="repite" style="width:100%;padding:9px 10px;border:1px solid #334155;background:#0b1220;color:#e2e8f0;border-radius:8px;box-sizing:border-box;font:12px Consolas,monospace"></div>
           </div>
-          <div class="admin-create-form">
-            <h4>INFORMACIÓN DE SESIÓN</h4>
-            <div id="adminSessionInfo" style="font-size:11px;line-height:2.2;color:var(--text);"></div>
-          </div>
+          <button onclick="adminChangePassword()" style="margin-top:12px;padding:10px 14px;border-radius:10px;border:1px solid #94a3b8;background:#e2e8f0;color:#0f172a;font:700 12px Consolas,monospace;cursor:pointer">CAMBIAR CONTRASEÑA</button>
+          <div id="cpMsg" style="margin-top:10px;font:11px Consolas,monospace;min-height:14px"></div>
         </div>
       </div>
     </div>
   </div>
 </div>
+<script>
+(function(){
+  var busy=false;
+  window.openAdminPanel=function(){var m=document.getElementById('adminPanelModal');if(m)m.style.display='flex';setTimeout(function(){window.adminTab('Users');},50);};
+  window.closeAdminPanel=function(){var m=document.getElementById('adminPanelModal');if(m)m.style.display='none';};
+  window.adminTab=function(tab){
+    if(busy)return;busy=true;
+    document.querySelectorAll('.admin-tab').forEach(function(t){t.style.background='';t.classList.remove('active');});
+    ['adminSectionUsers','adminSectionLogs','adminSectionAccount'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});
+    var t=document.getElementById('adminTab'+tab),s=document.getElementById('adminSection'+tab);
+    if(t){t.style.background='#111827';t.classList.add('active');}
+    if(s)s.style.display='block';
+    busy=false;
+    if(tab==='Users')setTimeout(window.adminLoadUsers,20);
+    if(tab==='Logs')setTimeout(window.adminLoadLogs,20);
+  };
+  window.adminLoadUsers=async function(){
+    var el=document.getElementById('adminUserList');if(!el)return;
+    el.innerHTML='<div style="color:#94a3b8;font-size:11px">Cargando...</div>';
+    try{
+      var token=(window.AUTH_TOKEN||localStorage.getItem('auth_token')||'').trim();
+      var ctrl=new AbortController();var tid=setTimeout(function(){ctrl.abort();},7000);
+      var r=await fetch(authUrl('/auth/list-users'),{headers:{Authorization:'Bearer '+token},signal:ctrl.signal});
+      clearTimeout(tid);
+      var txt=await r.text();var js;try{js=JSON.parse(txt);}catch(e){js={error:txt};}
+      if(!r.ok){el.innerHTML='<div style="color:#fca5a5;font-size:11px">Error '+r.status+': '+(js.error||txt)+'</div>';return;}
+      var users=Array.isArray(js.users)?js.users:[];
+      if(!users.length){el.innerHTML='<div style="color:#94a3b8;font-size:11px">No hay usuarios registrados.</div>';return;}
+      var cur=(window.AUTH_USER||localStorage.getItem('auth_user')||'').trim();
+      var rows=users.map(function(u){
+        return '<tr><td style="font-weight:700;padding:8px 6px;border-bottom:1px solid #334155;font:11px Consolas,monospace">'+u.username+'</td>'
+        +'<td style="padding:8px 6px;border-bottom:1px solid #334155"><select onchange="adminChangeRole(\''+u.username+'\',this.value)" style="font-size:9px;padding:2px 4px;background:#0b1220;color:#e2e8f0;border:1px solid #334155;font-family:Consolas,monospace"><option value="user" '+((u.role||'user')==='user'?'selected':'')+'>USER</option><option value="admin" '+(u.role==='admin'?'selected':'')+'>ADMIN</option></select></td>'
+        +'<td style="font-size:9px;color:#94a3b8;padding:8px 6px;border-bottom:1px solid #334155">'+(u.createdAt?new Date(u.createdAt).toLocaleString('es-CL'):'—')+'</td>'
+        +'<td style="padding:8px 6px;border-bottom:1px solid #334155">'+(u.username!==cur
+          ?'<button onclick="adminResetPassword(\''+u.username+'\')" style="background:#111827;color:#fff;border:1px solid #334155;border-radius:6px;padding:4px 7px;cursor:pointer;margin-right:4px">🔑</button><button onclick="adminDeleteUser(\''+u.username+'\')" style="background:#111827;color:#fff;border:1px solid #334155;border-radius:6px;padding:4px 7px;cursor:pointer">✕</button>'
+          :'<span style="color:#94a3b8;font-size:9px">(tú)</span>')
+        +'</td></tr>';
+      }).join('');
+      el.innerHTML='<table style="width:100%;border-collapse:collapse;font:11px Consolas,monospace"><thead><tr><th style="text-align:left;padding:8px 6px;border-bottom:1px solid #334155">USUARIO</th><th style="text-align:left;padding:8px 6px;border-bottom:1px solid #334155">ROL</th><th style="text-align:left;padding:8px 6px;border-bottom:1px solid #334155">CREADO</th><th style="text-align:left;padding:8px 6px;border-bottom:1px solid #334155">ACCIONES</th></tr></thead><tbody>'+rows+'</tbody></table>';
+    }catch(e){el.innerHTML='<div style="color:#fca5a5;font-size:11px">'+(e.name==='AbortError'?'Timeout cargando usuarios':e.message)+'</div>';}
+  };
+  window.adminLoadLogs=async function(){
+    var el=document.getElementById('adminLogsList');if(!el)return;
+    el.innerHTML='<div style="color:#94a3b8;font-size:11px">Cargando logs...</div>';
+    try{
+      var token=(window.AUTH_TOKEN||localStorage.getItem('auth_token')||'').trim();
+      var r=await fetch(authUrl('/auth/logs'),{headers:{Authorization:'Bearer '+token}});
+      var txt=await r.text();var js;try{js=JSON.parse(txt);}catch(e){js={error:txt};}
+      if(!r.ok){el.innerHTML='<div style="color:#fca5a5;font-size:11px">Error '+r.status+': '+(js.error||txt)+'</div>';return;}
+      var logs=Array.isArray(js.logs)?js.logs:[];
+      if(!logs.length){el.innerHTML='<div style="color:#94a3b8;font-size:11px">No hay registros.</div>';return;}
+      el.innerHTML='<pre style="white-space:pre-wrap;font-size:10px;line-height:1.4">'+logs.map(function(x){return JSON.stringify(x,null,2);}).join('\n\n')+'</pre>';
+    }catch(e){el.innerHTML='<div style="color:#fca5a5;font-size:11px">'+e.message+'</div>';}
+  };
+  window.adminCreateUser=async function(){
+    var u=(document.getElementById('newUserName')||{}).value||'';u=u.trim();
+    var p=(document.getElementById('newUserPass')||{}).value||'';
+    var role=(document.getElementById('newUserRole')||{}).value||'user';
+    var msg=document.getElementById('adminCreateMsg');
+    if(!u||!p){if(msg){msg.textContent='Completa usuario y contraseña';msg.style.color='#fca5a5';}return;}
+    try{
+      var token=(window.AUTH_TOKEN||localStorage.getItem('auth_token')||'').trim();
+      var res=await fetch(authUrl('/auth/add-user'),{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({username:u,password:p,role:role})});
+      var js=await res.json().catch(function(){return{};});
+      if(!res.ok)throw new Error(js.error||'Error');
+      if(msg){msg.textContent='✔ Usuario creado';msg.style.color='#86efac';}
+      window.adminLoadUsers();
+    }catch(e){if(msg){msg.textContent='Error: '+e.message;msg.style.color='#fca5a5';}}
+  };
+  window.adminChangeRole=async function(username,newRole){
+    try{
+      var token=(window.AUTH_TOKEN||localStorage.getItem('auth_token')||'').trim();
+      var r=await fetch(authUrl('/auth/change-role'),{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({username:username,role:newRole})});
+      var js=await r.json().catch(function(){return{};});if(!r.ok)throw new Error(js.error||'Error');window.adminLoadUsers();
+    }catch(e){alert('Error: '+e.message);}
+  };
+  window.adminDeleteUser=async function(username){
+    if(!confirm('¿Eliminar usuario '+username+'?'))return;
+    try{
+      var token=(window.AUTH_TOKEN||localStorage.getItem('auth_token')||'').trim();
+      var r=await fetch(authUrl('/auth/remove-user'),{method:'DELETE',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({username:username})});
+      var js=await r.json().catch(function(){return{};});if(!r.ok)throw new Error(js.error||'Error');window.adminLoadUsers();
+    }catch(e){alert('Error: '+e.message);}
+  };
+  window.adminResetPassword=async function(username){
+    var np=prompt('Nueva contraseña para '+username+':');if(!np||np.length<6)return alert('Mínimo 6 caracteres');
+    try{
+      var token=(window.AUTH_TOKEN||localStorage.getItem('auth_token')||'').trim();
+      var r=await fetch(authUrl('/auth/reset-password'),{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({username:username,newPassword:np})});
+      var js=await r.json().catch(function(){return{};});if(!r.ok)throw new Error(js.error||'Error');alert('Contraseña reseteada ✔');
+    }catch(e){alert('Error: '+e.message);}
+  };
+  window.adminChangePassword=async function(){
+    var oldPw=(document.getElementById('cpOld')||{}).value||'';
+    var newPw=(document.getElementById('cpNew')||{}).value||'';
+    var cfPw=(document.getElementById('cpConfirm')||{}).value||'';
+    var msg=document.getElementById('cpMsg');
+    if(!oldPw||!newPw||!cfPw){if(msg){msg.textContent='Completa todos los campos.';msg.style.color='#fca5a5';}return;}
+    if(newPw!==cfPw){if(msg){msg.textContent='Las contraseñas nuevas no coinciden.';msg.style.color='#fca5a5';}return;}
+    try{
+      var token=(window.AUTH_TOKEN||localStorage.getItem('auth_token')||'').trim();
+      var r=await fetch(authUrl('/auth/change-password'),{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({oldPassword:oldPw,newPassword:newPw})});
+      var js=await r.json().catch(function(){return{};});if(!r.ok)throw new Error(js.error||'Error');
+      if(msg){msg.textContent='✔ Contraseña cambiada';msg.style.color='#86efac';}
+    }catch(e){if(msg){msg.textContent='Error: '+e.message;msg.style.color='#fca5a5';}}
+  };
+})();
+</script>
+<!-- ADMIN PANEL END -->
 </body>
 </html>
-
- 
