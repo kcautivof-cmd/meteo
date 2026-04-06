@@ -10073,6 +10073,14 @@ async function verifySession(){
   }
 }
 
+async function hashPassword(password) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 async function doLogin(){
   const username = (document.getElementById("loginUser")?.value || "").trim();
   const password = (document.getElementById("loginPass")?.value || "");
@@ -10088,10 +10096,13 @@ async function doLogin(){
     if(btn) btn.disabled = true;
     if(msg) msg.textContent = "Validando credenciales...";
 
+    // ── SHA-256 hash antes de enviar (contraseña nunca viaja en texto plano) ──
+    const passwordHash = await hashPassword(password);
+
     const r = await fetch(authUrl("/auth/login"), {
       method: "POST",
       headers: {"Content-Type":"application/json","Accept":"application/json"},
-      body: JSON.stringify({ username, password })
+      body: JSON.stringify({ username, password: passwordHash })
     });
 
     const js = await r.json().catch(()=>({}));
@@ -10108,8 +10119,6 @@ async function doLogin(){
 
     hideLogin();
 
-    // Si tu UI usa splash "ENTRAR", la dejamos tal cual.
-    // Si no, intentamos activar lo que exista.
     try{ if (typeof enterSystem === "function") enterSystem(); }catch(e){}
   }catch(e){
     if(msg) msg.textContent = "ERROR: " + (e?.message || e);
