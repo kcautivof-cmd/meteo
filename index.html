@@ -14965,6 +14965,7 @@ function adminTab(tab){
   const sEl = document.getElementById('adminSection'+tab);
   if(tEl) tEl.classList.add('active');
   if(sEl) sEl.classList.add('active');
+  if(tab==='Users') adminLoadUsers();
   if(tab==='Logs') adminLoadLogs();
 }
 async function adminLoadUsers(){
