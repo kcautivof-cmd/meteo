@@ -3600,6 +3600,141 @@ window.__dmcTimeLocal = function(raw) {
 #__notifyBtns button{padding:7px 18px;border:none;border-radius:6px;cursor:pointer;font-size:.83rem;font-weight:600;letter-spacing:.03em;}
 #__notifyOk{background:#2563eb;color:#fff;}
 #__notifyCancel{background:#374151;color:#d1d5db;display:none;}
+
+/* ── PANEL COMPARATIVO PUNTO B ─────────────────────────────────────────────── */
+#cmpPanel { display:none; }
+#cmpPanel.active { display:block; }
+.cmp-grid {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:0;
+  border:1px solid var(--border);
+}
+.cmp-col {
+  padding:0;
+}
+.cmp-col + .cmp-col {
+  border-left:1px solid var(--border);
+}
+.cmp-header {
+  padding:8px 12px;
+  font-size:0.72em;
+  font-weight:700;
+  letter-spacing:0.7px;
+  color:var(--accent);
+  border-bottom:1px solid var(--border);
+  background:var(--panel2,var(--panel));
+  text-transform:uppercase;
+}
+.cmp-header span {
+  display:block;
+  font-size:0.85em;
+  font-weight:400;
+  color:var(--muted);
+  margin-top:2px;
+  letter-spacing:0.3px;
+}
+.cmp-row {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  border-bottom:1px solid var(--border);
+}
+.cmp-row:last-child { border-bottom:none; }
+.cmp-label {
+  padding:5px 10px;
+  font-size:0.62em;
+  letter-spacing:0.5px;
+  color:var(--muted);
+  border-right:1px solid var(--border);
+  display:flex;
+  align-items:center;
+}
+.cmp-val {
+  padding:5px 10px;
+  font-size:0.88em;
+  font-weight:700;
+  color:var(--text);
+  display:flex;
+  align-items:center;
+}
+.cmp-val.warn { color:var(--orange,#f39c12); }
+.cmp-val.crit { color:var(--red,#e05c5c); }
+.cmp-val.good { color:var(--green,#2ecc71); }
+.cmp-delta {
+  margin-left:6px;
+  font-size:0.75em;
+  font-weight:400;
+  color:var(--muted);
+}
+.cmp-delta.up   { color:var(--orange,#f39c12); }
+.cmp-delta.down { color:#7eb8f7; }
+.cmp-status-row {
+  padding:6px 12px;
+  font-size:0.72em;
+  font-weight:700;
+  letter-spacing:0.5px;
+  border-top:1px solid var(--border);
+  text-align:center;
+}
+.cmp-status-row.ok   { color:var(--green,#2ecc71); }
+.cmp-status-row.warn { color:var(--orange,#f39c12); }
+.cmp-status-row.crit { color:var(--red,#e05c5c); }
+.cmp-loading {
+  padding:18px;
+  text-align:center;
+  color:var(--muted);
+  font-size:0.78em;
+  letter-spacing:0.5px;
+}
+.cmp-map-line { stroke:#f39c12; stroke-width:2; stroke-dasharray:5,4; }
+#cmpBtnBar {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:4px 0 6px;
+  flex-wrap:wrap;
+}
+#cmpBtnToggle {
+  font-family:Consolas,monospace;
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:0.8px;
+  padding:4px 12px;
+  border:1px solid var(--border);
+  background:var(--panel);
+  color:var(--text);
+  cursor:pointer;
+  border-radius:3px;
+  text-transform:uppercase;
+}
+#cmpBtnToggle.active {
+  background:var(--accent,#2563eb);
+  color:#fff;
+  border-color:var(--accent,#2563eb);
+}
+#cmpBtnClear {
+  font-family:Consolas,monospace;
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:0.8px;
+  padding:4px 10px;
+  border:1px solid var(--border);
+  background:var(--panel);
+  color:var(--muted);
+  cursor:pointer;
+  border-radius:3px;
+  text-transform:uppercase;
+  display:none;
+}
+#cmpHint {
+  font-size:0.68em;
+  color:var(--muted);
+  letter-spacing:0.3px;
+}
+/* ocultar panel comp para rol user */
+body.role-user #cmpPanel,
+body.role-user #cmpBtnBar { display:none !important; }
+/* ── FIN PANEL COMPARATIVO ─────────────────────────────────────────────────── */
 </style>
 <div id="__notifyOverlay">
   <div id="__notifyBox">
@@ -3872,6 +4007,27 @@ window.__dmcTimeLocal = function(raw) {
                     </div>
                 </div>
             </div>
+
+
+            <!-- ══ PANEL COMPARATIVO PUNTO A vs B (solo admin) ══════════════════ -->
+            <div id="cmpBtnBar">
+              <button id="cmpBtnToggle" onclick="cmpToggleMode()">COMPARAR PUNTO B</button>
+              <button id="cmpBtnClear"  onclick="cmpClear()">LIMPIAR PUNTO B</button>
+              <span   id="cmpHint"></span>
+            </div>
+
+            <div id="cmpPanel" class="panel" style="padding:0;overflow:hidden;">
+              <span class="panel-title" style="margin:0;padding:6px 12px;">
+                COMPARACION: <span id="cmpTitleA" style="color:var(--text)">PUNTO A</span>
+                &nbsp;vs&nbsp;
+                <span id="cmpTitleB" style="color:var(--accent)">PUNTO B</span>
+                <span id="cmpDist" style="color:var(--muted);font-size:0.8em;margin-left:10px;"></span>
+              </span>
+              <div id="cmpBody">
+                <div class="cmp-loading">Fija el PUNTO B haciendo clic derecho en el mapa o activando el modo y haciendo clic.</div>
+              </div>
+            </div>
+            <!-- ══ FIN PANEL COMPARATIVO ══════════════════════════════════════ -->
 
             <div class="panel">
                 <span class="panel-title">FUENTES DE INFORMACIÓN</span>
@@ -4246,7 +4402,7 @@ window.__dmcTimeLocal = function(raw) {
             <div class="mobile-map-app-title">METEOROLOGÍA APLICADA</div>
             <span class="panel-title">MAPA</span>
             <div id="pickMap"></div>
-            <div class="map-hint">CLICK EN EL MAPA PARA ACTUALIZAR LA UBICACIÓN (ACTIVA COORD. MANUALES GMS Y EJECUTA ACTUALIZACIÓN)</div>
+            <div class="map-hint">CLICK EN EL MAPA PARA ACTUALIZAR LA UBICACIÓN (ACTIVA COORD. MANUALES GMS Y EJECUTA ACTUALIZACIÓN) &nbsp;|&nbsp; CLICK DERECHO: FIJAR PUNTO B (COMPARACION)</div>
         
         <div class="fullwidth-panel" id="dataQueryWrap" style="display:none;">
             <span class="panel-title">DATOS CONSULTADOS</span>
@@ -6827,6 +6983,12 @@ function __dqDailyMinFromHourly(js, field){
 
 // alertas cada 15 min
         window.__alertsInterval = setInterval(()=>{ try{ fetchAlerts(); }catch(e){} }, 15*60*1000);
+// Verificar y renovar token cada 25 minutos si hay sesión activa
+window.__sessionInterval = setInterval(async ()=>{
+  if(window.AUTH_TOKEN || localStorage.getItem('auth_token')){
+    await verifySession().catch(()=>{});
+  }
+}, 25*60*1000);
 window.__mainOnload = async function() {
   /* uiRange eliminado */
  await executeSearch(); onTimeControlsChanged(); try{ __syncMenuVisibility(); }catch(e){}; try{ await fetchAlerts(); }catch(e){} };
@@ -7238,6 +7400,8 @@ globalData = data;
                                 loadUAV15Day();
 
                                 try{ await fetchAlerts(); }catch(e){}
+                // Notificar al módulo comparativo que el punto A se actualizó
+                try{ if(typeof window.__cmpOnPointAUpdated === 'function') window.__cmpOnPointAUpdated(); }catch(_e){}
 
 statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
                 statusMsg.style.color = "var(--text)";
@@ -15096,7 +15260,8 @@ async function robustGenerate(ev){
 
 // ── ADMIN PANEL ─────────────────────────────────────────────────────────
 function applyRoleUI(){
-  const isAdmin = (typeof AUTH_ROLE !== 'undefined' && AUTH_ROLE === 'admin');
+  const isAdmin    = (typeof AUTH_ROLE !== 'undefined' && AUTH_ROLE === 'admin');
+  const isOperator = (typeof AUTH_ROLE !== 'undefined' && (AUTH_ROLE === 'admin' || AUTH_ROLE === 'operator'));
 
   // Botón panel admin
   const btn = document.getElementById('adminPanelBtn');
@@ -15145,7 +15310,7 @@ function applyRoleUI(){
           <div style="display:grid;grid-template-columns:2fr 2fr 1fr;gap:12px;align-items:end">
             <div><div style="font:700 9px Consolas,monospace;color:#4f4f4f;margin-bottom:4px">USUARIO</div><input id="newUserName" type="text" placeholder="NOMBRE" style="width:100%;padding:9px 10px;border:1px solid #b9b9b9;background:#ffffff;color:#111111;border-radius:8px;box-sizing:border-box;font:12px Consolas,monospace"></div>
             <div><div style="font:700 9px Consolas,monospace;color:#4f4f4f;margin-bottom:4px">CONTRASEÑA</div><input id="newUserPass" type="password" placeholder="CLAVE SEGURA" style="width:100%;padding:9px 10px;border:1px solid #b9b9b9;background:#ffffff;color:#111111;border-radius:8px;box-sizing:border-box;font:12px Consolas,monospace"></div>
-            <div><div style="font:700 9px Consolas,monospace;color:#4f4f4f;margin-bottom:4px">ROL</div><select id="newUserRole" style="width:100%;padding:9px 10px;border:1px solid #b9b9b9;background:#ffffff;color:#111111;border-radius:8px;box-sizing:border-box;font:12px Consolas,monospace"><option value="user">USER</option><option value="admin">ADMIN</option></select></div>
+            <div><div style="font:700 9px Consolas,monospace;color:#4f4f4f;margin-bottom:4px">ROL</div><select id="newUserRole" style="width:100%;padding:9px 10px;border:1px solid #b9b9b9;background:#ffffff;color:#111111;border-radius:8px;box-sizing:border-box;font:12px Consolas,monospace"><option value="user">USER</option><option value="operator">OPERATOR</option><option value="admin">ADMIN</option></select></div>
           </div>
           <button onclick="adminCreateUser()" style="margin-top:12px;padding:10px 14px;border-radius:10px;border:1px solid #b9b9b9;background:#f4f4f4;color:#111111;font:700 12px Consolas,monospace;cursor:pointer">+ CREAR USUARIO</button>
           <div id="adminCreateMsg" style="margin-top:10px;font:11px Consolas,monospace;min-height:14px"></div>
@@ -15210,20 +15375,57 @@ function applyRoleUI(){
       el.innerHTML='<table style="width:100%;border-collapse:collapse;font:11px Consolas,monospace"><thead><tr><th style="text-align:left;padding:8px 6px;border-bottom:1px solid #b9b9b9">USUARIO</th><th style="text-align:left;padding:8px 6px;border-bottom:1px solid #b9b9b9">ROL</th><th style="text-align:left;padding:8px 6px;border-bottom:1px solid #b9b9b9">CREADO</th><th style="text-align:left;padding:8px 6px;border-bottom:1px solid #b9b9b9">ACCIONES</th></tr></thead><tbody>'+rows+'</tbody></table>';
     }catch(e){el.innerHTML='<div style="color:#e05c5c;font-size:11px">'+(e.name==='AbortError'?'Timeout cargando usuarios':e.message)+'</div>';}
   };
-  window.adminLoadLogs=async function(){
-    var el=document.getElementById('adminLogsList');if(!el)return;
-    el.innerHTML='<div style="color:#4f4f4f;font-size:11px">Cargando logs...</div>';
+  var __logsCursor = null;
+  var __logsAll = [];
+
+  window.adminLoadLogs = async function(reset){
+    var el = document.getElementById('adminLogsList'); if(!el) return;
+    if(reset){ __logsCursor = null; __logsAll = []; }
+    el.innerHTML = '<div style="color:#4f4f4f;font-size:11px;padding:8px">Cargando logs...</div>';
     try{
-      var token=(window.AUTH_TOKEN||localStorage.getItem('auth_token')||'').trim();
-      var r=await fetch(authUrl('/auth/logs'),{headers:{Authorization:'Bearer '+token}});
-      var txt=await r.text();var js;try{js=JSON.parse(txt);}catch(e){js={error:txt};}
-      if(!r.ok){el.innerHTML='<div style="color:#e05c5c;font-size:11px">Error '+r.status+': '+(js.error||txt)+'</div>';return;}
-      var logs=Array.isArray(js.logs)?js.logs:[];
-      if(!logs.length){el.innerHTML='<div style="color:#4f4f4f;font-size:11px">No hay registros.</div>';return;}
-      el.innerHTML='<pre style="white-space:pre-wrap;font-size:10px;line-height:1.4">'+logs.map(function(x){return JSON.stringify(x,null,2);}).join('\n\n')+'</pre>';
-    }catch(e){el.innerHTML='<div style="color:#e05c5c;font-size:11px">'+e.message+'</div>';}
+      var token = (window.AUTH_TOKEN||localStorage.getItem('auth_token')||'').trim();
+      var url   = authUrl('/auth/logs?limit=100') + (__logsCursor ? '&cursor='+encodeURIComponent(__logsCursor) : '');
+      var r     = await fetch(url, { headers:{ Authorization:'Bearer '+token } });
+      var js    = await r.json().catch(function(){ return {}; });
+      if(!r.ok){ el.innerHTML='<div style="color:#e05c5c;font-size:11px;padding:8px">Error '+r.status+': '+(js.error||'')+'</div>'; return; }
+      __logsAll = __logsAll.concat(Array.isArray(js.logs) ? js.logs : []);
+      __logsCursor = js.nextCursor || null;
+
+      // ── Render tabla ──
+      var cols = ['fecha','tipo','usuario','rol','ip','ok','descripcion'];
+      var colLabels = {'fecha':'FECHA','tipo':'TIPO','usuario':'USUARIO','rol':'ROL','ip':'IP','ok':'OK','descripcion':'DESCRIPCIÓN'};
+      var badgeColor = function(tipo){
+        var m = {'login':'#2ecc71','login_failed':'#e05c5c','logout':'#e67e22','token_refresh':'#3498db',
+                 'add-user':'#9b59b6','remove-user':'#c0392b','change-role':'#f39c12',
+                 'reset-password':'#e67e22','change-password':'#f1c40f','session_verify':'#7f8c8d','page_action':'#1abc9c'};
+        return m[tipo] || '#4f4f4f';
+      };
+      var rows = __logsAll.map(function(x){
+        return '<tr style="border-bottom:1px solid #2a2f3f">' +
+          '<td style="padding:4px 8px;white-space:nowrap;font-size:10px">'+htmlSafe(x.fecha||'')+'</td>'+
+          '<td style="padding:4px 8px"><span style="background:'+badgeColor(x.tipo)+';color:#fff;border-radius:3px;padding:1px 5px;font-size:9px;font-weight:700;letter-spacing:.5px">'+htmlSafe(x.tipo||'')+'</span></td>'+
+          '<td style="padding:4px 8px;font-size:10px">'+htmlSafe(x.usuario||'')+'</td>'+
+          '<td style="padding:4px 8px;font-size:10px">'+htmlSafe(x.rol||'')+'</td>'+
+          '<td style="padding:4px 8px;font-size:10px;color:#7f8c8d">'+htmlSafe(x.ip||'')+'</td>'+
+          '<td style="padding:4px 8px;text-align:center">'+(x.ok===true?'✔':x.ok===false?'✘':'—')+'</td>'+
+          '<td style="padding:4px 8px;font-size:10px;max-width:300px;word-break:break-word">'+htmlSafe(x.descripcion||'')+'</td>'+
+          '</tr>';
+      }).join('');
+
+      var nextBtn = __logsCursor
+        ? '<button onclick="window.adminLoadLogs(false)" style="margin:10px 0;padding:5px 14px;background:#2563eb;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-family:inherit">Cargar más</button>'
+        : '';
+
+      el.innerHTML = (!__logsAll.length)
+        ? '<div style="color:#4f4f4f;font-size:11px;padding:8px">No hay registros.</div>'
+        : '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-family:Consolas,monospace">'+
+            '<thead><tr style="background:#1a1f2e;position:sticky;top:0">' +
+            cols.map(function(c){ return '<th style="padding:5px 8px;text-align:left;font-size:10px;letter-spacing:.5px;color:#7eb8f7;white-space:nowrap">'+colLabels[c]+'</th>'; }).join('') +
+            '</tr></thead><tbody>'+rows+'</tbody></table></div>' + nextBtn;
+    }catch(e){ el.innerHTML='<div style="color:#e05c5c;font-size:11px;padding:8px">'+htmlSafe(e.message)+'</div>'; }
   };
   window.adminCreateUser=async function(){
+    if((window.AUTH_ROLE||localStorage.getItem('auth_role')||'')!=='admin'){__notify('Acción reservada para administradores.');return;}
     var u=(document.getElementById('newUserName')||{}).value||'';u=u.trim();
     var p=(document.getElementById('newUserPass')||{}).value||'';
     var role=(document.getElementById('newUserRole')||{}).value||'user';
@@ -15393,8 +15595,28 @@ window.closeBulletinMenu = function(){
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + t },
         body: JSON.stringify(state)
       });
+      if(r.status === 401){
+        // Sesión caducada durante el auto-guardado
+        if(typeof showLogin === 'function') showLogin('Sesión expirada. Guarda tu trabajo y vuelve a entrar.');
+        return false;
+      }
+      if(r.ok) __showSaveIndicator();
       return r.ok;
     } catch(e) { return false; }
+  }
+
+  function __showSaveIndicator(){
+    var el = document.getElementById('__saveIndicator');
+    if(!el){
+      el = document.createElement('span');
+      el.id = '__saveIndicator';
+      el.style.cssText = 'position:fixed;bottom:10px;right:14px;font-size:10px;font-family:Consolas,monospace;color:var(--accent,#4caf50);opacity:0;transition:opacity .4s;pointer-events:none;z-index:99997;';
+      document.body.appendChild(el);
+    }
+    var now = new Date();
+    el.textContent = 'GUARDADO ' + now.toLocaleTimeString('es-CL',{hour12:false,hour:'2-digit',minute:'2-digit'});
+    el.style.opacity = '1';
+    setTimeout(function(){ el.style.opacity = '0'; }, 3000);
   }
 
   async function _load() {
@@ -15492,12 +15714,24 @@ window.closeBulletinMenu = function(){
   window.doLogout = async function() {
     var btn = document.getElementById('logoutBtn');
     if (btn) { btn.textContent = 'GUARDANDO...'; btn.disabled = true; }
+    // 1. Guardar estado antes de salir
     try { await Promise.race([_save(), new Promise(function(r) { setTimeout(r, 5000); })]); } catch(e) {}
+    // 2. Invalidar token en el servidor
+    try {
+      var t = localStorage.getItem('auth_token') || window.AUTH_TOKEN || '';
+      if(t) await fetch(AUTH_BASE_URL.replace(/\/+$/, '') + '/auth/logout', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + t }
+      });
+    } catch(e) {}
+    // 3. Limpiar estado local
     ['auth_token','auth_user','auth_role','authtoken','token'].forEach(function(k) {
       try { localStorage.removeItem(k); } catch(e) {}
     });
     try { sessionStorage.clear(); } catch(e) {}
     if (_iv) { clearInterval(_iv); _iv = null; }
+    if (window.__alertsInterval)  { clearInterval(window.__alertsInterval);  window.__alertsInterval  = null; }
+    if (window.__sessionInterval) { clearInterval(window.__sessionInterval); window.__sessionInterval = null; }
     window.location.replace(location.pathname + location.search);
   };
 
@@ -15530,6 +15764,391 @@ window.closeBulletinMenu = function(){
   window._captureState = _cap;
 })();
 </script>
+<script>
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  MÓDULO COMPARACIÓN PUNTO A vs B
+//  Solo visible para rol admin. Click derecho en mapa = fijar punto B.
+// ══════════════════════════════════════════════════════════════════════════════
+(function(){
+
+  // ── Estado ──────────────────────────────────────────────────────────────────
+  window.__cmpState = {
+    active:   false,   // modo comparación encendido
+    latB:     null,
+    lonB:     null,
+    labelB:   null,
+    dataB:    null,
+    markerB:  null,
+    lineAB:   null,
+    loading:  false,
+  };
+
+  // ── Helpers ──────────────────────────────────────────────────────────────────
+  function isAdmin(){
+    return (window.AUTH_ROLE || localStorage.getItem('auth_role') || '') === 'admin';
+  }
+
+  function haversineKm(la, lo, lb, lb2){
+    const R = 6371;
+    const dLat = (lb - la) * Math.PI / 180;
+    const dLon = (lb2 - lo) * Math.PI / 180;
+    const a = Math.sin(dLat/2)*Math.sin(dLat/2) +
+              Math.cos(la*Math.PI/180)*Math.cos(lb*Math.PI/180)*
+              Math.sin(dLon/2)*Math.sin(dLon/2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+
+  function fv(v, decimals, unit){
+    if(v === undefined || v === null || !Number.isFinite(Number(v))) return '--';
+    const n = Number(v);
+    return (decimals === 0 ? Math.round(n) : n.toFixed(decimals)) + (unit || '');
+  }
+
+  function deltaHtml(vA, vB, unit, invertWarn){
+    // invertWarn: true = mayor es peor (viento, nubes), false = menor es peor (temp, vis)
+    if(!Number.isFinite(Number(vA)) || !Number.isFinite(Number(vB))) return '';
+    const diff = Number(vB) - Number(vA);
+    if(Math.abs(diff) < 0.5) return '';
+    const sign = diff > 0 ? '+' : '';
+    const cls  = (diff > 0 && invertWarn) || (diff < 0 && !invertWarn) ? 'up' : 'down';
+    return `<span class="cmp-delta ${cls}">(${sign}${Math.round(diff)}${unit||''})</span>`;
+  }
+
+  function statusClass(wind, gusts, vis, cloud, precip){
+    const tW = +document.getElementById('threshWind')?.value  || 38;
+    const tG = +document.getElementById('threshGusts')?.value || 46;
+    const tV = +document.getElementById('threshVis')?.value   || 3;
+    const tC = +document.getElementById('threshCloud')?.value || 90;
+    const tP = +document.getElementById('threshPrecip')?.value|| 30;
+    const crit = (Number.isFinite(wind)   && wind   > tW) ||
+                 (Number.isFinite(gusts)  && gusts  > tG) ||
+                 (Number.isFinite(vis)    && vis     < tV) ||
+                 (Number.isFinite(cloud)  && cloud   > tC) ||
+                 (Number.isFinite(precip) && precip  > tP);
+    const warn = (Number.isFinite(wind)  && wind   > tW * 0.8) ||
+                 (Number.isFinite(gusts) && gusts  > tG * 0.8) ||
+                 (Number.isFinite(vis)   && vis     < tV * 1.5);
+    if(crit) return 'crit';
+    if(warn) return 'warn';
+    return 'ok';
+  }
+
+  function statusLabel(cls){
+    if(cls === 'crit') return 'CRITICO - FUERA DE LIMITE';
+    if(cls === 'warn') return 'MARGINAL - REVISAR';
+    return 'DENTRO DE LIMITES';
+  }
+
+  // ── Render del panel ─────────────────────────────────────────────────────────
+  function cmpRender(){
+    const s   = window.__cmpState;
+    const dA  = window.globalData;
+    const dB  = s.dataB;
+    const body = document.getElementById('cmpBody');
+    if(!body) return;
+
+    if(s.loading){
+      body.innerHTML = '<div class="cmp-loading">CONSULTANDO PUNTO B...</div>';
+      return;
+    }
+    if(!dA || !dB){
+      body.innerHTML = '<div class="cmp-loading">Sin datos suficientes.</div>';
+      return;
+    }
+
+    const cA = dA.current || {};
+    const cB = dB.current || {};
+
+    // Temperatura
+    const tA  = cA.temperature_2m, tB = cB.temperature_2m;
+    // Viento
+    const wA  = cA.wind_speed_10m, wB = cB.wind_speed_10m;
+    // Rafagas
+    const gA  = cA.wind_gusts_10m, gB = cB.wind_gusts_10m;
+    // Visibilidad km
+    const vA  = Number.isFinite(cA.visibility) ? cA.visibility/1000 : NaN;
+    const vB  = Number.isFinite(cB.visibility) ? cB.visibility/1000 : NaN;
+    // Nubes
+    const nA  = cA.cloud_cover, nB = cB.cloud_cover;
+    // Humedad
+    const hA  = cA.relative_humidity_2m, hB = cB.relative_humidity_2m;
+    // Sensacion
+    const sA  = cA.apparent_temperature, sB = cB.apparent_temperature;
+    // Precipitacion diaria
+    const pA  = dA.daily?.precipitation_sum?.[0];
+    const pB  = dB.daily?.precipitation_sum?.[0];
+    // Tmin/Tmax
+    const tmxA = dA.daily?.temperature_2m_max?.[0], tmxB = dB.daily?.temperature_2m_max?.[0];
+    const tmnA = dA.daily?.temperature_2m_min?.[0], tmnB = dB.daily?.temperature_2m_min?.[0];
+    // Viento max dia
+    const wmxA = dA.daily?.wind_speed_10m_max?.[0], wmxB = dB.daily?.wind_speed_10m_max?.[0];
+    // UV
+    const uvA = cA.uv_index, uvB = cB.uv_index;
+
+    const scA = statusClass(wA, gA, vA, nA, pA);
+    const scB = statusClass(wB, gB, vB, nB, pB);
+
+    const rows = [
+      ['TEMPERATURA ACTUAL',   fv(tA,1,'°'), fv(tB,1,'°'), deltaHtml(tA,tB,'°',false)],
+      ['SENSACION TERMICA',    fv(sA,1,'°'), fv(sB,1,'°'), deltaHtml(sA,sB,'°',false)],
+      ['HUMEDAD',              fv(hA,0,' %'), fv(hB,0,' %'), deltaHtml(hA,hB,' %',true)],
+      ['VIENTO',               fv(wA,0,' km/h'), fv(wB,0,' km/h'), deltaHtml(wA,wB,' km/h',true)],
+      ['RAFAGAS',              fv(gA,0,' km/h'), fv(gB,0,' km/h'), deltaHtml(gA,gB,' km/h',true)],
+      ['VIENTO MAX DIA',       fv(wmxA,0,' km/h'), fv(wmxB,0,' km/h'), deltaHtml(wmxA,wmxB,' km/h',true)],
+      ['VISIBILIDAD',          fv(vA,1,' km'), fv(vB,1,' km'), deltaHtml(vA,vB,' km',false)],
+      ['NUBOSIDAD',            fv(nA,0,' %'), fv(nB,0,' %'), deltaHtml(nA,nB,' %',true)],
+      ['PRECIP. DIARIA EST.', fv(pA,1,' mm'), fv(pB,1,' mm'), deltaHtml(pA,pB,' mm',true)],
+      ['TEMP. MAX / MIN',
+        fv(tmxA,0,'°') + ' / ' + fv(tmnA,0,'°'),
+        fv(tmxB,0,'°') + ' / ' + fv(tmnB,0,'°'),
+        ''],
+      ['INDICE UV',            fv(uvA,0,''), fv(uvB,0,''), deltaHtml(uvA,uvB,'',true)],
+    ];
+
+    const labelA = document.getElementById('cmpTitleA')?.textContent || 'PUNTO A';
+    const labelB = document.getElementById('cmpTitleB')?.textContent || 'PUNTO B';
+
+    let html = '<div class="cmp-grid">';
+
+    // Columna A
+    html += '<div class="cmp-col">';
+    html += `<div class="cmp-header">PUNTO A<span>${labelA}</span></div>`;
+    for(const [lbl, vala] of rows){
+      html += `<div class="cmp-row">
+        <div class="cmp-label">${lbl}</div>
+        <div class="cmp-val">${vala}</div>
+      </div>`;
+    }
+    html += `<div class="cmp-status-row ${scA}">${statusLabel(scA)}</div>`;
+    html += '</div>';
+
+    // Columna B
+    html += '<div class="cmp-col">';
+    html += `<div class="cmp-header" style="color:var(--accent)">PUNTO B<span>${labelB}</span></div>`;
+    for(const [lbl, , valb, delta] of rows){
+      html += `<div class="cmp-row">
+        <div class="cmp-label">${lbl}</div>
+        <div class="cmp-val">${valb}${delta||''}</div>
+      </div>`;
+    }
+    html += `<div class="cmp-status-row ${scB}">${statusLabel(scB)}</div>`;
+    html += '</div>';
+
+    html += '</div>'; // cmp-grid
+    body.innerHTML = html;
+  }
+
+  // ── Fetch datos punto B ───────────────────────────────────────────────────────
+  async function cmpFetchB(lat, lon){
+    const s = window.__cmpState;
+    s.loading = true;
+    cmpRender();
+
+    try{
+      const sourceSel = document.getElementById('sourceSelect')?.value || 'auto';
+      const model     = document.getElementById('modelSelect')?.value   || 'best_match';
+      let res, data;
+
+      if(sourceSel === 'openmeteo'){
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,dew_point_2m,apparent_temperature,precipitation,visibility,wind_speed_10m,wind_gusts_10m,uv_index,cloud_cover,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,wind_speed_10m_max,uv_index_max,weather_code&past_days=0&forecast_days=7&timezone=auto&models=${model}`;
+        res = await fetch(url);
+      } else {
+        const base = (window.WORKER_BASE_URL || '').replace(/\/$/, '');
+        const url  = base + '/forecast?' + new URLSearchParams({ lat, lon, source: sourceSel, model }).toString();
+        res = await fetch(url);
+        if(!res.ok) throw new Error('worker_fail');
+      }
+
+      if(!res.ok) throw new Error('fetch_fail');
+      data = await res.json();
+      s.dataB   = data;
+      s.loading = false;
+
+      // Etiqueta via geocodificacion inversa
+      try{
+        const gr = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=es&zoom=12`,
+          { headers:{'Accept-Language':'es'} });
+        const gd = await gr.json();
+        const a  = gd.address || {};
+        const lugar = a.hamlet||a.village||a.locality||a.town||a.city||a.municipality||a.county||null;
+        const region = a.state_district||a.state||null;
+        const pais   = a.country_code ? a.country_code.toUpperCase() : null;
+        const parts  = [];
+        if(lugar)                      parts.push(lugar.toUpperCase());
+        if(region && region !== lugar) parts.push(region.toUpperCase());
+        if(pais)                       parts.push(pais);
+        s.labelB = parts.slice(0,2).join(', ') || `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+      } catch(_e){
+        s.labelB = `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+      }
+
+      // Actualizar títulos y distancia
+      const elB = document.getElementById('cmpTitleB');
+      if(elB) elB.textContent = s.labelB;
+
+      const lblA = document.getElementById('lblCity')?.textContent || 'PUNTO A';
+      const elA  = document.getElementById('cmpTitleA');
+      if(elA) elA.textContent = lblA;
+
+      if(window.__cmpState.latB !== null){
+        const la = window.lastLat, lo = window.lastLon;
+        if(Number.isFinite(la) && Number.isFinite(lo)){
+          const km = haversineKm(la, lo, s.latB, s.lonB);
+          const elD = document.getElementById('cmpDist');
+          if(elD) elD.textContent = '[ ' + km.toFixed(1) + ' KM ]';
+        }
+      }
+
+      cmpRender();
+      document.getElementById('cmpPanel')?.classList.add('active');
+
+    } catch(e){
+      s.loading = false;
+      s.dataB   = null;
+      const body = document.getElementById('cmpBody');
+      if(body) body.innerHTML = '<div class="cmp-loading">ERROR AL CONSULTAR PUNTO B.</div>';
+    }
+  }
+
+  // ── Dibujar marcador y linea B en el mapa ────────────────────────────────────
+  function cmpDrawMapB(lat, lon){
+    const s = window.__cmpState;
+    if(!window.__pickMap) return;
+
+    // Marcador B
+    if(s.markerB) s.markerB.remove();
+    s.markerB = L.circleMarker([lat, lon], {
+      radius:      8,
+      color:       '#f39c12',
+      fillColor:   '#f39c12',
+      fillOpacity: 0.85,
+      weight:      2,
+    }).addTo(window.__pickMap);
+
+    s.markerB.bindTooltip('PUNTO B', { permanent: false, direction: 'top', className: 'leaflet-tooltip' });
+
+    // Linea A-B
+    if(s.lineAB) s.lineAB.remove();
+    const la = window.lastLat, lo = window.lastLon;
+    if(Number.isFinite(la) && Number.isFinite(lo)){
+      s.lineAB = L.polyline([[la, lo], [lat, lon]], {
+        color:     '#f39c12',
+        weight:    2,
+        dashArray: '6, 5',
+        opacity:   0.8,
+      }).addTo(window.__pickMap);
+    }
+  }
+
+  // ── Handler click derecho en mapa ────────────────────────────────────────────
+  function cmpContextHandler(ev){
+    if(!window.__cmpState.active) return;
+    if(!isAdmin()) return;
+    try { L.DomEvent.stop(ev); } catch(_e){}
+    const lat = ev?.latlng?.lat;
+    const lon = ev?.latlng?.lng;
+    if(!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+    window.__cmpState.latB = lat;
+    window.__cmpState.lonB = lon;
+    cmpDrawMapB(lat, lon);
+    cmpFetchB(lat, lon);
+    const hint = document.getElementById('cmpHint');
+    if(hint) hint.textContent = '';
+  }
+
+  // ── API pública ───────────────────────────────────────────────────────────────
+  window.cmpToggleMode = function(){
+    if(!isAdmin()) return;
+    const s   = window.__cmpState;
+    const btn = document.getElementById('cmpBtnToggle');
+    const hint= document.getElementById('cmpHint');
+    s.active  = !s.active;
+    if(btn){
+      btn.classList.toggle('active', s.active);
+      btn.textContent = s.active ? 'MODO PUNTO B: ON' : 'COMPARAR PUNTO B';
+    }
+    if(hint) hint.textContent = s.active ? 'Haz clic derecho en el mapa para fijar el PUNTO B' : '';
+    // Si se activa y ya hay punto B, mostrar panel
+    if(s.active && s.dataB){
+      document.getElementById('cmpPanel')?.classList.add('active');
+    }
+    if(!s.active && !s.dataB){
+      document.getElementById('cmpPanel')?.classList.remove('active');
+    }
+  };
+
+  window.cmpClear = function(){
+    const s = window.__cmpState;
+    s.latB   = null; s.lonB = null;
+    s.labelB = null; s.dataB = null;
+    s.active = false;
+    if(s.markerB){ s.markerB.remove(); s.markerB = null; }
+    if(s.lineAB){  s.lineAB.remove();  s.lineAB  = null; }
+    document.getElementById('cmpPanel')?.classList.remove('active');
+    const btn = document.getElementById('cmpBtnToggle');
+    if(btn){ btn.classList.remove('active'); btn.textContent = 'COMPARAR PUNTO B'; }
+    const clr = document.getElementById('cmpBtnClear');
+    if(clr) clr.style.display = 'none';
+    const hint = document.getElementById('cmpHint');
+    if(hint) hint.textContent = '';
+    const dist = document.getElementById('cmpDist');
+    if(dist) dist.textContent = '';
+  };
+
+  // Cuando se actualiza el punto A, re-renderizar si hay punto B activo
+  // (se llama desde executeSearch al final)
+  window.__cmpOnPointAUpdated = function(){
+    const s = window.__cmpState;
+    if(!s.dataB) return;
+    // Actualizar linea A-B
+    if(s.lineAB) s.lineAB.remove();
+    const la = window.lastLat, lo = window.lastLon;
+    if(Number.isFinite(la) && Number.isFinite(lo) && Number.isFinite(s.latB)){
+      s.lineAB = L.polyline([[la, lo], [s.latB, s.lonB]], {
+        color: '#f39c12', weight: 2, dashArray: '6, 5', opacity: 0.8,
+      }).addTo(window.__pickMap);
+      const km = haversineKm(la, lo, s.latB, s.lonB);
+      const elD = document.getElementById('cmpDist');
+      if(elD) elD.textContent = '[ ' + km.toFixed(1) + ' KM ]';
+    }
+    const lblA = document.getElementById('lblCity')?.textContent || 'PUNTO A';
+    const elA  = document.getElementById('cmpTitleA');
+    if(elA) elA.textContent = lblA;
+    cmpRender();
+    // Mostrar botón limpiar
+    const clr = document.getElementById('cmpBtnClear');
+    if(clr) clr.style.display = 'inline-block';
+  };
+
+  // Adjuntar handler de click derecho al mapa cuando esté listo
+  document.addEventListener('DOMContentLoaded', function(){
+    // Esperar a que __pickMap esté disponible
+    const _tryAttach = setInterval(function(){
+      if(!window.__pickMap) return;
+      clearInterval(_tryAttach);
+      window.__pickMap.on('contextmenu', cmpContextHandler);
+    }, 300);
+
+    // Mostrar/ocultar barra según rol
+    function _syncRoleCmp(){
+      const isAdm = isAdmin();
+      const bar   = document.getElementById('cmpBtnBar');
+      if(bar) bar.style.display = isAdm ? 'flex' : 'none';
+    }
+    _syncRoleCmp();
+    // Re-evaluar cuando cambia el rol (applyRoleUI)
+    const _origApplyRole = window.applyRoleUI;
+    window.applyRoleUI = function(){
+      if(typeof _origApplyRole === 'function') _origApplyRole.apply(this, arguments);
+      _syncRoleCmp();
+    };
+  });
+
+})();
+
+</script>
+
 
 </body>
 </html>
