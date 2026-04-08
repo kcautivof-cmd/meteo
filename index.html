@@ -3613,7 +3613,7 @@ window.__dmcTimeLocal = function(raw) {
             </div>
         </div>
         <button id="adminPanelBtn" onclick="openAdminPanel()" title="Panel de Administración">⚙ ADMIN</button>
-<button id="logoutBtn" onclick="(function(){['authtoken','AUTHTOKEN','authuser','AUTHUSER','authrole','AUTHROLE','token','auth_token'].forEach(function(k){try{localStorage.removeItem(k);}catch(e){}});try{sessionStorage.clear();}catch(e){};window.location.replace(location.pathname+location.search);})();" title="Cerrar sesión" style="background:var(--panel,#1e293b);color:var(--text,#e2e8f0);border:1px solid var(--border,#334155);padding:5px 12px;cursor:pointer;font-family:Consolas,monospace;font-size:10px;font-weight:700;letter-spacing:1px;border-radius:4px;transition:background 0.15s,color 0.15s;">CERRAR SESIÓN</button>
+<button id="logoutBtn" onclick="window._doLogout()" title="Cerrar sesión" style="background:var(--panel,#1e293b);color:var(--text,#e2e8f0);border:1px solid var(--border,#334155);padding:5px 12px;cursor:pointer;font-family:Consolas,monospace;font-size:10px;font-weight:700;letter-spacing:1px;border-radius:4px;transition:background 0.15s,color 0.15s;">CERRAR SESIÓN</button>
 
         <div class="source-bar" id="sourceInfo"></div>
 
@@ -15358,10 +15358,13 @@ window.closeBulletinMenu = function(){
   }
 
   // Logout global
-  window.doLogout=async function(){
+  window._doLogout=window.doLogout=async function(){
+    // Feedback visual inmediato
+    const _lb=document.getElementById('logoutBtn');
+    if(_lb){_lb.textContent='GUARDANDO...';_lb.disabled=true;}
     _showBanner('Guardando sesión...');
-    // Timeout de 3s máximo para el guardado — no bloquear el logout
-    try{ await Promise.race([_saveState(true), new Promise(r=>setTimeout(r,3000))]); }catch(e){}
+    // Guardar estado — máximo 4 segundos
+    try{ await Promise.race([_saveState(true), new Promise(r=>setTimeout(r,4000))]); }catch(e){}
     // Limpiar TODAS las claves posibles del token
     ['authtoken','AUTHTOKEN','authuser','AUTHUSER','authrole','AUTHROLE',
      'meteo_token','token','auth_token'].forEach(k=>{
@@ -15370,8 +15373,8 @@ window.closeBulletinMenu = function(){
     try{sessionStorage.clear();}catch(e){}
     window.AUTHTOKEN=null; window.AUTHUSER=null; window.AUTHROLE=null;
     if(_autoSaveInt){clearInterval(_autoSaveInt);_autoSaveInt=null;}
-    // Recargar la página completa — limpia TODO
-    window.location.href = window.location.href.split('?')[0];
+    // Recargar la página completa
+    window.location.replace(location.pathname+location.search);
   };
 
   // Parchear doLogin para cargar estado después del login
