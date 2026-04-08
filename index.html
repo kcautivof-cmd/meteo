@@ -3605,6 +3605,10 @@ window.__dmcTimeLocal = function(raw) {
 /* ── PANEL COMPARATIVO PUNTO B ─────────────────────────────────────────────── */
 #cmpPanel { display:none; }
 #cmpPanel.active { display:block; }
+.role-user #uavCmpRow  { display:none !important; }
+body:not(.role-admin) #cmpPanel { display:none !important; }
+.role-user #uavCmpRow             { display:none !important; }
+body:not(.role-admin) #uavCmpRow  { display:none !important; }
 .cmp-grid {
   display:grid;
   grid-template-columns:1fr 1fr;
@@ -3689,7 +3693,7 @@ window.__dmcTimeLocal = function(raw) {
 }
 .cmp-map-line { stroke:#f39c12; stroke-width:2; stroke-dasharray:5,4; }
 /* ocultar panel comparativo para rol user */
-body.role-user #cmpPanel { display:none !important; }
+body.role-user #cmpPanel { display:block !important; }
 /* ── FIN PANEL COMPARATIVO ─────────────────────────────────────────────────── */
 </style>
 <div id="__notifyOverlay">
@@ -3965,20 +3969,6 @@ body.role-user #cmpPanel { display:none !important; }
             </div>
 
 
-            <!-- ══ PANEL COMPARATIVO PUNTO A vs B (solo admin) ══════════════════ -->
-            <div id="cmpPanel" class="panel" style="padding:0;overflow:hidden;display:none;">
-              <span class="panel-title" style="margin:0;padding:6px 12px;">
-                COMPARACION: <span id="cmpTitleA" style="color:var(--text)">PUNTO A</span>
-                &nbsp;vs&nbsp;
-                <span id="cmpTitleB" style="color:var(--accent)">PUNTO B</span>
-                <span id="cmpDist" style="color:var(--muted);font-size:0.8em;margin-left:10px;"></span>
-              </span>
-              <div id="cmpBody">
-                <div class="cmp-loading">Fija el PUNTO B haciendo clic derecho en el mapa o activando el modo y haciendo clic.</div>
-              </div>
-            </div>
-            <!-- ══ FIN PANEL COMPARATIVO ══════════════════════════════════════ -->
-
             <div class="panel">
                 <span class="panel-title">FUENTES DE INFORMACIÓN</span>
                 <div class="sources-grid">
@@ -3998,6 +3988,20 @@ body.role-user #cmpPanel { display:none !important; }
                 <div id="volcanoStatus" style="font-size: 10px; margin-top:10px; text-align: center; color:#666;">SCANNEANDO RED SERNAGEOMIN...</div>
             </div>
         </div>
+
+        <!-- ══ PANEL COMPARATIVO PUNTO A vs B (solo admin) ══ -->
+        <div id="cmpPanel" style="display:none;padding:0;overflow:hidden;border:1px solid var(--border);border-radius:4px;margin-bottom:10px;">
+          <span class="panel-title" style="display:block;margin:0;padding:6px 12px;border-bottom:1px solid var(--border);">
+            COMPARACION:&nbsp;<span id="cmpTitleA" style="color:var(--text)">PUNTO A</span>
+            &nbsp;vs&nbsp;
+            <span id="cmpTitleB" style="color:var(--accent)">PUNTO B</span>
+            <span id="cmpDist" style="color:var(--muted);font-size:0.8em;margin-left:10px;"></span>
+          </span>
+          <div id="cmpBody">
+            <div class="cmp-loading">Activa COMPARAR PUNTO B en el panel del mapa, luego haz clic en cualquier punto del mapa para comparar.</div>
+          </div>
+        </div>
+        <!-- ══ FIN PANEL COMPARATIVO ══ -->
 
         <div class="panel">
             <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px;">
@@ -5281,6 +5285,7 @@ function __alertsRenderDMC(){
 
 
                 __pickMap = L.map('pickMap', { zoomControl: true }).setView([lat, lon], 8);
+                window.__pickMap = __pickMap;
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     maxZoom: 18,
                     attribution: '&copy; OpenStreetMap'
@@ -5599,7 +5604,6 @@ try {
                 </select>
                 <button id="uavApplyBuffer" style="font-size:10px; padding:2px 8px; font-weight:800;">APLICAR</button>
                 <button id="uavExport" style="font-size:10px; padding:2px 8px; font-weight:800;">EXPORT</button>
-                <button id="uavCmpToggle" style="font-size:10px; padding:2px 8px; font-weight:800; display:none;">PUNTO B</button>
               </div>
 
             `;
@@ -5635,7 +5639,7 @@ try {
 
               <div id="uavCmpRow" style="display:none;">
                 <button id="uavCmpToggle" style="font-size:10px; padding:3px 8px; font-weight:800; width:100%; cursor:pointer; letter-spacing:0.5px;">COMPARAR PUNTO B</button>
-                <div id="uavCmpHint" style="font-size:9px; color:var(--muted); margin-top:3px; display:none;">CLIC DERECHO EN EL MAPA</div>
+                <div id="uavCmpHint" style="font-size:9px; color:var(--muted); margin-top:3px; display:none;">HAZ CLIC EN EL MAPA PARA FIJAR PUNTO B</div>
                 <button id="uavCmpClear" style="font-size:9px; padding:2px 6px; font-weight:700; width:100%; cursor:pointer; margin-top:3px; display:none;">LIMPIAR PUNTO B</button>
               </div>
             `;
@@ -5700,9 +5704,14 @@ try {
                 const cmpHintEl    = div.querySelector("#uavCmpHint");
 
                 function _syncCmpBtn(){
-                    const isAdm = (window.AUTH_ROLE || localStorage.getItem('auth_role') || '') === 'admin';
-                    if(cmpRow)      cmpRow.style.display      = isAdm ? 'block' : 'none';
-                    if(btnCmpToggle) btnCmpToggle.style.display = isAdm ? 'block' : 'none';
+                    const _isAdm = (window.AUTH_ROLE||localStorage.getItem('auth_role')||'')==='admin';
+                    // Usar getElementById para garantizar que se encuentra aunque haya delays
+                    const _row = document.getElementById('uavCmpRow')   || cmpRow;
+                    const _btn = document.getElementById('uavCmpToggle') || btnCmpToggle;
+                    const _clr = document.getElementById('uavCmpClear')  || btnCmpClear;
+                    if(_row) _row.style.display = _isAdm ? 'block' : 'none';
+                    if(_btn) _btn.style.display = _isAdm ? 'block' : 'none';
+                    if(_clr) _clr.style.display = (_isAdm && window.__cmpState?.dataB) ? 'block' : 'none';
                 }
                 _syncCmpBtn();
 
@@ -5737,12 +5746,15 @@ try {
                 const _prevOnPointA = window.__cmpOnPointAUpdated;
                 window.__cmpOnPointAUpdated = function(){
                     if(typeof _prevOnPointA === 'function') _prevOnPointA.apply(this, arguments);
-                    if(btnCmpClear) btnCmpClear.style.display = window.__cmpState?.dataB ? 'block' : 'none';
-                    if(btnCmpToggle && window.__cmpState?.dataB){
-                        btnCmpToggle.textContent      = 'PUNTO B: ON';
-                        btnCmpToggle.style.background = '#2563eb';
-                        btnCmpToggle.style.color       = '#fff';
+                    const hasB = !!window.__cmpState?.dataB;
+                    const active = !!window.__cmpState?.active;
+                    if(btnCmpClear) btnCmpClear.style.display = hasB ? 'block' : 'none';
+                    if(btnCmpToggle){
+                        btnCmpToggle.textContent = active ? 'PUNTO B: ON' : 'COMPARAR PUNTO B';
+                        btnCmpToggle.style.background = active ? '#2563eb' : '';
+                        btnCmpToggle.style.color = active ? '#fff' : '';
                     }
+                    if(cmpHintEl) cmpHintEl.style.display = active ? 'block' : 'none';
                 };
 
             }, 0);
@@ -6353,19 +6365,39 @@ function __pickApplyLatLng(lat, lon, latlngObj){
 
 function __pickOnSelect(ev){
     try{ if(ev) { try{ L.DomEvent.stop(ev); }catch(e){} } }catch(e){}
-    const lat = ev?.latlng?.lat;
-    const lon = ev?.latlng?.lng;
+    const lat = ev && ev.latlng ? ev.latlng.lat : null;
+    const lon = ev && ev.latlng ? ev.latlng.lng : null;
     if (typeof lat !== 'number' || typeof lon !== 'number') return;
+
+    // Si el modo comparación está activo, el clic fija el PUNTO B
+    if(window.__cmpState && window.__cmpState.active){
+        window.__cmpState.latB = lat;
+        window.__cmpState.lonB = lon;
+        if(typeof window.cmpDrawMapB === 'function') window.cmpDrawMapB(lat, lon);
+        if(typeof window.cmpFetchB   === 'function') window.cmpFetchB(lat, lon);
+        return;
+    }
+
+    // Comportamiento normal: actualizar punto A
     __pickApplyLatLng(lat, lon, ev.latlng);
 }
 
-// PC: doble click
-__pickMap.on('dblclick', __pickOnSelect);
+// Clic simple en el mapa
+__pickMap.on('click', function(ev){
+    // Si modo comparación activo → clic simple fija punto B
+    if(window.__cmpState && window.__cmpState.active){
+        __pickOnSelect(ev);
+        return;
+    }
+    // En desktop, clic simple NO actualiza punto A (solo dobleclic lo hace)
+    // En touch, clic simple SÍ actualiza punto A
+    if('ontouchstart' in window || navigator.maxTouchPoints > 0){
+        __pickOnSelect(ev);
+    }
+});
 
-// Touch devices: single tap
-if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
-    __pickMap.on('click', __pickOnSelect);
-}
+// PC: doble clic actualiza punto A (comportamiento original)
+__pickMap.on('dblclick', __pickOnSelect);
 } catch (err) {
                 console.warn('MAPA: no se pudo inicializar', err);
             }
@@ -15286,6 +15318,13 @@ function applyRoleUI(){
 
   // Boletín COMPLETO bloqueado para user directamente en openMenu()
 
+  // Comparación Punto B — solo admin
+  const _cmpRow   = document.getElementById('uavCmpRow');
+  const _cmpPanel = document.getElementById('cmpPanel');
+  if(_cmpRow)              _cmpRow.style.display   = isAdmin ? '' : 'none';
+  if(_cmpPanel && !isAdmin) _cmpPanel.style.setProperty('display','none','important');
+  if(_cmpRow   && !isAdmin) _cmpRow.style.setProperty('display','none','important');
+
   // Consultar Datos (control del mapa) solo para admin
   setTimeout(function(){
     var dqBtn = document.getElementById('dqRunBtn');
@@ -15428,8 +15467,8 @@ function applyRoleUI(){
       el.innerHTML = (!__logsAll.length)
         ? '<div style="color:#4f4f4f;font-size:11px;padding:8px">No hay registros.</div>'
         : '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-family:Consolas,monospace">'+
-            '<thead><tr style="background:#1a1f2e;position:sticky;top:0">' +
-            cols.map(function(c){ return '<th style="padding:5px 8px;text-align:left;font-size:10px;letter-spacing:.5px;color:#7eb8f7;white-space:nowrap">'+colLabels[c]+'</th>'; }).join('') +
+            '<thead><tr style="background:#e8edf8;position:sticky;top:0;border-bottom:2px solid #c5cfe8">' +
+            cols.map(function(c){ return '<th style="padding:5px 8px;text-align:left;font-size:10px;letter-spacing:.5px;color:#374151;white-space:nowrap">'+colLabels[c]+'</th>'; }).join('') +
             '</tr></thead><tbody>'+rows+'</tbody></table></div>' + nextBtn;
     }catch(e){ el.innerHTML='<div style="color:#e05c5c;font-size:11px;padding:8px">'+(e.message||'Error desconocido')+'</div>'; }
   };
@@ -15957,22 +15996,35 @@ window.closeBulletinMenu = function(){
     try{
       const sourceSel = document.getElementById('sourceSelect')?.value || 'auto';
       const model     = document.getElementById('modelSelect')?.value   || 'best_match';
-      let res, data;
+      let data = null;
+      let lastErr = null;
 
-      if(sourceSel === 'openmeteo'){
+      async function fetchOpenMeteo(){
         const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,dew_point_2m,apparent_temperature,precipitation,visibility,wind_speed_10m,wind_gusts_10m,uv_index,cloud_cover,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,wind_speed_10m_max,uv_index_max,weather_code&past_days=0&forecast_days=7&timezone=auto&models=${model}`;
-        res = await fetch(url);
-      } else {
-        const base = (window.WORKER_BASE_URL || '').replace(/\/$/, '');
-        const url  = base + '/forecast?' + new URLSearchParams({ lat, lon, source: sourceSel, model }).toString();
-        res = await fetch(url);
-        if(!res.ok) throw new Error('worker_fail');
+        const res = await fetch(url);
+        if(!res.ok) throw new Error('openmeteo_fail');
+        return await res.json();
       }
 
-      if(!res.ok) throw new Error('fetch_fail');
-      data = await res.json();
+      if(sourceSel !== 'openmeteo'){
+        try{
+          const base = (window.WORKER_BASE_URL || '').replace(/\/$/, '');
+          if(!base) throw new Error('worker_base_missing');
+          const url  = base + '/forecast?' + new URLSearchParams({ lat, lon, source: sourceSel, model }).toString();
+          const res = await fetch(url);
+          if(!res.ok) throw new Error('worker_fail');
+          data = await res.json();
+        }catch(err){
+          lastErr = err;
+        }
+      }
+      if(!data){
+        data = await fetchOpenMeteo();
+      }
+
       s.dataB   = data;
       s.loading = false;
+      s.active  = false;
 
       // Etiqueta via geocodificacion inversa
       try{
@@ -16012,12 +16064,29 @@ window.closeBulletinMenu = function(){
       cmpRender();
       const _cpShow = document.getElementById('cmpPanel');
       if(_cpShow){ _cpShow.style.display = 'block'; _cpShow.classList.add('active'); }
+      try {
+        const btn = document.getElementById('uavCmpToggle');
+        const hint = document.getElementById('uavCmpHint');
+        const clearBtn = document.getElementById('uavCmpClear');
+        if(btn){ btn.textContent = 'COMPARAR PUNTO B'; btn.style.background=''; btn.style.color=''; }
+        if(hint) hint.style.display = 'none';
+        if(clearBtn) clearBtn.style.display = 'block';
+      } catch(_e){}
 
     } catch(e){
       s.loading = false;
       s.dataB   = null;
+      s.active  = false;
+      const panel = document.getElementById('cmpPanel');
+      if(panel){ panel.style.display = 'block'; panel.classList.add('active'); }
       const body = document.getElementById('cmpBody');
       if(body) body.innerHTML = '<div class="cmp-loading">ERROR AL CONSULTAR PUNTO B.</div>';
+      try {
+        const btn = document.getElementById('uavCmpToggle');
+        const hint = document.getElementById('uavCmpHint');
+        if(btn){ btn.textContent = 'COMPARAR PUNTO B'; btn.style.background=''; btn.style.color=''; }
+        if(hint) hint.style.display = 'none';
+      } catch(_e){}
     }
   }
 
@@ -16051,13 +16120,21 @@ window.closeBulletinMenu = function(){
     }
   }
 
-  // ── Handler click derecho en mapa ────────────────────────────────────────────
+  // ── Handler click derecho en mapa (evento Leaflet) ──────────────────────────
   function cmpContextHandler(ev){
+    // Siempre bloquar el menú nativo del navegador sobre el mapa
+    try {
+      if(ev.originalEvent) {
+        ev.originalEvent.preventDefault();
+        ev.originalEvent.stopPropagation();
+      }
+      L.DomEvent.stop(ev);
+    } catch(_e){}
+
     if(!window.__cmpState.active) return;
-    if(!isAdmin()) return;
-    try { L.DomEvent.stop(ev); } catch(_e){}
-    const lat = ev?.latlng?.lat;
-    const lon = ev?.latlng?.lng;
+
+    const lat = ev && ev.latlng ? ev.latlng.lat : null;
+    const lon = ev && ev.latlng ? ev.latlng.lng : null;
     if(!Number.isFinite(lat) || !Number.isFinite(lon)) return;
     window.__cmpState.latB = lat;
     window.__cmpState.lonB = lon;
@@ -16067,9 +16144,24 @@ window.closeBulletinMenu = function(){
     if(hint) hint.textContent = '';
   }
 
+  // ── Bloquear menú contextual nativo sobre el div del mapa siempre ────────────
+  // (necesario porque el evento DOM se dispara antes que Leaflet pueda interceptarlo)
+  function _attachNativeContextBlock(){
+    var mapDiv = document.getElementById('pickMap');
+    if(!mapDiv) return;
+    mapDiv.addEventListener('contextmenu', function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    }, true); // capture phase
+  }
+
   // ── API pública ───────────────────────────────────────────────────────────────
+  // Exponer funciones internas para uso desde __pickOnSelect
+  window.cmpDrawMapB = cmpDrawMapB;
+  window.cmpFetchB   = cmpFetchB;
+
   window.cmpToggleMode = function(){
-    if(!isAdmin()) return;
     const s = window.__cmpState;
     s.active = !s.active;
     // Si se activa y ya hay punto B, mostrar panel
@@ -16111,17 +16203,413 @@ window.closeBulletinMenu = function(){
     cmpRender();
   };
 
-  // Adjuntar handler de click derecho al mapa cuando esté listo
-  document.addEventListener('DOMContentLoaded', function(){
-    const _tryAttach = setInterval(function(){
-      if(!window.__pickMap) return;
-      clearInterval(_tryAttach);
-      window.__pickMap.on('contextmenu', cmpContextHandler);
-    }, 300);
+  // Adjuntar handlers cuando el mapa esté listo
+  // Se intenta en DOMContentLoaded y en load para cubrir ambos casos
+  function _attachCmpMapHandlers(){
+    if(window.__cmpMapAttached) return;
+    if(!window.__pickMap) return;
+    window.__pickMap.on('contextmenu', cmpContextHandler);
+    _attachNativeContextBlock();
+    window.__cmpMapAttached = true;
+  }
+
+  // Intentar cada 200ms hasta que el mapa exista
+  var _cmpAttachInterval = setInterval(function(){
+    if(window.__pickMap){
+      _attachCmpMapHandlers();
+      clearInterval(_cmpAttachInterval);
+    }
+  }, 200);
+
+  // Seguro extra: también al cargar la página
+  window.addEventListener('load', function(){
+    setTimeout(_attachCmpMapHandlers, 500);
   });
 
 })();
 
+</script>
+
+
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   PUNTO B – Comparación EXCLUSIVA DMC + AccuWeather v3
+   Rellena TODOS los campos disponibles en ambas fuentes
+   ══════════════════════════════════════════════════════════════ */
+(function(){
+
+  /* ── Helpers ──────────────────────────────────────────────────── */
+  function _num(v){ const n=parseFloat(String(v??'').replace(/[^0-9.\-]/g,'')); return Number.isFinite(n)?n:null; }
+  function _pick(...vals){ for(const v of vals){ const n=Number(v); if(v!=null&&Number.isFinite(n)) return n; } return null; }
+  function _fv(v,dec,u){ if(v==null||!Number.isFinite(Number(v))) return '--'; return (dec===0?Math.round(Number(v)):Number(v).toFixed(dec))+(u||''); }
+  function _delta(a,b,u,inv){
+    if(a==null||b==null||!Number.isFinite(a)||!Number.isFinite(b)) return '';
+    const d=b-a, abs=Math.abs(d);
+    const pct=a!==0?` (${d>0?'+':''}${((d/Math.abs(a))*100).toFixed(0)}%)`:'';
+    const good=inv?d<0:d>0;
+    const color=abs<0.5?'var(--muted)':good?'#22c55e':'#ef4444';
+    return `<span style="font-size:0.8em;color:${color};margin-left:4px">${d>0?'▲':'▼'}${abs.toFixed(1)}${u}${pct}</span>`;
+  }
+  function _hav(la,lo,lb,lb2){
+    const R=6371,dLat=(lb-la)*Math.PI/180,dLon=(lb2-lo)*Math.PI/180;
+    const x=Math.sin(dLat/2)**2+Math.cos(la*Math.PI/180)*Math.cos(lb*Math.PI/180)*Math.sin(dLon/2)**2;
+    return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+  }
+  function _degToCard(d){
+    if(d==null||!Number.isFinite(d)) return null;
+    const dirs=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSO','SO','OSO','O','ONO','NO','NNO'];
+    return dirs[Math.round(d/22.5)%16];
+  }
+  function _h12first(h12raw){
+    const arr=Array.isArray(h12raw?.data)?h12raw.data:Array.isArray(h12raw)?h12raw:[];
+    return arr[0]||null;
+  }
+
+  /* ── Extraer TODOS los campos de DMC + AccuWeather ────────────── */
+  function _extractBundle(dmcRaw, accuCurRaw, accuH12Raw){
+    // ── DMC: bloques de datos ──
+    const summ   = dmcRaw?.official_recent_summary || {};
+    const latest = summ.latest || {};
+    const lastRow= (summ.recent||[])[0] || {};
+    const cur    = dmcRaw?.current || {};
+    const day    = dmcRaw?.daily   || {};
+    const h      = dmcRaw?.hourly  || {};
+    const stName = summ.station?.ciudad || summ.station?.nombre ||
+                   dmcRaw?.official_station?.ciudad || dmcRaw?.station_name || null;
+
+    // Helper: busca en latest, lastRow, cur, day
+    const obsNum = (...keys) => {
+      for(const k of keys){
+        for(const src of [latest, lastRow, cur]){
+          const n=parseFloat(String(src[k]??'').replace(/[^0-9.\-]/g,''));
+          if(Number.isFinite(n)) return n;
+        }
+      }
+      return null;
+    };
+    const obsStr = (...keys) => {
+      for(const k of keys){
+        for(const src of [latest, lastRow, cur]){
+          const v=src[k]; if(v&&String(v).trim()) return String(v).trim();
+        }
+      }
+      return null;
+    };
+
+    // ── DMC Observado (estación) ──
+    const windObs   = obsNum('velocidad_viento_kmh','viento_kmh','wind_speed_kmh','wind_speed','viento','wspd_kmh');
+    const gustObs   = obsNum('rafaga_kmh','racha_kmh','gust_kmh','rafaga','racha','wgst_kmh');
+    const wDirObs   = obsNum('direccion_viento','wind_direction','dir_viento','wdir','wind_dir');
+    const wDirText  = obsStr('direccion_viento_texto','dir_texto','wind_direction_text','viento_dir_texto','wind_cardinal');
+    const tempObs   = obsNum('temperatura_c','temp_c','temperatura','temp','air_temp','t2m','ta');
+    const humObs    = obsNum('humedad_relativa','humedad','hr','humidity','rh','hr_pct');
+    const dewObs    = obsNum('punto_rocio','dew_point','td','rocio','dewpoint');
+    const presObs   = obsNum('presion_qff','presion_qfe','presion','pressure','qff','qfe','mslp_hpa');
+    const precipObs = obsNum('precipitacion_mm','precip_mm','pp_mm','precipitacion','rain_mm','precip');
+    const octasRaw  = obsNum('nubosidad_octas','octas','cloud_octas','nubosidad','n_octas');
+    const cloudObs  = Number.isFinite(octasRaw)?Math.round((octasRaw/8)*100):null;
+    const visRaw    = obsNum('visibilidad_km','visibilidad_m','visibility_m','visibility','vis_km','vis_m','vis');
+    const visObs    = visRaw!=null?(visRaw>100?visRaw/1000:visRaw):null;
+    const condObs   = obsStr('condicion','condition','condition_text','weather','wx','tiempo','descripcion');
+
+    // ── DMC WRF (modelo numérico) ──
+    const h0 = (idx) => { const a=h[idx]; return Array.isArray(a)?_num(a[0]):_num(a); };
+    const windWRF  = _pick(h0('wind_speed_10m'),   _num(cur.wind_speed_10m));
+    const gustWRF  = _pick(h0('wind_gusts_10m'),   Array.isArray(day.wind_gusts_10m_max)?_num(day.wind_gusts_10m_max[0]):null, _num(cur.wind_gusts_10m));
+    const wDirWRF  = _pick(h0('wind_direction_10m'),_num(cur.wind_direction_10m));
+    const tempWRF  = _pick(_num(cur.temperature_2m),  h0('temperature_2m'));
+    const humWRF   = _pick(_num(cur.relative_humidity_2m), h0('relative_humidity_2m'));
+    const dewWRF   = _pick(_num(cur.dew_point_2m),    h0('dew_point_2m'));
+    const presWRF  = _pick(_num(cur.surface_pressure), _num(cur.pressure_msl));
+    const cloudWRF = _pick(h0('cloud_cover'),          _num(cur.cloud_cover));
+    const uvWRF    = _pick(_num(cur.uv_index),         h0('uv_index'));
+    const visWRFm  = _pick(_num(cur.visibility),       h0('visibility'));
+    const visWRF   = visWRFm!=null?visWRFm/1000:null;
+    const precipWRF= Array.isArray(day.precipitation_sum)?_num(day.precipitation_sum[0]):null;
+    const tmaxWRF  = Array.isArray(day.temperature_2m_max)?_num(day.temperature_2m_max[0]):null;
+    const tminWRF  = Array.isArray(day.temperature_2m_min)?_num(day.temperature_2m_min[0]):null;
+    const windMxWRF= Array.isArray(day.wind_speed_10m_max)?_num(day.wind_speed_10m_max[0]):null;
+
+    // ── AccuWeather Current ──
+    const cc     = accuCurRaw?.data || accuCurRaw || {};
+    const awTemp = _num(cc.Temperature?.Metric?.Value);
+    const awFeel = _num(cc.RealFeelTemperature?.Metric?.Value);
+    const awHum  = _num(cc.RelativeHumidity);
+    const awDew  = _num(cc.DewPoint?.Metric?.Value);
+    const awWind = _num(cc.Wind?.Speed?.Metric?.Value);
+    const awGust = _num(cc.WindGust?.Speed?.Metric?.Value);
+    const awWDir = _num(cc.Wind?.Direction?.Degrees);
+    const awWDirTxt = cc.Wind?.Direction?.Localized || cc.Wind?.Direction?.English || null;
+    const awCloud= _num(cc.CloudCover);
+    const awVisKm= _num(cc.Visibility?.Metric?.Value);
+    const awPres = _num(cc.Pressure?.Metric?.Value);
+    const awUV   = _num(cc.UVIndex);
+    const awPrecip1hr = _num(cc.Precip1hr?.Metric?.Value);
+    const awHasPrecip = cc.HasPrecipitation ? 1 : 0;
+    const awWText= (cc.WeatherText||'').trim()||null;
+    const awCeiling = _num(cc.Ceiling?.Metric?.Value); // metros
+
+    // ── AccuWeather Hourly (primer pronóstico) ──
+    const h12first = _h12first(accuH12Raw);
+    const awPrecipProb = _pick(_num(h12first?.PrecipitationProbability), awHasPrecip*5);
+    const awH12Cloud   = _num(h12first?.CloudCover);
+    const awH12Ceil    = _num(h12first?.Ceiling?.Metric?.Value);
+    const awH12Wind    = _num(h12first?.Wind?.Speed?.Value);
+    const awH12Gust    = _num(h12first?.WindGust?.Speed?.Value);
+    const awH12WDir    = _num(h12first?.Wind?.Direction?.Degrees);
+    const awH12Vis     = _num(h12first?.Visibility?.Value);
+    const ceilFinal    = _pick(awCeiling, awH12Ceil);
+
+    // ── Combinar: obs > WRF > AccuWeather ──
+    const wDir   = _pick(wDirObs, wDirWRF, awWDir, awH12WDir);
+    const wDirTx = wDirText || awWDirTxt || (wDir!=null?_degToCard(wDir):null);
+    const condTx = awWText || condObs || null;
+
+    const usedDMC = (windObs!=null||windWRF!=null||tempObs!=null||tempWRF!=null);
+    const usedAW  = (awTemp!=null||awWind!=null);
+    const srcLabel = [usedDMC?'DMC':null, usedAW?'AccuWeather':null].filter(Boolean).join(' + ') || 'Sin datos';
+
+    return {
+      temp:       _pick(tempObs, tempWRF, awTemp),
+      feels:      _pick(awFeel),
+      hum:        _pick(humObs, humWRF, awHum),
+      dew:        _pick(dewObs, dewWRF, awDew),
+      wind:       _pick(windObs, windWRF, awWind, awH12Wind),
+      gusts:      _pick(gustObs, gustWRF, awGust, awH12Gust),
+      wDir, wDirTx,
+      vis:        _pick(visObs, visWRF, awVisKm, awH12Vis),
+      cloud:      _pick(cloudObs, awCloud, cloudWRF, awH12Cloud),
+      ceil:       ceilFinal,
+      pres:       _pick(presObs, presWRF, awPres),
+      precip:     _pick(precipObs, precipWRF),
+      precip1hr:  _pick(awPrecip1hr),
+      precipProb: _pick(awPrecipProb),
+      tmax:       _pick(tmaxWRF),
+      tmin:       _pick(tminWRF),
+      windMax:    _pick(windMxWRF),
+      uv:         _pick(uvWRF, awUV),
+      condTx,
+      stName:     stName || null,
+      srcLabel,
+    };
+  }
+
+  /* ── Render comparativo ───────────────────────────────────────── */
+  function _render(){
+    const s    = window.__cmpState;
+    const body = document.getElementById('cmpBody');
+    if(!body||!s) return;
+    if(s.loading){ body.innerHTML='<div class="cmp-loading">CONSULTANDO DMC + AccuWeather…</div>'; return; }
+    const dA = window._cmpNormA, dB = window._cmpNormB;
+    if(!dA||!dB){ body.innerHTML='<div class="cmp-loading">Sin datos suficientes.</div>'; return; }
+
+    function fWDir(d){ if(d==null||!Number.isFinite(d)) return '--'; return d+'° ('+(_degToCard(d)||'?')+')'; }
+    function fWDirFull(wDir, wDirTx){ 
+      const deg=wDir!=null&&Number.isFinite(wDir)?wDir+'°':null;
+      const txt=wDirTx||null;
+      if(!deg&&!txt) return '--';
+      if(deg&&txt) return `${deg} ${txt}`;
+      return deg||txt;
+    }
+    function fCond(txt){ return txt?txt.toUpperCase():'--'; }
+    function fCeil(m){ if(m==null||!Number.isFinite(m)) return '--'; return Math.round(m)+' m ('+Math.round(m*3.281)+' ft)'; }
+
+    const rows=[
+      ['TEMPERATURA',      _fv(dA.temp,1,'°C'),      _fv(dB.temp,1,'°C'),      _delta(dA.temp,dB.temp,'°',false)],
+      ['SENSACIÓN TÉRMICA',_fv(dA.feels,1,'°C'),     _fv(dB.feels,1,'°C'),     _delta(dA.feels,dB.feels,'°',false)],
+      ['HUMEDAD',          _fv(dA.hum,0,' %'),       _fv(dB.hum,0,' %'),       _delta(dA.hum,dB.hum,'%',true)],
+      ['PUNTO DE ROCÍO',   _fv(dA.dew,1,'°C'),       _fv(dB.dew,1,'°C'),       ''],
+      ['VIENTO',           _fv(dA.wind,0,' km/h'),   _fv(dB.wind,0,' km/h'),   _delta(dA.wind,dB.wind,' km/h',true)],
+      ['DIR. VIENTO',      fWDirFull(dA.wDir,dA.wDirTx), fWDirFull(dB.wDir,dB.wDirTx), ''],
+      ['RÁFAGAS',          _fv(dA.gusts,0,' km/h'),  _fv(dB.gusts,0,' km/h'),  _delta(dA.gusts,dB.gusts,' km/h',true)],
+      ['VISIBILIDAD',      _fv(dA.vis,1,' km'),      _fv(dB.vis,1,' km'),      _delta(dA.vis,dB.vis,' km',false)],
+      ['TECHO DE NUBES',   fCeil(dA.ceil),            fCeil(dB.ceil),            ''],
+      ['NUBOSIDAD',        _fv(dA.cloud,0,' %'),     _fv(dB.cloud,0,' %'),     _delta(dA.cloud,dB.cloud,'%',true)],
+      ['PRECIP. 1H',       _fv(dA.precip1hr,1,' mm'),_fv(dB.precip1hr,1,' mm'),_delta(dA.precip1hr,dB.precip1hr,' mm',true)],
+      ['PRECIP. DIARIA',   _fv(dA.precip,1,' mm'),   _fv(dB.precip,1,' mm'),   _delta(dA.precip,dB.precip,' mm',true)],
+      ['PROB. PRECIP.',    _fv(dA.precipProb,0,' %'),_fv(dB.precipProb,0,' %'),_delta(dA.precipProb,dB.precipProb,'%',true)],
+      ['T. MÁX / MÍN',    _fv(dA.tmax,0,'°')+' / '+_fv(dA.tmin,0,'°'), _fv(dB.tmax,0,'°')+' / '+_fv(dB.tmin,0,'°'), ''],
+      ['VIENTO MÁX DÍA',  _fv(dA.windMax,0,' km/h'),_fv(dB.windMax,0,' km/h'),_delta(dA.windMax,dB.windMax,' km/h',true)],
+      ['PRESIÓN',          _fv(dA.pres,1,' hPa'),    _fv(dB.pres,1,' hPa'),    ''],
+      ['ÍNDICE UV',        _fv(dA.uv,0,''),          _fv(dB.uv,0,''),          ''],
+      ['CONDICIÓN',        fCond(dA.condTx),          fCond(dB.condTx),          ''],
+    ];
+
+    const lblA = document.getElementById('lblCity')?.textContent || 'PUNTO A';
+    const lblB = s.labelB || 'PUNTO B';
+
+    function buildCol(side, lbl, stName, srcLabel, isB){
+      const accentH = isB ? 'color:var(--accent)' : '';
+      let o = `<div class="cmp-col">`;
+      o += `<div class="cmp-header" style="${accentH}">`;
+      o += `${side}<span>${lbl}</span>`;
+      if(stName) o += `<span style="display:block;font-size:0.75em;font-weight:400;color:var(--muted);margin-top:1px">${stName}</span>`;
+      o += `<span style="display:inline-block;margin-top:5px;font-size:0.7em;font-weight:700;letter-spacing:0.4px;padding:2px 7px;border-radius:2px;background:rgba(99,102,241,0.18);color:#818cf8">${srcLabel}</span>`;
+      o += `</div>`;
+      rows.forEach(([lbl2,vA,vB,dlt])=>{
+        const val = isB ? vB : vA;
+        const dl  = isB ? (dlt||'') : '';
+        o += `<div class="cmp-row"><div class="cmp-label">${lbl2}</div><div class="cmp-val">${val}${dl}</div></div>`;
+      });
+      o += `</div>`;
+      return o;
+    }
+
+    body.innerHTML = `<div class="cmp-grid">
+      ${buildCol('PUNTO A', lblA, dA.stName, dA.srcLabel, false)}
+      ${buildCol('PUNTO B', lblB, dB.stName, dB.srcLabel, true)}
+    </div>`;
+  }
+
+  /* ── Fetch Punto B: DMC + AccuWeather + h12 en paralelo ────────── */
+  window.__cmpFetchBv3 = async function(lat, lon){
+    const s = window.__cmpState;
+    if(!s) return;
+    s.loading = true; s.latB = lat; s.lonB = lon;
+    const panel = document.getElementById('cmpPanel');
+    if(panel){ panel.style.display='block'; panel.classList.add('active'); }
+    _render();
+
+    try{
+      const base = (window.WORKER_BASE_URL||'').replace(/\/+$/,'');
+      if(!base) throw new Error('WORKER_BASE_URL no definida');
+      const la = encodeURIComponent(lat), lo = encodeURIComponent(lon);
+
+      // Fetch DMC + AccuWeather current + AccuWeather h12 en paralelo
+      const [dmcRaw, accuCurRaw, accuH12Raw] = await Promise.all([
+        workerFetchJSON(`${base}/dmc/current?lat=${la}&lon=${lo}`).catch(()=>null),
+        workerFetchJSON(`${base}/accu/current?lat=${la}&lon=${lo}`).catch(()=>null),
+        workerFetchJSON(`${base}/accu/hourly12?lat=${la}&lon=${lo}`).catch(()=>null),
+      ]);
+
+      s.dataB   = { dmc: dmcRaw, accu: accuCurRaw, accuH12: accuH12Raw };
+      s.loading = false;
+      s.active  = false;
+
+      window._cmpNormB = _extractBundle(dmcRaw, accuCurRaw?.data||accuCurRaw, accuH12Raw);
+
+      // Punto A: reusar datos ya cargados o re-fetch
+      const latA = window.lastLat, lonA = window.lastLon;
+      let dmcA    = window.__dmcCurrentData || null;
+      let accuCurA = null, accuH12A = null;
+      try{
+        const k = `${Number(latA).toFixed(4)},${Number(lonA).toFixed(4)}`;
+        const cached = window.__accuCache?.now?.get(k);
+        if(cached) accuCurA = cached?.data || cached;
+      }catch(e){}
+      if(Number.isFinite(latA)){
+        const laA=encodeURIComponent(latA), loA=encodeURIComponent(lonA);
+        const fetches = [];
+        if(!dmcA)   fetches.push(workerFetchJSON(`${base}/dmc/current?lat=${laA}&lon=${loA}`).catch(()=>null));
+        else        fetches.push(Promise.resolve(null));
+        if(!accuCurA) fetches.push(workerFetchJSON(`${base}/accu/current?lat=${laA}&lon=${loA}`).catch(()=>null));
+        else          fetches.push(Promise.resolve(null));
+        fetches.push(workerFetchJSON(`${base}/accu/hourly12?lat=${laA}&lon=${loA}`).catch(()=>null));
+        const [dA2, acA2, ahA] = await Promise.all(fetches);
+        if(!dmcA && dA2)      dmcA    = dA2;
+        if(!accuCurA && acA2) accuCurA= acA2?.data||acA2;
+        accuH12A = ahA;
+      }
+      window._cmpNormA = _extractBundle(dmcA, accuCurA, accuH12A);
+
+      // Geocodificación inversa
+      try{
+        const gr = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=12`,
+          {headers:{'Accept-Language':'es'}}
+        );
+        const gd = await gr.json();
+        const a  = gd.address||{};
+        const lugar  = a.hamlet||a.village||a.locality||a.town||a.city||a.municipality||a.county||'';
+        const region = a.state_district||a.state||'';
+        s.labelB = [lugar,region].filter(Boolean).slice(0,2).map(x=>x.toUpperCase()).join(', ')
+                   || `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+      }catch(e){ s.labelB=`${lat.toFixed(4)}, ${lon.toFixed(4)}`; }
+
+      // Actualizar encabezados
+      const elB=document.getElementById('cmpTitleB'); if(elB) elB.textContent=s.labelB;
+      const elA=document.getElementById('cmpTitleA'); if(elA) elA.textContent=document.getElementById('lblCity')?.textContent||'PUNTO A';
+      if(Number.isFinite(latA)&&Number.isFinite(lonA)){
+        const km=_hav(latA,lonA,lat,lon);
+        const elD=document.getElementById('cmpDist'); if(elD) elD.textContent=`[ ${km.toFixed(1)} KM ]`;
+      }
+
+      _render();
+
+      const btn=document.getElementById('uavCmpToggle');
+      const hint=document.getElementById('uavCmpHint');
+      const clrBtn=document.getElementById('uavCmpClear');
+      if(btn){ btn.textContent='COMPARAR PUNTO B'; btn.style.background=''; btn.style.color=''; }
+      if(hint) hint.style.display='none';
+      if(clrBtn) clrBtn.style.display='block';
+
+    }catch(err){
+      s.loading=false; s.dataB=null;
+      const body=document.getElementById('cmpBody');
+      if(body) body.innerHTML=`<div class="cmp-loading" style="color:#ef4444">ERROR: ${err.message}</div>`;
+    }
+  };
+
+  window.cmpFetchB = function(lat,lon){ window.__cmpFetchBv3(lat,lon); };
+
+  /* ── Clic izquierdo en mapa ───────────────────────────────────── */
+  var _clickDone=false;
+  function _attachClick(){
+    if(_clickDone||!window.__pickMap) return;
+    _clickDone=true;
+    window.__pickMap.on('click',function(ev){
+      if(!window.__cmpState?.active) return;
+      ev.originalEvent?.stopPropagation?.();
+      const lat=ev.latlng.lat, lon=ev.latlng.lng;
+      window.__cmpState.latB=lat; window.__cmpState.lonB=lon;
+      if(typeof window.cmpDrawMapB==='function') window.cmpDrawMapB(lat,lon);
+      window.__cmpFetchBv3(lat,lon);
+    });
+  }
+
+  /* ── Botón COMPARAR PUNTO B ──────────────────────────────────── */
+  function _patchBtn(){
+    const btn=document.getElementById('uavCmpToggle');
+    if(!btn||btn._v3patched) return;
+    btn._v3patched=true;
+    const nb=btn.cloneNode(true); nb._v3patched=true;
+    btn.parentNode?.replaceChild(nb,btn);
+    nb.addEventListener('click',function(){
+      const s=window.__cmpState; if(!s) return;
+      s.active=!s.active;
+      nb.textContent     =s.active?'PUNTO B: ON ✓':'COMPARAR PUNTO B';
+      nb.style.background=s.active?'#2563eb':'';
+      nb.style.color     =s.active?'#fff':'';
+      const hint=document.getElementById('uavCmpHint');
+      const clr =document.getElementById('uavCmpClear');
+      if(hint) hint.style.display=s.active?'block':'none';
+      if(clr)  clr.style.display=s.dataB?'block':'none';
+      if(!s.active){ const p=document.getElementById('cmpPanel'); if(p&&!s.dataB) p.style.display='none'; }
+    });
+    const clrOld=document.getElementById('uavCmpClear');
+    if(clrOld){
+      const nc=clrOld.cloneNode(true);
+      clrOld.parentNode?.replaceChild(nc,clrOld);
+      nc.addEventListener('click',function(){
+        if(typeof window.cmpClear==='function') window.cmpClear();
+        window._cmpNormA=null; window._cmpNormB=null;
+        nb.textContent='COMPARAR PUNTO B'; nb.style.background=''; nb.style.color='';
+        const hint=document.getElementById('uavCmpHint'); if(hint) hint.style.display='none';
+        nc.style.display='none';
+        const p=document.getElementById('cmpPanel'); if(p) p.style.display='none';
+      });
+    }
+  }
+
+  /* ── Init ────────────────────────────────────────────────────── */
+  var _iv=setInterval(function(){
+    if(window.__pickMap&&window.__cmpState){ clearInterval(_iv); _attachClick(); setTimeout(_patchBtn,600); }
+  },300);
+  document.addEventListener('DOMContentLoaded',function(){ setTimeout(function(){ _attachClick(); _patchBtn(); },1600); });
+  window.addEventListener('load',function(){ setTimeout(function(){ _attachClick(); _patchBtn(); },2200); });
+
+})();
 </script>
 
 
