@@ -35,6 +35,7 @@ window.__parseDate = function(raw){
   function qs(id){ return document.getElementById(id); }
   function txt(id, fallback='N/D'){ const el=qs(id); const v=(el?.textContent||el?.value||'').trim(); return v || fallback; }
   function htmlSafe(v){ return String(v ?? '').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+  window.htmlSafe = htmlSafe; // exponer globalmente para uso fuera del IIFE
   function selectedValues(containerSelector){ return Array.from(document.querySelectorAll(containerSelector+' input[type="checkbox"]:checked')).map(x=>x.value || x.id); }
   function fmtNow(){ const d=new Date(); return d.toLocaleDateString('es-CL')+' '+d.toLocaleTimeString('es-CL',{hour12:false}); }
   function todayIso(offset=0){ const d=new Date(); d.setDate(d.getDate()+offset); return d.toISOString().slice(0,10); }
@@ -3687,53 +3688,8 @@ window.__dmcTimeLocal = function(raw) {
   letter-spacing:0.5px;
 }
 .cmp-map-line { stroke:#f39c12; stroke-width:2; stroke-dasharray:5,4; }
-#cmpBtnBar {
-  display:flex;
-  align-items:center;
-  gap:8px;
-  padding:4px 0 6px;
-  flex-wrap:wrap;
-}
-#cmpBtnToggle {
-  font-family:Consolas,monospace;
-  font-size:10px;
-  font-weight:700;
-  letter-spacing:0.8px;
-  padding:4px 12px;
-  border:1px solid var(--border);
-  background:var(--panel);
-  color:var(--text);
-  cursor:pointer;
-  border-radius:3px;
-  text-transform:uppercase;
-}
-#cmpBtnToggle.active {
-  background:var(--accent,#2563eb);
-  color:#fff;
-  border-color:var(--accent,#2563eb);
-}
-#cmpBtnClear {
-  font-family:Consolas,monospace;
-  font-size:10px;
-  font-weight:700;
-  letter-spacing:0.8px;
-  padding:4px 10px;
-  border:1px solid var(--border);
-  background:var(--panel);
-  color:var(--muted);
-  cursor:pointer;
-  border-radius:3px;
-  text-transform:uppercase;
-  display:none;
-}
-#cmpHint {
-  font-size:0.68em;
-  color:var(--muted);
-  letter-spacing:0.3px;
-}
-/* ocultar panel comp para rol user */
-body.role-user #cmpPanel,
-body.role-user #cmpBtnBar { display:none !important; }
+/* ocultar panel comparativo para rol user */
+body.role-user #cmpPanel { display:none !important; }
 /* ── FIN PANEL COMPARATIVO ─────────────────────────────────────────────────── */
 </style>
 <div id="__notifyOverlay">
@@ -4010,12 +3966,6 @@ body.role-user #cmpBtnBar { display:none !important; }
 
 
             <!-- ══ PANEL COMPARATIVO PUNTO A vs B (solo admin) ══════════════════ -->
-            <div id="cmpBtnBar">
-              <button id="cmpBtnToggle" onclick="cmpToggleMode()">COMPARAR PUNTO B</button>
-              <button id="cmpBtnClear"  onclick="cmpClear()">LIMPIAR PUNTO B</button>
-              <span   id="cmpHint"></span>
-            </div>
-
             <div id="cmpPanel" class="panel" style="padding:0;overflow:hidden;">
               <span class="panel-title" style="margin:0;padding:6px 12px;">
                 COMPARACION: <span id="cmpTitleA" style="color:var(--text)">PUNTO A</span>
@@ -5649,6 +5599,7 @@ try {
                 </select>
                 <button id="uavApplyBuffer" style="font-size:10px; padding:2px 8px; font-weight:800;">APLICAR</button>
                 <button id="uavExport" style="font-size:10px; padding:2px 8px; font-weight:800;">EXPORT</button>
+                <button id="uavCmpToggle" style="font-size:10px; padding:2px 8px; font-weight:800; display:none;">PUNTO B</button>
               </div>
 
             `;
@@ -5678,8 +5629,14 @@ try {
                 <button id="uavExport" style="font-size:10px; padding:2px 6px;">EXPORT</button>
               </div>
 
-              <div style="font-size:9px; color:var(--muted); line-height:1.2;">
-                DIBUJO: POLÍGONO / RECT / CÍRCULO · EXPORTA GEOJSON.
+              <div style="font-size:9px; color:var(--muted); line-height:1.2; margin-bottom:6px;">
+                DIBUJO: POLIGONO / RECT / CIRCULO · EXPORTA GEOJSON.
+              </div>
+
+              <div id="uavCmpRow" style="display:none;">
+                <button id="uavCmpToggle" style="font-size:10px; padding:3px 8px; font-weight:800; width:100%; cursor:pointer; letter-spacing:0.5px;">COMPARAR PUNTO B</button>
+                <div id="uavCmpHint" style="font-size:9px; color:var(--muted); margin-top:3px; display:none;">CLIC DERECHO EN EL MAPA</div>
+                <button id="uavCmpClear" style="font-size:9px; padding:2px 6px; font-weight:700; width:100%; cursor:pointer; margin-top:3px; display:none;">LIMPIAR PUNTO B</button>
               </div>
             `;
           }
@@ -5735,6 +5692,58 @@ try {
                         setTimeout(() => URL.revokeObjectURL(a.href), 3000);
                     } catch {}
                 });
+
+                // ── BOTÓN COMPARAR PUNTO B (solo admin) ──────────────────────
+                const btnCmpToggle = div.querySelector("#uavCmpToggle");
+                const btnCmpClear  = div.querySelector("#uavCmpClear");
+                const cmpRow       = div.querySelector("#uavCmpRow");
+                const cmpHintEl    = div.querySelector("#uavCmpHint");
+
+                function _syncCmpBtn(){
+                    const isAdm = (window.AUTH_ROLE || localStorage.getItem('auth_role') || '') === 'admin';
+                    if(cmpRow)      cmpRow.style.display      = isAdm ? 'block' : 'none';
+                    if(btnCmpToggle) btnCmpToggle.style.display = isAdm ? 'block' : 'none';
+                }
+                _syncCmpBtn();
+
+                // Re-evaluar cuando applyRoleUI cambia el rol
+                const _prevApply = window.applyRoleUI;
+                window.applyRoleUI = function(){
+                    if(typeof _prevApply === 'function') _prevApply.apply(this, arguments);
+                    _syncCmpBtn();
+                };
+
+                if(btnCmpToggle) btnCmpToggle.addEventListener('click', function(){
+                    if(typeof window.cmpToggleMode === 'function') window.cmpToggleMode();
+                    // Sincronizar visual del botón
+                    const active = window.__cmpState?.active;
+                    btnCmpToggle.textContent = active ? 'PUNTO B: ON' : 'COMPARAR PUNTO B';
+                    btnCmpToggle.style.background = active ? '#2563eb' : '';
+                    btnCmpToggle.style.color       = active ? '#fff'    : '';
+                    if(cmpHintEl) cmpHintEl.style.display = active ? 'block' : 'none';
+                    if(btnCmpClear) btnCmpClear.style.display = (window.__cmpState?.dataB) ? 'block' : 'none';
+                });
+
+                if(btnCmpClear) btnCmpClear.addEventListener('click', function(){
+                    if(typeof window.cmpClear === 'function') window.cmpClear();
+                    btnCmpToggle.textContent       = 'COMPARAR PUNTO B';
+                    btnCmpToggle.style.background  = '';
+                    btnCmpToggle.style.color        = '';
+                    if(cmpHintEl)   cmpHintEl.style.display   = 'none';
+                    if(btnCmpClear) btnCmpClear.style.display  = 'none';
+                });
+
+                // Cuando el módulo obtiene el punto B, mostrar botón limpiar
+                const _prevOnPointA = window.__cmpOnPointAUpdated;
+                window.__cmpOnPointAUpdated = function(){
+                    if(typeof _prevOnPointA === 'function') _prevOnPointA.apply(this, arguments);
+                    if(btnCmpClear) btnCmpClear.style.display = window.__cmpState?.dataB ? 'block' : 'none';
+                    if(btnCmpToggle && window.__cmpState?.dataB){
+                        btnCmpToggle.textContent      = 'PUNTO B: ON';
+                        btnCmpToggle.style.background = '#2563eb';
+                        btnCmpToggle.style.color       = '#fff';
+                    }
+                };
 
             }, 0);
 
@@ -15348,7 +15357,7 @@ function applyRoleUI(){
     if(s)s.style.display='block';
     busy=false;
     if(tab==='Users')setTimeout(window.adminLoadUsers,20);
-    if(tab==='Logs')setTimeout(window.adminLoadLogs,20);
+    if(tab==='Logs')setTimeout(function(){ window.adminLoadLogs(true); },20);
   };
   window.adminLoadUsers=async function(){
     var el=document.getElementById('adminUserList');if(!el)return;
@@ -15422,7 +15431,7 @@ function applyRoleUI(){
             '<thead><tr style="background:#1a1f2e;position:sticky;top:0">' +
             cols.map(function(c){ return '<th style="padding:5px 8px;text-align:left;font-size:10px;letter-spacing:.5px;color:#7eb8f7;white-space:nowrap">'+colLabels[c]+'</th>'; }).join('') +
             '</tr></thead><tbody>'+rows+'</tbody></table></div>' + nextBtn;
-    }catch(e){ el.innerHTML='<div style="color:#e05c5c;font-size:11px;padding:8px">'+htmlSafe(e.message)+'</div>'; }
+    }catch(e){ el.innerHTML='<div style="color:#e05c5c;font-size:11px;padding:8px">'+(e.message||'Error desconocido')+'</div>'; }
   };
   window.adminCreateUser=async function(){
     if((window.AUTH_ROLE||localStorage.getItem('auth_role')||'')!=='admin'){__notify('Acción reservada para administradores.');return;}
@@ -16060,22 +16069,11 @@ window.closeBulletinMenu = function(){
   // ── API pública ───────────────────────────────────────────────────────────────
   window.cmpToggleMode = function(){
     if(!isAdmin()) return;
-    const s   = window.__cmpState;
-    const btn = document.getElementById('cmpBtnToggle');
-    const hint= document.getElementById('cmpHint');
-    s.active  = !s.active;
-    if(btn){
-      btn.classList.toggle('active', s.active);
-      btn.textContent = s.active ? 'MODO PUNTO B: ON' : 'COMPARAR PUNTO B';
-    }
-    if(hint) hint.textContent = s.active ? 'Haz clic derecho en el mapa para fijar el PUNTO B' : '';
+    const s = window.__cmpState;
+    s.active = !s.active;
     // Si se activa y ya hay punto B, mostrar panel
-    if(s.active && s.dataB){
-      document.getElementById('cmpPanel')?.classList.add('active');
-    }
-    if(!s.active && !s.dataB){
-      document.getElementById('cmpPanel')?.classList.remove('active');
-    }
+    if(s.active && s.dataB)  document.getElementById('cmpPanel')?.classList.add('active');
+    if(!s.active && !s.dataB) document.getElementById('cmpPanel')?.classList.remove('active');
   };
 
   window.cmpClear = function(){
@@ -16086,12 +16084,6 @@ window.closeBulletinMenu = function(){
     if(s.markerB){ s.markerB.remove(); s.markerB = null; }
     if(s.lineAB){  s.lineAB.remove();  s.lineAB  = null; }
     document.getElementById('cmpPanel')?.classList.remove('active');
-    const btn = document.getElementById('cmpBtnToggle');
-    if(btn){ btn.classList.remove('active'); btn.textContent = 'COMPARAR PUNTO B'; }
-    const clr = document.getElementById('cmpBtnClear');
-    if(clr) clr.style.display = 'none';
-    const hint = document.getElementById('cmpHint');
-    if(hint) hint.textContent = '';
     const dist = document.getElementById('cmpDist');
     if(dist) dist.textContent = '';
   };
@@ -16116,33 +16108,15 @@ window.closeBulletinMenu = function(){
     const elA  = document.getElementById('cmpTitleA');
     if(elA) elA.textContent = lblA;
     cmpRender();
-    // Mostrar botón limpiar
-    const clr = document.getElementById('cmpBtnClear');
-    if(clr) clr.style.display = 'inline-block';
   };
 
   // Adjuntar handler de click derecho al mapa cuando esté listo
   document.addEventListener('DOMContentLoaded', function(){
-    // Esperar a que __pickMap esté disponible
     const _tryAttach = setInterval(function(){
       if(!window.__pickMap) return;
       clearInterval(_tryAttach);
       window.__pickMap.on('contextmenu', cmpContextHandler);
     }, 300);
-
-    // Mostrar/ocultar barra según rol
-    function _syncRoleCmp(){
-      const isAdm = isAdmin();
-      const bar   = document.getElementById('cmpBtnBar');
-      if(bar) bar.style.display = isAdm ? 'flex' : 'none';
-    }
-    _syncRoleCmp();
-    // Re-evaluar cuando cambia el rol (applyRoleUI)
-    const _origApplyRole = window.applyRoleUI;
-    window.applyRoleUI = function(){
-      if(typeof _origApplyRole === 'function') _origApplyRole.apply(this, arguments);
-      _syncRoleCmp();
-    };
   });
 
 })();
