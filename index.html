@@ -3613,7 +3613,6 @@ window.__dmcTimeLocal = function(raw) {
             </div>
         </div>
         <button id="adminPanelBtn" onclick="openAdminPanel()" title="Panel de Administración">⚙ ADMIN</button>
-<button id="logoutBtn" onclick="window._doLogout()" title="Cerrar sesión" style="background:var(--panel,#1e293b);color:var(--text,#e2e8f0);border:1px solid var(--border,#334155);padding:5px 12px;cursor:pointer;font-family:Consolas,monospace;font-size:10px;font-weight:700;letter-spacing:1px;border-radius:4px;transition:background 0.15s,color 0.15s;">CERRAR SESIÓN</button>
 
         <div class="source-bar" id="sourceInfo"></div>
 
@@ -15198,200 +15197,176 @@ window.closeBulletinMenu = function(){
 </script>
 
 <script>
-// ─── PERSISTENCIA DE SESIÓN POR USUARIO ─────────────────────────────────────
+/* ═══════════════════════════════════════════════════════
+   LOGOUT + GUARDAR/CARGAR ESTADO (polígonos, mapa, config)
+   Adaptado a index-listo.html (auth_token, __uavLayers)
+   ═══════════════════════════════════════════════════════ */
 (function(){
-  const _AUTH_URL = (typeof AUTHBASEURL==='string' ? AUTHBASEURL : 'https://meteo-auth.kcautivof.workers.dev').replace(/\/$/,'');
-
+  /* ── CAPTURAR ESTADO ───────────────────────────────── */
   function _captureState(){
-    const s={};
+    var s = {};
     try{
-      s.latDms   = document.getElementById('latDms')?.value||'';
-      s.lonDms   = document.getElementById('lonDms')?.value||'';
-      s.cityInput= document.getElementById('cityInput')?.value||'';
+      s.latDms    = document.getElementById('latDms')?.value||'';
+      s.lonDms    = document.getElementById('lonDms')?.value||'';
+      s.cityInput = document.getElementById('cityInput')?.value||'';
       s.useManualCoords = !!document.getElementById('useManualCoords')?.checked;
     }catch(e){}
     try{
       if(typeof pickMap!=='undefined'&&pickMap){
-        const c=pickMap.getCenter();
+        var c=pickMap.getCenter();
         s.mapLat=c.lat; s.mapLng=c.lng; s.mapZoom=pickMap.getZoom();
       }
-      if(window.__uavLayers?.layerDraw) s.mapDrawings=window.__uavLayers.layerDraw.toGeoJSON();
-      if(window.__uavLayers){ s.uavBufferKm=window.__uavLayers.bufferKm||5; s.uavDrawColor=window.__uavLayers.drawColor||'d32f2f'; }
+      // CORRECTO: usa window.__uavLayers (doble guión bajo)
+      if(window.__uavLayers?.layerDraw)
+        s.mapDrawings=window.__uavLayers.layerDraw.toGeoJSON();
+      if(window.__uavLayers){
+        s.uavBufferKm=window.__uavLayers.bufferKm||5;
+        s.uavDrawColor=window.__uavLayers.drawColor||'d32f2f';
+      }
     }catch(e){}
     try{
-      ['sourceSelect','modelSelect','themeMode','forecastSource','uavSource'].forEach(id=>{
-        const el=document.getElementById(id); if(el) s[id]=el.value;
+      ['sourceSelect','modelSelect','themeMode','forecastSource','uavSource',
+       'threshWind','threshGusts','threshPrecip','threshCloud','threshVis',
+       'threshKp','uavDronePreset','timeMode','rangeMode','smoothMode',
+       'hourDay','hourWindow'].forEach(function(id){
+        var el=document.getElementById(id); if(el) s[id]=el.value;
       });
-    }catch(e){}
-    try{
-      ['threshWind','threshGusts','threshPrecip','threshCloud','threshVis','threshKp','uavDronePreset'].forEach(id=>{
-        const el=document.getElementById(id); if(el) s[id]=el.value;
-      });
-    }catch(e){}
-    try{
-      ['timeMode','rangeMode','smoothMode','hourDay','hourWindow'].forEach(id=>{
-        const el=document.getElementById(id); if(el) s[id]=el.value;
-      });
-    }catch(e){}
-    try{
-      ['alertsSource','alertsFilterRegion','alertsFilterType'].forEach(id=>{
-        const el=document.getElementById(id); if(el) s[id]=el.value;
-      });
-    }catch(e){}
-    try{
-      const rbFields=['rbTitle','rbType','rbFocus','rbRangePreset','rbDateFrom','rbDateTo',
-        'rbResponsible','rbNotes','rbAeroDrone','rbSignatureName','rbSignatureRank',
-        'rbSignatureRole','rbDistribution1','rbDistribution2','rbDistribution3','rbDistribution4',
-        'rbLetterheadLeft1','rbLetterheadLeft2','rbLetterheadLeft3','rbLetterheadRight','rbLetterheadPlaceDate'];
-      const rb={};
-      rbFields.forEach(id=>{ const el=document.getElementById(id); if(el) rb[id]=el.value||''; });
-      ['rbIncludeCharts','rbIncludeTables','rbIncludeTimeline','rbIncludeAlerts','rbIncludeRecs',
-       'rbIncludeConclusions','rbIncludeMap','rbIncludeSignature','rbIncludeDistribution',
-       'rbIncludeSemaforo','rbIncludeAero','rbUseLastConfig'].forEach(id=>{
-        const el=document.getElementById(id); if(el) rb[id]=!!el.checked;
-      });
-      rb.rbVariables=Array.from(document.querySelectorAll('#rbVariablesBox input[type=checkbox]'))
-        .filter(x=>x.checked).map(x=>x.value);
-      s.reportBuilder=rb;
     }catch(e){}
     return s;
   }
 
-  async function _saveState(silent){
-    const token=localStorage.getItem('authtoken'); if(!token) return;
+  /* ── GUARDAR EN WORKER ─────────────────────────────── */
+  async function _saveState(){
+    var token=localStorage.getItem('auth_token');
+    if(!token) return false;
     try{
-      await fetch(_AUTH_URL+'/auth/save-state',{
+      var r=await fetch(AUTH_BASE_URL.replace(/\/+$/,'')+'/auth/save-state',{
         method:'POST',
         headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
         body:JSON.stringify(_captureState())
       });
-      if(!silent) _showBanner('Estado guardado');
-    }catch(e){}
+      return r.ok;
+    }catch(e){return false;}
   }
 
+  /* ── CARGAR DESDE WORKER ───────────────────────────── */
   async function _loadState(){
-    const token=localStorage.getItem('authtoken'); if(!token) return;
+    var token=localStorage.getItem('auth_token');
+    if(!token) return;
     try{
-      const r=await fetch(_AUTH_URL+'/auth/load-state',{headers:{'Authorization':'Bearer '+token}});
+      var r=await fetch(AUTH_BASE_URL.replace(/\/+$/,'')+'/auth/load-state',{
+        headers:{'Authorization':'Bearer '+token}
+      });
       if(!r.ok) return;
-      const js=await r.json();
+      var js=await r.json();
       if(js.state) _applyState(js.state);
     }catch(e){}
   }
 
+  /* ── APLICAR ESTADO ────────────────────────────────── */
   function _applyState(s){
     if(!s) return;
     try{
-      ['latDms','lonDms','cityInput'].forEach(id=>{
-        if(s[id]!==undefined){const el=document.getElementById(id);if(el)el.value=s[id];}
+      ['latDms','lonDms','cityInput'].forEach(function(id){
+        if(s[id]!==undefined){var el=document.getElementById(id);if(el)el.value=s[id];}
       });
-      const chk=document.getElementById('useManualCoords');
+      var chk=document.getElementById('useManualCoords');
       if(chk&&typeof s.useManualCoords==='boolean') chk.checked=s.useManualCoords;
       ['sourceSelect','modelSelect','themeMode','forecastSource','uavSource',
-       'threshWind','threshGusts','threshPrecip','threshCloud','threshVis','threshKp',
-       'uavDronePreset','timeMode','rangeMode','smoothMode','hourDay','hourWindow',
-       'alertsSource','alertsFilterRegion','alertsFilterType'].forEach(id=>{
-        if(s[id]!==undefined){const el=document.getElementById(id);if(el)el.value=s[id];}
+       'threshWind','threshGusts','threshPrecip','threshCloud','threshVis',
+       'threshKp','uavDronePreset','timeMode','rangeMode','smoothMode',
+       'hourDay','hourWindow'].forEach(function(id){
+        if(s[id]!==undefined){var el=document.getElementById(id);if(el)el.value=s[id];}
       });
       if(s.themeMode&&typeof applyTheme==='function') try{applyTheme(s.themeMode);}catch(e){}
-      if(s.reportBuilder){
-        const rb=s.reportBuilder;
-        Object.entries(rb).forEach(([id,val])=>{
-          const el=document.getElementById(id); if(!el) return;
-          if(typeof val==='boolean') el.checked=val;
-          else if(id!=='rbVariables') el.value=val||'';
-        });
-        if(Array.isArray(rb.rbVariables)){
-          document.querySelectorAll('#rbVariablesBox input[type=checkbox]').forEach(ch=>{
-            ch.checked=rb.rbVariables.includes(ch.value);
-          });
-        }
-      }
     }catch(e){}
-    // Restaurar mapa con delay (esperar que Leaflet esté listo)
-    setTimeout(()=>{
+    // Restaurar mapa y polígonos (esperar 1.5s a que Leaflet cargue)
+    setTimeout(function(){
       try{
         if(typeof pickMap!=='undefined'&&pickMap){
           if(typeof s.mapLat==='number'&&typeof s.mapLng==='number')
             pickMap.setView([s.mapLat,s.mapLng],s.mapZoom||8,{animate:false});
           if(s.mapDrawings&&window.__uavLayers?.layerDraw){
             window.__uavLayers.layerDraw.clearLayers();
-            const color='#'+(s.uavDrawColor||'d32f2f');
+            var color='#'+(s.uavDrawColor||'d32f2f');
             L.geoJSON(s.mapDrawings,{
-              style:()=>({color,fillColor:color,fillOpacity:0.18,weight:2}),
-              pointToLayer:(_,ll)=>L.circleMarker(ll,{radius:6,color,fillColor:color,fillOpacity:0.85,weight:2})
-            }).eachLayer(l=>window.__uavLayers.layerDraw.addLayer(l));
+              style:function(){return{color:color,fillColor:color,fillOpacity:0.18,weight:2};},
+              pointToLayer:function(_,ll){return L.circleMarker(ll,{radius:6,color:color,fillColor:color,fillOpacity:0.5});}
+            }).eachLayer(function(l){window.__uavLayers.layerDraw.addLayer(l);});
           }
-          if(s.uavBufferKm&&window.__uavLayers){
-            window.__uavLayers.bufferKm=Number(s.uavBufferKm)||5;
-            const sel=document.getElementById('uavBufferKm'); if(sel) sel.value=String(s.uavBufferKm);
-          }
-          if(s.uavDrawColor&&window.__uavLayers){
-            window.__uavLayers.drawColor=s.uavDrawColor;
-            const sel=document.getElementById('uavDrawColor'); if(sel) sel.value=s.uavDrawColor;
-          }
+          if(s.uavBufferKm&&window.__uavLayers) window.__uavLayers.bufferKm=Number(s.uavBufferKm)||5;
+          if(s.uavDrawColor&&window.__uavLayers) window.__uavLayers.drawColor=s.uavDrawColor;
         }
       }catch(e){}
-    },2500);
+    },1500);
   }
 
-  function _showBanner(msg){
-    let b=document.getElementById('_stateBanner');
-    if(!b){
-      b=document.createElement('div'); b.id='_stateBanner';
-      b.style.cssText='position:fixed;bottom:20px;right:20px;background:#0f172a;color:#64748b;font-size:10px;font-family:Consolas,monospace;padding:7px 14px;border-radius:6px;border:1px solid #1e293b;z-index:99999;transition:opacity 0.5s;letter-spacing:0.5px;pointer-events:none;';
-      document.body.appendChild(b);
-    }
-    b.textContent=msg; b.style.opacity='1';
-    clearTimeout(window._sBannerT);
-    window._sBannerT=setTimeout(()=>{b.style.opacity='0';},3000);
-  }
-
-  let _autoSaveInt=null;
+  /* ── AUTO-SAVE CADA 3 MIN ──────────────────────────── */
+  var _asi=null;
   function _startAutoSave(){
-    if(_autoSaveInt) clearInterval(_autoSaveInt);
-    _autoSaveInt=setInterval(async()=>{
-      if(!localStorage.getItem('authtoken')){clearInterval(_autoSaveInt);return;}
-      await _saveState(true);
-      _showBanner('Auto-guardado completado');
-    },5*60*1000); // cada 5 minutos
+    if(_asi) clearInterval(_asi);
+    _asi=setInterval(function(){_saveState();},180000);
   }
 
-  // Logout global
-  window._doLogout=window.doLogout=async function(){
-    // Feedback visual inmediato
-    const _lb=document.getElementById('logoutBtn');
-    if(_lb){_lb.textContent='GUARDANDO...';_lb.disabled=true;}
-    _showBanner('Guardando sesión...');
-    // Guardar estado — máximo 4 segundos
-    try{ await Promise.race([_saveState(true), new Promise(r=>setTimeout(r,4000))]); }catch(e){}
-    // Limpiar TODAS las claves posibles del token
-    ['authtoken','AUTHTOKEN','authuser','AUTHUSER','authrole','AUTHROLE',
-     'meteo_token','token','auth_token'].forEach(k=>{
+  /* ── CERRAR SESIÓN ─────────────────────────────────── */
+  window.doLogout=async function(){
+    var btn=document.getElementById('logoutBtn');
+    if(btn){btn.textContent='GUARDANDO...';btn.disabled=true;}
+    try{await Promise.race([_saveState(),new Promise(function(r){setTimeout(r,4000);})]);}catch(e){}
+    // Limpiar tokens (auth_token con guión bajo = este archivo)
+    ['auth_token','auth_user','auth_role','authtoken','AUTHTOKEN',
+     'authuser','AUTHUSER','authrole','AUTHROLE','token'].forEach(function(k){
       try{localStorage.removeItem(k);}catch(e){}
     });
     try{sessionStorage.clear();}catch(e){}
-    window.AUTHTOKEN=null; window.AUTHUSER=null; window.AUTHROLE=null;
-    if(_autoSaveInt){clearInterval(_autoSaveInt);_autoSaveInt=null;}
-    // Recargar la página completa
+    if(_asi){clearInterval(_asi);_asi=null;}
     window.location.replace(location.pathname+location.search);
   };
 
-  // Parchear doLogin para cargar estado después del login
-  document.addEventListener('DOMContentLoaded',()=>{
-    const _origHideLogin=window.hideLogin;
-    window.hideLogin=function(...args){
-      if(_origHideLogin) _origHideLogin(...args);
-      setTimeout(async()=>{
+  /* ── BOTÓN + HOOKS ─────────────────────────────────── */
+  document.addEventListener('DOMContentLoaded',function(){
+    // Crear botón CERRAR SESIÓN (a la izquierda del botón ADMIN)
+    if(!document.getElementById('logoutBtn')){
+      var btn=document.createElement('button');
+      btn.id='logoutBtn';
+      btn.textContent='CERRAR SESIÓN';
+      btn.title='Cerrar sesión';
+      btn.onclick=window.doLogout;
+      btn.style.cssText='position:absolute;top:8px;right:110px;display:none;'+
+        'background:var(--panel2);color:var(--text);border:1px solid var(--border);'+
+        'padding:4px 10px;font-family:Consolas,monospace;font-size:10px;font-weight:700;'+
+        'text-transform:uppercase;cursor:pointer;letter-spacing:1px;z-index:10;border-radius:3px;';
+      var ref=document.getElementById('adminPanelBtn');
+      if(ref) ref.parentNode.insertBefore(btn,ref);
+      else document.body.appendChild(btn);
+    }
+
+    // Interceptar hideLogin → cargar estado + mostrar botón logout
+    var _origHide=window.hideLogin;
+    window.hideLogin=function(){
+      if(_origHide) _origHide.apply(this,arguments);
+      var lb=document.getElementById('logoutBtn');
+      if(lb) lb.style.display='block';
+      setTimeout(async function(){
         await _loadState();
         _startAutoSave();
-      },600);
+      },800);
     };
+
+    // Si ya hay sesión activa al recargar → cargar estado también
+    if(localStorage.getItem('auth_token')){
+      var lb=document.getElementById('logoutBtn');
+      if(lb) lb.style.display='block';
+      setTimeout(async function(){
+        await _loadState();
+        _startAutoSave();
+      },1800);
+    }
   });
 
-  // Exponer para uso externo si hace falta
   window._saveState=_saveState;
   window._loadState=_loadState;
+  window._captureState=_captureState;
 })();
 </script>
 
