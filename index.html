@@ -3613,6 +3613,7 @@ window.__dmcTimeLocal = function(raw) {
             </div>
         </div>
         <button id="adminPanelBtn" onclick="openAdminPanel()" title="Panel de Administración">⚙ ADMIN</button>
+<button id="logoutBtn" onclick="doLogout()" title="Cerrar sesión" style="background:#1e293b;color:#94a3b8;border:1px solid #334155;padding:5px 12px;cursor:pointer;font-family:Consolas,monospace;font-size:10px;font-weight:700;letter-spacing:1px;border-radius:4px;">CERRAR SESIÓN</button>
 
         <div class="source-bar" id="sourceInfo"></div>
 
@@ -15195,5 +15196,195 @@ window.closeBulletinMenu = function(){
   if(bd) bd.style.display = 'none';
 };
 </script>
+
+<script>
+// ─── PERSISTENCIA DE SESIÓN POR USUARIO ─────────────────────────────────────
+(function(){
+  const _AUTH_URL = (typeof AUTHBASEURL==='string' ? AUTHBASEURL : 'https://meteo-auth.kcautivof.workers.dev').replace(/\/$/,'');
+
+  function _captureState(){
+    const s={};
+    try{
+      s.latDms   = document.getElementById('latDms')?.value||'';
+      s.lonDms   = document.getElementById('lonDms')?.value||'';
+      s.cityInput= document.getElementById('cityInput')?.value||'';
+      s.useManualCoords = !!document.getElementById('useManualCoords')?.checked;
+    }catch(e){}
+    try{
+      if(typeof pickMap!=='undefined'&&pickMap){
+        const c=pickMap.getCenter();
+        s.mapLat=c.lat; s.mapLng=c.lng; s.mapZoom=pickMap.getZoom();
+      }
+      if(window.uavLayers?.layerDraw) s.mapDrawings=window.uavLayers.layerDraw.toGeoJSON();
+      if(window.uavLayers){ s.uavBufferKm=window.uavLayers.bufferKm||5; s.uavDrawColor=window.uavLayers.drawColor||'d32f2f'; }
+    }catch(e){}
+    try{
+      ['sourceSelect','modelSelect','themeMode','forecastSource','uavSource'].forEach(id=>{
+        const el=document.getElementById(id); if(el) s[id]=el.value;
+      });
+    }catch(e){}
+    try{
+      ['threshWind','threshGusts','threshPrecip','threshCloud','threshVis','threshKp','uavDronePreset'].forEach(id=>{
+        const el=document.getElementById(id); if(el) s[id]=el.value;
+      });
+    }catch(e){}
+    try{
+      ['timeMode','rangeMode','smoothMode','hourDay','hourWindow'].forEach(id=>{
+        const el=document.getElementById(id); if(el) s[id]=el.value;
+      });
+    }catch(e){}
+    try{
+      ['alertsSource','alertsFilterRegion','alertsFilterType'].forEach(id=>{
+        const el=document.getElementById(id); if(el) s[id]=el.value;
+      });
+    }catch(e){}
+    try{
+      const rbFields=['rbTitle','rbType','rbFocus','rbRangePreset','rbDateFrom','rbDateTo',
+        'rbResponsible','rbNotes','rbAeroDrone','rbSignatureName','rbSignatureRank',
+        'rbSignatureRole','rbDistribution1','rbDistribution2','rbDistribution3','rbDistribution4',
+        'rbLetterheadLeft1','rbLetterheadLeft2','rbLetterheadLeft3','rbLetterheadRight','rbLetterheadPlaceDate'];
+      const rb={};
+      rbFields.forEach(id=>{ const el=document.getElementById(id); if(el) rb[id]=el.value||''; });
+      ['rbIncludeCharts','rbIncludeTables','rbIncludeTimeline','rbIncludeAlerts','rbIncludeRecs',
+       'rbIncludeConclusions','rbIncludeMap','rbIncludeSignature','rbIncludeDistribution',
+       'rbIncludeSemaforo','rbIncludeAero','rbUseLastConfig'].forEach(id=>{
+        const el=document.getElementById(id); if(el) rb[id]=!!el.checked;
+      });
+      rb.rbVariables=Array.from(document.querySelectorAll('#rbVariablesBox input[type=checkbox]'))
+        .filter(x=>x.checked).map(x=>x.value);
+      s.reportBuilder=rb;
+    }catch(e){}
+    return s;
+  }
+
+  async function _saveState(silent){
+    const token=localStorage.getItem('authtoken'); if(!token) return;
+    try{
+      await fetch(_AUTH_URL+'/auth/save-state',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+        body:JSON.stringify(_captureState())
+      });
+      if(!silent) _showBanner('Estado guardado');
+    }catch(e){}
+  }
+
+  async function _loadState(){
+    const token=localStorage.getItem('authtoken'); if(!token) return;
+    try{
+      const r=await fetch(_AUTH_URL+'/auth/load-state',{headers:{'Authorization':'Bearer '+token}});
+      if(!r.ok) return;
+      const js=await r.json();
+      if(js.state) _applyState(js.state);
+    }catch(e){}
+  }
+
+  function _applyState(s){
+    if(!s) return;
+    try{
+      ['latDms','lonDms','cityInput'].forEach(id=>{
+        if(s[id]!==undefined){const el=document.getElementById(id);if(el)el.value=s[id];}
+      });
+      const chk=document.getElementById('useManualCoords');
+      if(chk&&typeof s.useManualCoords==='boolean') chk.checked=s.useManualCoords;
+      ['sourceSelect','modelSelect','themeMode','forecastSource','uavSource',
+       'threshWind','threshGusts','threshPrecip','threshCloud','threshVis','threshKp',
+       'uavDronePreset','timeMode','rangeMode','smoothMode','hourDay','hourWindow',
+       'alertsSource','alertsFilterRegion','alertsFilterType'].forEach(id=>{
+        if(s[id]!==undefined){const el=document.getElementById(id);if(el)el.value=s[id];}
+      });
+      if(s.themeMode&&typeof applyTheme==='function') try{applyTheme(s.themeMode);}catch(e){}
+      if(s.reportBuilder){
+        const rb=s.reportBuilder;
+        Object.entries(rb).forEach(([id,val])=>{
+          const el=document.getElementById(id); if(!el) return;
+          if(typeof val==='boolean') el.checked=val;
+          else if(id!=='rbVariables') el.value=val||'';
+        });
+        if(Array.isArray(rb.rbVariables)){
+          document.querySelectorAll('#rbVariablesBox input[type=checkbox]').forEach(ch=>{
+            ch.checked=rb.rbVariables.includes(ch.value);
+          });
+        }
+      }
+    }catch(e){}
+    // Restaurar mapa con delay (esperar que Leaflet esté listo)
+    setTimeout(()=>{
+      try{
+        if(typeof pickMap!=='undefined'&&pickMap){
+          if(typeof s.mapLat==='number'&&typeof s.mapLng==='number')
+            pickMap.setView([s.mapLat,s.mapLng],s.mapZoom||8,{animate:false});
+          if(s.mapDrawings&&window.uavLayers?.layerDraw){
+            window.uavLayers.layerDraw.clearLayers();
+            const color='#'+(s.uavDrawColor||'d32f2f');
+            L.geoJSON(s.mapDrawings,{
+              style:()=>({color,fillColor:color,fillOpacity:0.18,weight:2}),
+              pointToLayer:(_,ll)=>L.circleMarker(ll,{radius:6,color,fillColor:color,fillOpacity:0.85,weight:2})
+            }).eachLayer(l=>window.uavLayers.layerDraw.addLayer(l));
+          }
+          if(s.uavBufferKm&&window.uavLayers){
+            window.uavLayers.bufferKm=Number(s.uavBufferKm)||5;
+            const sel=document.getElementById('uavBufferKm'); if(sel) sel.value=String(s.uavBufferKm);
+          }
+          if(s.uavDrawColor&&window.uavLayers){
+            window.uavLayers.drawColor=s.uavDrawColor;
+            const sel=document.getElementById('uavDrawColor'); if(sel) sel.value=s.uavDrawColor;
+          }
+        }
+      }catch(e){}
+    },2500);
+  }
+
+  function _showBanner(msg){
+    let b=document.getElementById('_stateBanner');
+    if(!b){
+      b=document.createElement('div'); b.id='_stateBanner';
+      b.style.cssText='position:fixed;bottom:20px;right:20px;background:#0f172a;color:#64748b;font-size:10px;font-family:Consolas,monospace;padding:7px 14px;border-radius:6px;border:1px solid #1e293b;z-index:99999;transition:opacity 0.5s;letter-spacing:0.5px;pointer-events:none;';
+      document.body.appendChild(b);
+    }
+    b.textContent=msg; b.style.opacity='1';
+    clearTimeout(window._sBannerT);
+    window._sBannerT=setTimeout(()=>{b.style.opacity='0';},3000);
+  }
+
+  let _autoSaveInt=null;
+  function _startAutoSave(){
+    if(_autoSaveInt) clearInterval(_autoSaveInt);
+    _autoSaveInt=setInterval(async()=>{
+      if(!localStorage.getItem('authtoken')){clearInterval(_autoSaveInt);return;}
+      await _saveState(true);
+      _showBanner('Auto-guardado completado');
+    },5*60*1000); // cada 5 minutos
+  }
+
+  // Logout global
+  window.doLogout=async function(){
+    _showBanner('Guardando sesión...');
+    await _saveState(true);
+    ['authtoken','authuser','authrole'].forEach(k=>localStorage.removeItem(k));
+    window.AUTHTOKEN=null; window.AUTHUSER=null; window.AUTHROLE=null;
+    if(_autoSaveInt){clearInterval(_autoSaveInt);_autoSaveInt=null;}
+    if(typeof showLogin==='function') showLogin('Sesión cerrada correctamente.');
+    else location.reload();
+  };
+
+  // Parchear doLogin para cargar estado después del login
+  document.addEventListener('DOMContentLoaded',()=>{
+    const _origHideLogin=window.hideLogin;
+    window.hideLogin=function(...args){
+      if(_origHideLogin) _origHideLogin(...args);
+      setTimeout(async()=>{
+        await _loadState();
+        _startAutoSave();
+      },600);
+    };
+  });
+
+  // Exponer para uso externo si hace falta
+  window._saveState=_saveState;
+  window._loadState=_loadState;
+})();
+</script>
+
 </body>
 </html>
