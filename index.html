@@ -15361,11 +15361,16 @@ window.closeBulletinMenu = function(){
   window.doLogout=async function(){
     _showBanner('Guardando sesión...');
     await _saveState(true);
-    ['authtoken','authuser','authrole'].forEach(k=>localStorage.removeItem(k));
+    // Limpiar TODAS las claves posibles del token (mayúsculas y minúsculas)
+    ['authtoken','AUTHTOKEN','authuser','AUTHUSER','authrole','AUTHROLE',
+     'meteo_token','token','auth_token'].forEach(k=>localStorage.removeItem(k));
+    // Limpiar sessionStorage también por si acaso
+    try{sessionStorage.clear();}catch(e){}
     window.AUTHTOKEN=null; window.AUTHUSER=null; window.AUTHROLE=null;
     if(_autoSaveInt){clearInterval(_autoSaveInt);_autoSaveInt=null;}
-    if(typeof showLogin==='function') showLogin('Sesión cerrada correctamente.');
-    else location.reload();
+    // Recargar la página completa — evita el modal encima del sistema
+    // y garantiza que no quede ningún token en memoria
+    location.reload();
   };
 
   // Parchear doLogin para cargar estado después del login
