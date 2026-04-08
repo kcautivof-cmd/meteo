@@ -15360,17 +15360,18 @@ window.closeBulletinMenu = function(){
   // Logout global
   window.doLogout=async function(){
     _showBanner('Guardando sesión...');
-    await _saveState(true);
-    // Limpiar TODAS las claves posibles del token (mayúsculas y minúsculas)
+    // Timeout de 3s máximo para el guardado — no bloquear el logout
+    try{ await Promise.race([_saveState(true), new Promise(r=>setTimeout(r,3000))]); }catch(e){}
+    // Limpiar TODAS las claves posibles del token
     ['authtoken','AUTHTOKEN','authuser','AUTHUSER','authrole','AUTHROLE',
-     'meteo_token','token','auth_token'].forEach(k=>localStorage.removeItem(k));
-    // Limpiar sessionStorage también por si acaso
+     'meteo_token','token','auth_token'].forEach(k=>{
+      try{localStorage.removeItem(k);}catch(e){}
+    });
     try{sessionStorage.clear();}catch(e){}
     window.AUTHTOKEN=null; window.AUTHUSER=null; window.AUTHROLE=null;
     if(_autoSaveInt){clearInterval(_autoSaveInt);_autoSaveInt=null;}
-    // Recargar la página completa — evita el modal encima del sistema
-    // y garantiza que no quede ningún token en memoria
-    location.reload();
+    // Recargar la página completa — limpia TODO
+    window.location.href = window.location.href.split('?')[0];
   };
 
   // Parchear doLogin para cargar estado después del login
