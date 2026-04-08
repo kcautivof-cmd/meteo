@@ -5530,39 +5530,31 @@ try {
             const c = __uav.drawColor || "#d32f2f";
             if (layer.setStyle) layer.setStyle({ color: c, fillColor: c, fillOpacity: 0.18, weight: 2 });
             __uav.layerDraw.addLayer(layer);
-            // ── Etiquetar zona ──
             layer._pmLabel = "";
-            const pid = "lbl" + Date.now();
-            const pop = L.popup({closeOnClick:false}).setContent(
-              "<div style=\"font-family:Consolas,monospace;font-size:12px;min-width:180px;\">" +
-              "<b style=\"letter-spacing:1px;\">ETIQUETAR ZONA</b><br>" +
-              "<input id=\""+pid+"\" type=\"text\" placeholder=\"Nombre de la zona...\" " +
-              "style=\"width:100%;box-sizing:border-box;margin:6px 0;padding:5px;font-family:inherit;\" maxlength=\"80\">" +
-              "<div style=\"display:flex;gap:6px;margin-top:4px;\">" +
-              "<button onclick=\"(function(e){var v=document.getElementById('"+pid+"').value||'';"+
-              "if(window.__pmSetLabel)window.__pmSetLabel(e,v);"+
-              "})(this);\" " +
-              "style=\"flex:1;cursor:pointer;padding:4px;font-family:Consolas,monospace;font-weight:700;\">" +
-              "GUARDAR</button>" +
-              "<button onclick=\"this.closest('.leaflet-popup').querySelector('.leaflet-popup-close-button').click();\" " +
-              "style=\"flex:1;cursor:pointer;padding:4px;font-family:Consolas,monospace;\">" +
-              "OMITIR</button>" +
-              "</div></div>"
+            // Popup para etiquetar
+            const pid = "zl" + Date.now();
+            layer.bindPopup(
+              '<div style="font-family:Consolas,monospace;font-size:12px;min-width:190px">' +
+              '<b>ETIQUETAR ZONA</b>' +
+              '<input id="' + pid + '" type="text" placeholder="Nombre..." ' +
+              'style="display:block;width:100%;box-sizing:border-box;margin:6px 0;padding:5px;font-family:inherit" maxlength="80" ' +
+              'onkeydown="if(event.key===\'Enter\'){window.__pmSave(\''+pid+'\')}"><br>' +
+              '<button onclick="window.__pmSave(\''+pid+'\')" ' +
+              'style="width:100%;padding:4px;cursor:pointer;font-family:Consolas,monospace;font-weight:700">GUARDAR ETIQUETA</button>' +
+              '</div>',
+              {closeOnClick: false}
             );
-            layer.bindPopup(pop);
-            layer._popupId = pid;
-            // Guardar referencia para el botón GUARDAR
-            window.__pmSetLabel = function(btn, val) {
-              layer._pmLabel = val;
-              layer.closePopup();
-              layer.unbindPopup();
-              if (val) {
-                layer.bindTooltip(val, {permanent:true, direction:"center",
-                  className:"pm-zone-label"});
-              }
-              if(window._saveState) window._saveState();
-            };
+            window["__pmLayer_"+pid] = layer;
+            layer.on("popupopen", () => { setTimeout(()=>document.getElementById(pid)?.focus(), 80); });
             layer.openPopup();
+        });
+
+        // Eliminar capa del FeatureGroup también (pm solo la quita del mapa)
+        __pickMap.on("pm:remove", (e) => {
+            if (window.__uavLayers && window.__uavLayers.layerDraw) {
+                window.__uavLayers.layerDraw.removeLayer(e.layer);
+            }
+            if (window._saveState) setTimeout(window._saveState, 300);
         });
 
         __uav._pmReady = true;
@@ -15229,220 +15221,232 @@ window.closeBulletinMenu = function(){
 </script>
 <style>
 .pm-zone-label {
-  background: rgba(0,0,0,0.7) !important;
-  border: none !important;
-  border-radius: 3px !important;
-  color: #fff !important;
-  font-family: Consolas, monospace !important;
-  font-size: 11px !important;
-  font-weight: 700 !important;
-  padding: 2px 6px !important;
-  white-space: nowrap !important;
-  box-shadow: none !important;
+  background: rgba(0,0,0,0.75) !important;
+  border: none !important; border-radius: 3px !important;
+  color: #fff !important; font-family: Consolas, monospace !important;
+  font-size: 11px !important; font-weight: 700 !important;
+  padding: 2px 7px !important; white-space: nowrap !important;
+  box-shadow: none !important; pointer-events: none !important;
 }
 .pm-zone-label::before { display: none !important; }
 </style>
 <script>
 (function(){
-  var _loadedOnce=false;
+  var _loadedOnce = false;
 
-  function _cap(){
-    var s={};
-    try{
-      s.latDms=document.getElementById('latDms')?.value||'';
-      s.lonDms=document.getElementById('lonDms')?.value||'';
-      s.cityInput=document.getElementById('cityInput')?.value||'';
-      s.useManualCoords=!!document.getElementById('useManualCoords')?.checked;
-    }catch(e){}
-    try{
-      if(typeof __pickMap!=='undefined'&&__pickMap){
-        var c=__pickMap.getCenter();
-        s.mapLat=c.lat;s.mapLng=c.lng;s.mapZoom=__pickMap.getZoom();
+  // __pmSave: llamado desde botón del popup de etiqueta
+  window.__pmSave = function(pid) {
+    var input = document.getElementById(pid);
+    var val = (input ? input.value : '') || '';
+    var layer = window['__pmLayer_' + pid];
+    if (!layer) return;
+    layer._pmLabel = val;
+    layer.closePopup();
+    layer.unbindPopup();
+    if (val) {
+      layer.unbindTooltip();
+      layer.bindTooltip(val, {
+        permanent: true, direction: 'center',
+        className: 'pm-zone-label'
+      });
+    }
+    if (window._saveState) window._saveState();
+  };
+
+  function _cap() {
+    var s = {};
+    try {
+      s.latDms    = document.getElementById('latDms')?.value || '';
+      s.lonDms    = document.getElementById('lonDms')?.value || '';
+      s.cityInput = document.getElementById('cityInput')?.value || '';
+      s.useManualCoords = !!document.getElementById('useManualCoords')?.checked;
+    } catch(e) {}
+    try {
+      if (typeof __pickMap !== 'undefined' && __pickMap) {
+        var c = __pickMap.getCenter();
+        s.mapLat = c.lat; s.mapLng = c.lng; s.mapZoom = __pickMap.getZoom();
       }
-      if(window.__uavLayers&&window.__uavLayers.layerDraw){
-        var features=[];
-        window.__uavLayers.layerDraw.eachLayer(function(l){
-          try{
-            var gj=l.toGeoJSON?l.toGeoJSON():null;
-            if(!gj)return;
-            gj.properties=gj.properties||{};
-            var opts=l.options||{};
-            gj.properties._color=opts.color||opts.fillColor||window.__uavLayers.drawColor||'#d32f2f';
-            gj.properties._fillOpacity=opts.fillOpacity!=null?opts.fillOpacity:0.18;
-            gj.properties._weight=opts.weight||2;
-            gj.properties._label=l._pmLabel||'';
-            try{if(typeof l.getRadius==='function')gj.properties._radius=l.getRadius();}catch(e){}
+      if (window.__uavLayers && window.__uavLayers.layerDraw) {
+        var features = [];
+        window.__uavLayers.layerDraw.eachLayer(function(l) {
+          try {
+            var gj = l.toGeoJSON ? l.toGeoJSON() : null;
+            if (!gj) return;
+            gj.properties = gj.properties || {};
+            var opts = l.options || {};
+            gj.properties._color = opts.color || opts.fillColor || '#d32f2f';
+            gj.properties._fillOpacity = (opts.fillOpacity != null) ? opts.fillOpacity : 0.18;
+            gj.properties._weight = opts.weight || 2;
+            gj.properties._label = l._pmLabel || '';
+            try { if (typeof l.getRadius === 'function') gj.properties._radius = l.getRadius(); } catch(e) {}
             features.push(gj);
-          }catch(e){}
+          } catch(e) {}
         });
-        s.mapDrawings={type:'FeatureCollection',features:features};
+        s.mapDrawings = { type: 'FeatureCollection', features: features };
       }
-      if(window.__uavLayers){
-        s.uavBufferKm=window.__uavLayers.bufferKm||5;
-        s.uavDrawColor=window.__uavLayers.drawColor||'#d32f2f';
+      if (window.__uavLayers) {
+        s.uavBufferKm  = window.__uavLayers.bufferKm  || 5;
+        s.uavDrawColor = window.__uavLayers.drawColor || '#d32f2f';
       }
-    }catch(e){}
-    try{
+    } catch(e) {}
+    try {
       ['sourceSelect','modelSelect','themeMode','forecastSource','uavSource',
        'threshWind','threshGusts','threshPrecip','threshCloud','threshVis',
        'threshKp','uavDronePreset','timeMode','rangeMode','smoothMode',
-       'hourDay','hourWindow'].forEach(function(id){
-        var el=document.getElementById(id);if(el)s[id]=el.value;
+       'hourDay','hourWindow'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) s[id] = el.value;
       });
-    }catch(e){}
+    } catch(e) {}
     return s;
   }
 
-  async function _save(){
-    var t=localStorage.getItem('auth_token');
-    if(!t)return false;
-    try{
-      var r=await fetch(AUTH_BASE_URL.replace(/\/+$/,'')+'/auth/save-state',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','Authorization':'Bearer '+t},
-        body:JSON.stringify(_cap())
+  async function _save() {
+    var t = localStorage.getItem('auth_token');
+    if (!t) return false;
+    try {
+      var r = await fetch(AUTH_BASE_URL.replace(/\/+$/, '') + '/auth/save-state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + t },
+        body: JSON.stringify(_cap())
       });
       return r.ok;
-    }catch(e){return false;}
+    } catch(e) { return false; }
   }
 
-  async function _load(){
-    var t=localStorage.getItem('auth_token');
-    if(!t)return;
-    try{
-      var r=await fetch(AUTH_BASE_URL.replace(/\/+$/,'')+'/auth/load-state',{
-        headers:{'Authorization':'Bearer '+t}
+  async function _load() {
+    var t = localStorage.getItem('auth_token');
+    if (!t) return;
+    try {
+      var r = await fetch(AUTH_BASE_URL.replace(/\/+$/, '') + '/auth/load-state', {
+        headers: { 'Authorization': 'Bearer ' + t }
       });
-      if(!r.ok)return;
-      var js=await r.json();
-      if(js.state)_apply(js.state);
-    }catch(e){}
+      if (!r.ok) return;
+      var js = await r.json();
+      if (js.state) _apply(js.state);
+    } catch(e) {}
   }
 
-  function _apply(s){
-    if(!s)return;
-    try{
-      ['latDms','lonDms','cityInput'].forEach(function(id){
-        if(s[id]!==undefined){var el=document.getElementById(id);if(el)el.value=s[id];}
+  function _apply(s) {
+    if (!s) return;
+    try {
+      ['latDms','lonDms','cityInput'].forEach(function(id) {
+        if (s[id] !== undefined) { var el = document.getElementById(id); if (el) el.value = s[id]; }
       });
-      var chk=document.getElementById('useManualCoords');
-      if(chk&&typeof s.useManualCoords==='boolean')chk.checked=s.useManualCoords;
+      var chk = document.getElementById('useManualCoords');
+      if (chk && typeof s.useManualCoords === 'boolean') chk.checked = s.useManualCoords;
       ['sourceSelect','modelSelect','themeMode','forecastSource','uavSource',
        'threshWind','threshGusts','threshPrecip','threshCloud','threshVis',
        'threshKp','uavDronePreset','timeMode','rangeMode','smoothMode',
-       'hourDay','hourWindow'].forEach(function(id){
-        if(s[id]!==undefined){var el=document.getElementById(id);if(el)el.value=s[id];}
+       'hourDay','hourWindow'].forEach(function(id) {
+        if (s[id] !== undefined) { var el = document.getElementById(id); if (el) el.value = s[id]; }
       });
-      if(s.themeMode&&typeof applyTheme==='function')try{applyTheme(s.themeMode);}catch(e){}
-    }catch(e){}
-    setTimeout(function(){
-      try{
-        if(typeof __pickMap!=='undefined'&&__pickMap&&typeof s.mapLat==='number')
-          __pickMap.setView([s.mapLat,s.mapLng],s.mapZoom||8,{animate:false});
-        if(s.mapDrawings&&window.__uavLayers&&window.__uavLayers.layerDraw){
+      if (s.themeMode && typeof applyTheme === 'function') try { applyTheme(s.themeMode); } catch(e) {}
+    } catch(e) {}
+
+    setTimeout(function() {
+      try {
+        if (typeof __pickMap !== 'undefined' && __pickMap && typeof s.mapLat === 'number')
+          __pickMap.setView([s.mapLat, s.mapLng], s.mapZoom || 8, { animate: false });
+
+        if (s.mapDrawings && window.__uavLayers && window.__uavLayers.layerDraw) {
           window.__uavLayers.layerDraw.clearLayers();
-          var feats=(s.mapDrawings.features||[]);
-          feats.forEach(function(feat){
-            try{
-              var p=feat.properties||{};
-              var col=p._color||'#d32f2f';
-              var styleOpts={color:col,fillColor:col,
-                fillOpacity:p._fillOpacity!=null?p._fillOpacity:0.18,
-                weight:p._weight||2};
+          (s.mapDrawings.features || []).forEach(function(feat) {
+            try {
+              var p = feat.properties || {};
+              var col = p._color || '#d32f2f';
+              var sty = { color: col, fillColor: col,
+                          fillOpacity: (p._fillOpacity != null ? p._fillOpacity : 0.18),
+                          weight: p._weight || 2 };
               var layer;
-              if(p._radius&&feat.geometry&&feat.geometry.type==='Point'){
-                var coords=feat.geometry.coordinates;
-                layer=L.circle([coords[1],coords[0]],Object.assign({radius:p._radius},styleOpts));
+              if (p._radius && feat.geometry && feat.geometry.type === 'Point') {
+                var co = feat.geometry.coordinates;
+                layer = L.circle([co[1], co[0]], Object.assign({ radius: p._radius }, sty));
               } else {
-                var layers=[];
-                L.geoJSON(feat,{
-                  style:function(){return styleOpts;},
-                  pointToLayer:function(_,ll){
-                    return L.circleMarker(ll,Object.assign({radius:8},styleOpts));
-                  }
-                }).eachLayer(function(l){layers.push(l);});
-                layer=layers[0];
+                var tmp = [], gLayers = L.geoJSON(feat, {
+                  style: function() { return sty; },
+                  pointToLayer: function(_, ll) { return L.circleMarker(ll, Object.assign({ radius: 8 }, sty)); }
+                });
+                gLayers.eachLayer(function(l) { tmp.push(l); });
+                layer = tmp[0];
               }
-              if(!layer)return;
-              layer._pmLabel=p._label||'';
-              if(p._label){
-                layer.bindTooltip(p._label,{permanent:true,direction:'center',
-                  className:'pm-zone-label'});
+              if (!layer) return;
+              layer._pmLabel = p._label || '';
+              if (p._label) {
+                layer.bindTooltip(p._label, {
+                  permanent: true, direction: 'center',
+                  className: 'pm-zone-label'
+                });
               }
               window.__uavLayers.layerDraw.addLayer(layer);
-            }catch(e){}
+            } catch(e) {}
           });
         }
-        if(s.uavBufferKm&&window.__uavLayers)window.__uavLayers.bufferKm=Number(s.uavBufferKm)||5;
-        if(s.uavDrawColor&&window.__uavLayers)window.__uavLayers.drawColor=s.uavDrawColor;
-      }catch(e){}
-    },2000);
+        if (s.uavBufferKm  && window.__uavLayers) window.__uavLayers.bufferKm  = Number(s.uavBufferKm) || 5;
+        if (s.uavDrawColor && window.__uavLayers) window.__uavLayers.drawColor = s.uavDrawColor;
+      } catch(e) {}
+    }, 2000);
   }
 
-  // Auto-guardar al eliminar, editar o crear capa
-  function _hookMapEvents(){
-    var tries=0;
-    var iv=setInterval(function(){
-      tries++;
-      if(typeof __pickMap!=='undefined'&&__pickMap){
-        clearInterval(iv);
-        __pickMap.on('pm:remove',function(){setTimeout(_save,300);});
-        __pickMap.on('pm:edit',function(){setTimeout(_save,300);});
-        __pickMap.on('pm:dragend',function(){setTimeout(_save,300);});
-      }
-      if(tries>40)clearInterval(iv);
-    },500);
+  // Guardar automáticamente cada 3 min
+  var _iv = null;
+  function _startAuto() {
+    if (_iv) clearInterval(_iv);
+    _iv = setInterval(function() { _save(); }, 180000);
   }
 
-  var _iv=null;
-  function _startAuto(){
-    if(_iv)clearInterval(_iv);
-    _iv=setInterval(function(){_save();},180000);
-    _hookMapEvents();
-  }
-
-  window.doLogout=async function(){
-    var btn=document.getElementById('logoutBtn');
-    if(btn){btn.textContent='GUARDANDO...';btn.disabled=true;}
-    try{await Promise.race([_save(),new Promise(function(r){setTimeout(r,4000);})]);}catch(e){}
-    ['auth_token','auth_user','auth_role','authtoken','token'].forEach(function(k){
-      try{localStorage.removeItem(k);}catch(e){}
+  window.doLogout = async function() {
+    var btn = document.getElementById('logoutBtn');
+    if (btn) { btn.textContent = 'GUARDANDO...'; btn.disabled = true; }
+    try { await Promise.race([_save(), new Promise(function(r) { setTimeout(r, 5000); })]); } catch(e) {}
+    ['auth_token','auth_user','auth_role','authtoken','token'].forEach(function(k) {
+      try { localStorage.removeItem(k); } catch(e) {}
     });
-    try{sessionStorage.clear();}catch(e){}
-    if(_iv){clearInterval(_iv);_iv=null;}
-    window.location.replace(location.pathname+location.search);
+    try { sessionStorage.clear(); } catch(e) {}
+    if (_iv) { clearInterval(_iv); _iv = null; }
+    window.location.replace(location.pathname + location.search);
   };
 
-  document.addEventListener('DOMContentLoaded',function(){
-    if(!document.getElementById('logoutBtn')){
-      var btn=document.createElement('button');
-      btn.id='logoutBtn';btn.textContent='CERRAR SESION';btn.onclick=window.doLogout;
-      btn.style.cssText='position:absolute;top:8px;right:110px;display:none;background:var(--panel2);color:var(--text);border:1px solid var(--border);padding:4px 10px;font-family:Consolas,monospace;font-size:10px;font-weight:700;text-transform:uppercase;cursor:pointer;letter-spacing:1px;z-index:10;border-radius:3px;';
-      var ref=document.getElementById('adminPanelBtn');
-      if(ref)ref.parentNode.insertBefore(btn,ref);
+  document.addEventListener('DOMContentLoaded', function() {
+    // Botón cerrar sesión
+    if (!document.getElementById('logoutBtn')) {
+      var btn = document.createElement('button');
+      btn.id = 'logoutBtn';
+      btn.textContent = 'CERRAR SESION';
+      btn.onclick = window.doLogout;
+      btn.style.cssText = 'position:absolute;top:8px;right:110px;display:none;' +
+        'background:var(--panel2);color:var(--text);border:1px solid var(--border);' +
+        'padding:4px 10px;font-family:Consolas,monospace;font-size:10px;font-weight:700;' +
+        'text-transform:uppercase;cursor:pointer;letter-spacing:1px;z-index:10;border-radius:3px;';
+      var ref = document.getElementById('adminPanelBtn');
+      if (ref) ref.parentNode.insertBefore(btn, ref);
       else document.body.appendChild(btn);
     }
-    var _oh=window.hideLogin;
-    window.hideLogin=function(){
-      if(_oh)_oh.apply(this,arguments);
-      var lb=document.getElementById('logoutBtn');
-      if(lb)lb.style.display='block';
-      if(!_loadedOnce){
-        _loadedOnce=true;
-        setTimeout(async function(){await _load();_startAuto();},900);
+
+    // Hook hideLogin
+    var _oh = window.hideLogin;
+    window.hideLogin = function() {
+      if (_oh) _oh.apply(this, arguments);
+      var lb = document.getElementById('logoutBtn');
+      if (lb) lb.style.display = 'block';
+      if (!_loadedOnce) {
+        _loadedOnce = true;
+        setTimeout(async function() { await _load(); _startAuto(); }, 900);
       }
     };
-    if(localStorage.getItem('auth_token')&&!_loadedOnce){
-      _loadedOnce=true;
-      var lb=document.getElementById('logoutBtn');
-      if(lb)lb.style.display='block';
-      setTimeout(async function(){await _load();_startAuto();},2000);
+
+    // Sesión ya activa al recargar
+    if (localStorage.getItem('auth_token') && !_loadedOnce) {
+      _loadedOnce = true;
+      var lb = document.getElementById('logoutBtn');
+      if (lb) lb.style.display = 'block';
+      setTimeout(async function() { await _load(); _startAuto(); }, 2000);
     }
   });
 
-  window._saveState=_save;
-  window._loadState=_load;
-  window._captureState=_cap;
+  window._saveState    = _save;
+  window._loadState    = _load;
+  window._captureState = _cap;
 })();
 </script>
 
