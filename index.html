@@ -15215,8 +15215,8 @@ window.closeBulletinMenu = function(){
         const c=pickMap.getCenter();
         s.mapLat=c.lat; s.mapLng=c.lng; s.mapZoom=pickMap.getZoom();
       }
-      if(window.uavLayers?.layerDraw) s.mapDrawings=window.uavLayers.layerDraw.toGeoJSON();
-      if(window.uavLayers){ s.uavBufferKm=window.uavLayers.bufferKm||5; s.uavDrawColor=window.uavLayers.drawColor||'d32f2f'; }
+      if(window.__uavLayers?.layerDraw) s.mapDrawings=window.__uavLayers.layerDraw.toGeoJSON();
+      if(window.__uavLayers){ s.uavBufferKm=window.__uavLayers.bufferKm||5; s.uavDrawColor=window.__uavLayers.drawColor||'d32f2f'; }
     }catch(e){}
     try{
       ['sourceSelect','modelSelect','themeMode','forecastSource','uavSource'].forEach(id=>{
@@ -15314,20 +15314,20 @@ window.closeBulletinMenu = function(){
         if(typeof pickMap!=='undefined'&&pickMap){
           if(typeof s.mapLat==='number'&&typeof s.mapLng==='number')
             pickMap.setView([s.mapLat,s.mapLng],s.mapZoom||8,{animate:false});
-          if(s.mapDrawings&&window.uavLayers?.layerDraw){
-            window.uavLayers.layerDraw.clearLayers();
+          if(s.mapDrawings&&window.__uavLayers?.layerDraw){
+            window.__uavLayers.layerDraw.clearLayers();
             const color='#'+(s.uavDrawColor||'d32f2f');
             L.geoJSON(s.mapDrawings,{
               style:()=>({color,fillColor:color,fillOpacity:0.18,weight:2}),
               pointToLayer:(_,ll)=>L.circleMarker(ll,{radius:6,color,fillColor:color,fillOpacity:0.85,weight:2})
-            }).eachLayer(l=>window.uavLayers.layerDraw.addLayer(l));
+            }).eachLayer(l=>window.__uavLayers.layerDraw.addLayer(l));
           }
-          if(s.uavBufferKm&&window.uavLayers){
-            window.uavLayers.bufferKm=Number(s.uavBufferKm)||5;
+          if(s.uavBufferKm&&window.__uavLayers){
+            window.__uavLayers.bufferKm=Number(s.uavBufferKm)||5;
             const sel=document.getElementById('uavBufferKm'); if(sel) sel.value=String(s.uavBufferKm);
           }
-          if(s.uavDrawColor&&window.uavLayers){
-            window.uavLayers.drawColor=s.uavDrawColor;
+          if(s.uavDrawColor&&window.__uavLayers){
+            window.__uavLayers.drawColor=s.uavDrawColor;
             const sel=document.getElementById('uavDrawColor'); if(sel) sel.value=s.uavDrawColor;
           }
         }
