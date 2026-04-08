@@ -3966,7 +3966,7 @@ body.role-user #cmpPanel { display:none !important; }
 
 
             <!-- ══ PANEL COMPARATIVO PUNTO A vs B (solo admin) ══════════════════ -->
-            <div id="cmpPanel" class="panel" style="padding:0;overflow:hidden;">
+            <div id="cmpPanel" class="panel" style="padding:0;overflow:hidden;display:none;">
               <span class="panel-title" style="margin:0;padding:6px 12px;">
                 COMPARACION: <span id="cmpTitleA" style="color:var(--text)">PUNTO A</span>
                 &nbsp;vs&nbsp;
@@ -16010,7 +16010,8 @@ window.closeBulletinMenu = function(){
       }
 
       cmpRender();
-      document.getElementById('cmpPanel')?.classList.add('active');
+      const _cpShow = document.getElementById('cmpPanel');
+      if(_cpShow){ _cpShow.style.display = 'block'; _cpShow.classList.add('active'); }
 
     } catch(e){
       s.loading = false;
@@ -16072,8 +16073,8 @@ window.closeBulletinMenu = function(){
     const s = window.__cmpState;
     s.active = !s.active;
     // Si se activa y ya hay punto B, mostrar panel
-    if(s.active && s.dataB)  document.getElementById('cmpPanel')?.classList.add('active');
-    if(!s.active && !s.dataB) document.getElementById('cmpPanel')?.classList.remove('active');
+    if(s.active && s.dataB){ const _p=document.getElementById('cmpPanel'); if(_p){_p.style.display='block';_p.classList.add('active');} }
+    if(!s.active && !s.dataB){ const _p=document.getElementById('cmpPanel'); if(_p){_p.style.display='none';_p.classList.remove('active');} }
   };
 
   window.cmpClear = function(){
@@ -16083,7 +16084,7 @@ window.closeBulletinMenu = function(){
     s.active = false;
     if(s.markerB){ s.markerB.remove(); s.markerB = null; }
     if(s.lineAB){  s.lineAB.remove();  s.lineAB  = null; }
-    document.getElementById('cmpPanel')?.classList.remove('active');
+    const _cpC = document.getElementById('cmpPanel'); if(_cpC){ _cpC.style.display='none'; _cpC.classList.remove('active'); }
     const dist = document.getElementById('cmpDist');
     if(dist) dist.textContent = '';
   };
