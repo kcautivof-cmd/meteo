@@ -5531,7 +5531,6 @@ try {
             if (layer.setStyle) layer.setStyle({ color: c, fillColor: c, fillOpacity: 0.18, weight: 2 });
             __uav.layerDraw.addLayer(layer);
             layer._pmLabel = "";
-            // Popup para etiquetar
             const pid = "zl" + Date.now();
             layer.bindPopup(
               '<div style="font-family:Consolas,monospace;font-size:12px;min-width:190px">' +
@@ -5549,12 +5548,10 @@ try {
             layer.openPopup();
         });
 
-        // Eliminar capa del FeatureGroup también (pm solo la quita del mapa)
         __pickMap.on("pm:remove", (e) => {
-            if (window.__uavLayers && window.__uavLayers.layerDraw) {
-                window.__uavLayers.layerDraw.removeLayer(e.layer);
-            }
-            if (window._saveState) setTimeout(window._saveState, 300);
+            // Remover explícitamente del FeatureGroup (Geoman solo quita del mapa)
+            try { __uav.layerDraw.removeLayer(e.layer); } catch(ex) {}
+            if (window._saveState) setTimeout(window._saveState, 400);
         });
 
         __uav._pmReady = true;
@@ -15221,9 +15218,9 @@ window.closeBulletinMenu = function(){
 </script>
 <style>
 .pm-zone-label {
-  background: rgba(0,0,0,0.75) !important;
+  background: rgba(0,0,0,0.78) !important;
   border: none !important; border-radius: 3px !important;
-  color: #fff !important; font-family: Consolas, monospace !important;
+  color: #fff !important; font-family: Consolas,monospace !important;
   font-size: 11px !important; font-weight: 700 !important;
   padding: 2px 7px !important; white-space: nowrap !important;
   box-shadow: none !important; pointer-events: none !important;
@@ -15234,10 +15231,9 @@ window.closeBulletinMenu = function(){
 (function(){
   var _loadedOnce = false;
 
-  // __pmSave: llamado desde botón del popup de etiqueta
   window.__pmSave = function(pid) {
     var input = document.getElementById(pid);
-    var val = (input ? input.value : '') || '';
+    var val = (input ? input.value.trim() : '');
     var layer = window['__pmLayer_' + pid];
     if (!layer) return;
     layer._pmLabel = val;
@@ -15245,13 +15241,19 @@ window.closeBulletinMenu = function(){
     layer.unbindPopup();
     if (val) {
       layer.unbindTooltip();
-      layer.bindTooltip(val, {
-        permanent: true, direction: 'center',
-        className: 'pm-zone-label'
-      });
+      layer.bindTooltip(val, { permanent: true, direction: 'center', className: 'pm-zone-label' });
     }
     if (window._saveState) window._saveState();
   };
+
+  function _isOnMap(l) {
+    // Verifica que la capa esté realmente en el mapa (no solo en el FeatureGroup)
+    try {
+      if (typeof __pickMap !== 'undefined' && __pickMap)
+        return __pickMap.hasLayer(l);
+    } catch(e) {}
+    return true; // fallback: incluir
+  }
 
   function _cap() {
     var s = {};
@@ -15270,6 +15272,8 @@ window.closeBulletinMenu = function(){
         var features = [];
         window.__uavLayers.layerDraw.eachLayer(function(l) {
           try {
+            // FILTRO CLAVE: solo capas que realmente están en el mapa
+            if (!_isOnMap(l)) return;
             var gj = l.toGeoJSON ? l.toGeoJSON() : null;
             if (!gj) return;
             gj.properties = gj.properties || {};
@@ -15305,10 +15309,11 @@ window.closeBulletinMenu = function(){
     var t = localStorage.getItem('auth_token');
     if (!t) return false;
     try {
+      var state = _cap();
       var r = await fetch(AUTH_BASE_URL.replace(/\/+$/, '') + '/auth/save-state', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + t },
-        body: JSON.stringify(_cap())
+        body: JSON.stringify(state)
       });
       return r.ok;
     } catch(e) { return false; }
@@ -15327,8 +15332,39 @@ window.closeBulletinMenu = function(){
     } catch(e) {}
   }
 
+  function _addRestoredLayer(feat) {
+    try {
+      var p = feat.properties || {};
+      var col = p._color || '#d32f2f';
+      var sty = {
+        color: col, fillColor: col,
+        fillOpacity: (p._fillOpacity != null ? p._fillOpacity : 0.18),
+        weight: p._weight || 2
+      };
+      var layer;
+      if (p._radius && feat.geometry && feat.geometry.type === 'Point') {
+        var co = feat.geometry.coordinates;
+        layer = L.circle([co[1], co[0]], Object.assign({ radius: p._radius }, sty));
+      } else {
+        var tmp = [];
+        L.geoJSON(feat, {
+          style: function() { return sty; },
+          pointToLayer: function(_, ll) { return L.circleMarker(ll, Object.assign({ radius: 8 }, sty)); }
+        }).eachLayer(function(l) { tmp.push(l); });
+        layer = tmp[0];
+      }
+      if (!layer) return;
+      layer._pmLabel = p._label || '';
+      if (p._label) {
+        layer.bindTooltip(p._label, { permanent: true, direction: 'center', className: 'pm-zone-label' });
+      }
+      window.__uavLayers.layerDraw.addLayer(layer);
+    } catch(e) {}
+  }
+
   function _apply(s) {
     if (!s) return;
+    // Aplicar config
     try {
       ['latDms','lonDms','cityInput'].forEach(function(id) {
         if (s[id] !== undefined) { var el = document.getElementById(id); if (el) el.value = s[id]; }
@@ -15344,51 +15380,31 @@ window.closeBulletinMenu = function(){
       if (s.themeMode && typeof applyTheme === 'function') try { applyTheme(s.themeMode); } catch(e) {}
     } catch(e) {}
 
-    setTimeout(function() {
-      try {
-        if (typeof __pickMap !== 'undefined' && __pickMap && typeof s.mapLat === 'number')
-          __pickMap.setView([s.mapLat, s.mapLng], s.mapZoom || 8, { animate: false });
-
-        if (s.mapDrawings && window.__uavLayers && window.__uavLayers.layerDraw) {
+    // Restaurar capas: esperar a que el mapa esté listo con reintentos
+    var attempts = 0;
+    var iv = setInterval(function() {
+      attempts++;
+      var mapReady = typeof __pickMap !== 'undefined' && __pickMap;
+      var layerReady = window.__uavLayers && window.__uavLayers.layerDraw;
+      if (mapReady && layerReady) {
+        clearInterval(iv);
+        try {
+          if (typeof s.mapLat === 'number')
+            __pickMap.setView([s.mapLat, s.mapLng], s.mapZoom || 8, { animate: false });
+        } catch(e) {}
+        try {
           window.__uavLayers.layerDraw.clearLayers();
-          (s.mapDrawings.features || []).forEach(function(feat) {
-            try {
-              var p = feat.properties || {};
-              var col = p._color || '#d32f2f';
-              var sty = { color: col, fillColor: col,
-                          fillOpacity: (p._fillOpacity != null ? p._fillOpacity : 0.18),
-                          weight: p._weight || 2 };
-              var layer;
-              if (p._radius && feat.geometry && feat.geometry.type === 'Point') {
-                var co = feat.geometry.coordinates;
-                layer = L.circle([co[1], co[0]], Object.assign({ radius: p._radius }, sty));
-              } else {
-                var tmp = [], gLayers = L.geoJSON(feat, {
-                  style: function() { return sty; },
-                  pointToLayer: function(_, ll) { return L.circleMarker(ll, Object.assign({ radius: 8 }, sty)); }
-                });
-                gLayers.eachLayer(function(l) { tmp.push(l); });
-                layer = tmp[0];
-              }
-              if (!layer) return;
-              layer._pmLabel = p._label || '';
-              if (p._label) {
-                layer.bindTooltip(p._label, {
-                  permanent: true, direction: 'center',
-                  className: 'pm-zone-label'
-                });
-              }
-              window.__uavLayers.layerDraw.addLayer(layer);
-            } catch(e) {}
-          });
-        }
-        if (s.uavBufferKm  && window.__uavLayers) window.__uavLayers.bufferKm  = Number(s.uavBufferKm) || 5;
-        if (s.uavDrawColor && window.__uavLayers) window.__uavLayers.drawColor = s.uavDrawColor;
-      } catch(e) {}
-    }, 2000);
+          if (s.mapDrawings && s.mapDrawings.features) {
+            s.mapDrawings.features.forEach(_addRestoredLayer);
+          }
+          if (s.uavBufferKm)  window.__uavLayers.bufferKm  = Number(s.uavBufferKm) || 5;
+          if (s.uavDrawColor) window.__uavLayers.drawColor = s.uavDrawColor;
+        } catch(e) {}
+      }
+      if (attempts > 30) clearInterval(iv); // máx 15 segundos
+    }, 500);
   }
 
-  // Guardar automáticamente cada 3 min
   var _iv = null;
   function _startAuto() {
     if (_iv) clearInterval(_iv);
@@ -15408,34 +15424,21 @@ window.closeBulletinMenu = function(){
   };
 
   document.addEventListener('DOMContentLoaded', function() {
-    // Botón cerrar sesión
     if (!document.getElementById('logoutBtn')) {
       var btn = document.createElement('button');
-      btn.id = 'logoutBtn';
-      btn.textContent = 'CERRAR SESION';
-      btn.onclick = window.doLogout;
-      btn.style.cssText = 'position:absolute;top:8px;right:110px;display:none;' +
-        'background:var(--panel2);color:var(--text);border:1px solid var(--border);' +
-        'padding:4px 10px;font-family:Consolas,monospace;font-size:10px;font-weight:700;' +
-        'text-transform:uppercase;cursor:pointer;letter-spacing:1px;z-index:10;border-radius:3px;';
+      btn.id = 'logoutBtn'; btn.textContent = 'CERRAR SESION'; btn.onclick = window.doLogout;
+      btn.style.cssText = 'position:absolute;top:8px;right:110px;display:none;background:var(--panel2);color:var(--text);border:1px solid var(--border);padding:4px 10px;font-family:Consolas,monospace;font-size:10px;font-weight:700;text-transform:uppercase;cursor:pointer;letter-spacing:1px;z-index:10;border-radius:3px;';
       var ref = document.getElementById('adminPanelBtn');
       if (ref) ref.parentNode.insertBefore(btn, ref);
       else document.body.appendChild(btn);
     }
-
-    // Hook hideLogin
     var _oh = window.hideLogin;
     window.hideLogin = function() {
       if (_oh) _oh.apply(this, arguments);
       var lb = document.getElementById('logoutBtn');
       if (lb) lb.style.display = 'block';
-      if (!_loadedOnce) {
-        _loadedOnce = true;
-        setTimeout(async function() { await _load(); _startAuto(); }, 900);
-      }
+      if (!_loadedOnce) { _loadedOnce = true; setTimeout(async function() { await _load(); _startAuto(); }, 1000); }
     };
-
-    // Sesión ya activa al recargar
     if (localStorage.getItem('auth_token') && !_loadedOnce) {
       _loadedOnce = true;
       var lb = document.getElementById('logoutBtn');
