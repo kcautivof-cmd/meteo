@@ -6307,6 +6307,13 @@ window.__initMeteoLayers = function __initMeteoLayers(){
   const statusEl = document.getElementById('meteoLayersStatus');
   function setStatus(msg){ if(statusEl) statusEl.textContent = msg || ''; }
 
+  const METEO_PANE = 'meteoOverlayPane';
+  if(!map.getPane(METEO_PANE)){
+    map.createPane(METEO_PANE);
+    map.getPane(METEO_PANE).style.zIndex = 460;
+    map.getPane(METEO_PANE).style.pointerEvents = 'none';
+  }
+
   // ── NASA GIBS ────────────────────────────────────────────────────────
   const GIBS = 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best';
   function gibsDate(){
@@ -6315,10 +6322,29 @@ window.__initMeteoLayers = function __initMeteoLayers(){
     return d.toISOString().slice(0,10);
   }
   function buildGibsLayer(product, opacity){
-    return L.tileLayer(
-      GIBS + '/' + product + '/default/' + gibsDate() + '/GoogleMapsCompatible/{z}/{y}/{x}.jpg',
-      { opacity: opacity||0.7, attribution:'NASA GIBS', tileSize:256, maxZoom:8, crossOrigin:true }
+    const layer = L.tileLayer(
+      GIBS + '/' + product + '/default/' + gibsDate() + '/GoogleMapsCompatible/{z}/{y}/{x}.png',
+      {
+        opacity: opacity||0.7,
+        attribution:'NASA GIBS',
+        tileSize:256,
+        pane: METEO_PANE,
+        maxNativeZoom: 9,
+        maxZoom: 18,
+        updateWhenIdle: false,
+        updateWhenZooming: true,
+        keepBuffer: 2,
+        crossOrigin:true
+      }
     );
+    try{ layer.setZIndex(460); }catch(e){}
+    layer.on('tileerror', function(){
+      if(!layer.__jpgFallback){
+        layer.__jpgFallback = true;
+        try{ layer.setUrl(GIBS + '/' + product + '/default/' + gibsDate() + '/GoogleMapsCompatible/{z}/{y}/{x}.jpg'); }catch(_e){}
+      }
+    });
+    return layer;
   }
 
   const layerDefs = {
@@ -6354,12 +6380,25 @@ window.__initMeteoLayers = function __initMeteoLayers(){
     const frames = js && js.radar && Array.isArray(js.radar.past) ? js.radar.past : [];
     if(!frames.length) return null;
     const last = frames[frames.length-1];
+    const layer = L.tileLayer(
+      'https://tilecache.rainviewer.com'+last.path+'/256/{z}/{x}/{y}/2/1_1.png',
+      {
+        opacity:0.7,
+        attribution:'RainViewer',
+        tileSize:256,
+        pane: METEO_PANE,
+        maxNativeZoom: 18,
+        maxZoom: 18,
+        updateWhenIdle: false,
+        updateWhenZooming: true,
+        keepBuffer: 2,
+        crossOrigin:true
+      }
+    );
+    try{ layer.setZIndex(470); }catch(e){}
     return {
       ts: Number(last.time || 0),
-      layer: L.tileLayer(
-        'https://tilecache.rainviewer.com'+last.path+'/256/{z}/{x}/{y}/2/1_1.png',
-        { opacity:0.65, attribution:'RainViewer', tileSize:256, maxZoom:18, crossOrigin:true }
-      )
+      layer: layer
     };
   }
 
@@ -6367,14 +6406,16 @@ window.__initMeteoLayers = function __initMeteoLayers(){
     try{
       if(id === 'mlRadar'){
         if(!window.__rvLayer) return;
+        try{ window.__rvLayer.options.pane = METEO_PANE; window.__rvLayer.setZIndex && window.__rvLayer.setZIndex(470); }catch(_e){}
         if(checked){ window.__rvLayer.addTo(map); }
-        else { map.removeLayer(window.__rvLayer); }
+        else if(map.hasLayer(window.__rvLayer)) { map.removeLayer(window.__rvLayer); }
         return;
       }
       var layer = window.__meteoLayers && window.__meteoLayers[id];
       if(!layer) return;
+      try{ layer.options.pane = METEO_PANE; layer.setZIndex && layer.setZIndex(460); }catch(_e){}
       if(checked){ layer.addTo(map); }
-      else { map.removeLayer(layer); }
+      else if(map.hasLayer(layer)) { map.removeLayer(layer); }
     }catch(e){}
   }
 
