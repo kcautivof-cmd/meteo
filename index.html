@@ -3593,14 +3593,14 @@ window.__dmcTimeLocal = function(raw) {
 <style>
 #__notifyOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;align-items:center;justify-content:center;}
 #__notifyOverlay.show{display:flex;}
-#__notifyBox{background:#1a1f2e;color:#e8eaf0;border:1px solid #3a4060;border-radius:10px;padding:24px 28px;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.6);font-family:inherit;}
-#__notifyBox h4{margin:0 0 12px;font-size:.95rem;letter-spacing:.04em;color:#7eb8f7;}
-#__notifyMsg{font-size:.88rem;line-height:1.5;margin-bottom:18px;white-space:pre-wrap;}
-#__notifyInput{display:none;width:100%;box-sizing:border-box;background:#0d1117;border:1px solid #3a4060;color:#e8eaf0;border-radius:6px;padding:8px 10px;font-size:.88rem;margin-bottom:14px;}
+#__notifyBox{background:#2b2f3e;color:#ffffff;border:1px solid #444c6a;border-radius:10px;padding:24px 28px;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.6);font-family:inherit;}
+#__notifyBox h4{margin:0 0 12px;font-size:.95rem;letter-spacing:.04em;color:#ffffff;}
+#__notifyMsg{font-size:.88rem;line-height:1.5;margin-bottom:18px;white-space:pre-wrap;color:#e0e0e0;}
+#__notifyInput{display:none;width:100%;box-sizing:border-box;background:#ffffff !important;border:1px solid #888 !important;color:#111111 !important;border-radius:6px;padding:8px 10px;font-size:.88rem;margin-bottom:14px;caret-color:#111111;text-transform:none !important;}
 #__notifyBtns{display:flex;gap:10px;justify-content:flex-end;}
 #__notifyBtns button{padding:7px 18px;border:none;border-radius:6px;cursor:pointer;font-size:.83rem;font-weight:600;letter-spacing:.03em;}
 #__notifyOk{background:#2563eb;color:#fff;}
-#__notifyCancel{background:#374151;color:#d1d5db;display:none;}
+#__notifyCancel{background:#555e75;color:#ffffff;display:none;}
 
 /* ── PANEL COMPARATIVO PUNTO B ─────────────────────────────────────────────── */
 #cmpPanel { display:none; }
@@ -11427,7 +11427,7 @@ function _copiarTSV(btn, tsv) {
 }
 
 /* Selector de rango */
-function _pedirRangoFechas() {
+async function _pedirRangoFechas() {
   const hoy = new Date();
   const manana = new Date();
   manana.setDate(hoy.getDate() + 1);
@@ -11463,7 +11463,7 @@ function _pedirRangoFechas() {
 }
 
 /* FUNCIÓN PRINCIPAL */
-function excelCopiarPronostico(btn) {
+async function excelCopiarPronostico(btn) {
   const sourceSel = (document.getElementById('sourceSelect')?.value || 'dmc_accu').toLowerCase();
 
   if (sourceSel === 'openmeteo') {
@@ -11495,7 +11495,7 @@ function excelCopiarPronostico(btn) {
     return;
   }
 
-  const rango = _pedirRangoFechas();
+  const rango = await _pedirRangoFechas();
   if (!rango) return;
 
   let lat = -20.214, lon = -70.152;
