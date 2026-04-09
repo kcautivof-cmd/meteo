@@ -4359,7 +4359,7 @@ body.role-user #cmpPanel { display:block !important; }
               <div id="pickMap"></div>
               <!-- Botón flotante capas meteorológicas centrado arriba -->
               <div style="position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:1000;pointer-events:auto;">
-                <button onclick="(function(){var p=document.getElementById('meteoLayersPanel');var a=document.getElementById('meteoLayersArrow');if(p.style.display==='none'){p.style.display='flex';a.textContent='▲';}else{p.style.display='none';a.textContent='▼';}})()"
+                <button onclick="(function(){var p=document.getElementById('meteoLayersPanel');var a=document.getElementById('meteoLayersArrow');if(p.style.display==='none'){p.style.display='flex';a.textContent='▲';if(typeof window.__bindMeteoChecks==='function')window.__bindMeteoChecks();}else{p.style.display='none';a.textContent='▼';}})()"
                   style="font-size:10px;font-weight:700;letter-spacing:.5px;padding:4px 12px;cursor:pointer;display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:3px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.3);">
                   CAPAS METEOROLOGICAS <span id="meteoLayersArrow">▼</span>
                 </button>
@@ -6359,23 +6359,33 @@ window.__initMeteoLayers = function __initMeteoLayers(){
     }, 10*60*1000);
   });
 
-  // ── Delegación de eventos en el documento ────────────────────────────
-  // Funciona aunque los checkboxes estén dentro de un template dinámico
-  document.addEventListener('change', function(ev){
-    var chk = ev.target;
-    if(!chk || chk.type !== 'checkbox') return;
-    var id = chk.id;
-    if(id === 'mlRadar'){
-      if(!window.__rvLayer) return;
-      if(chk.checked) window.__rvLayer.addTo(map);
-      else            map.removeLayer(window.__rvLayer);
-      return;
-    }
-    var layer = window.__meteoLayers && window.__meteoLayers[id];
-    if(!layer) return;
-    if(chk.checked) layer.addTo(map);
-    else            map.removeLayer(layer);
-  });
+  // ── Función para conectar checkboxes (se llama al abrir el panel) ──────
+  window.__bindMeteoChecks = function(){
+    var map = window.__pickMap;
+    if(!map || !window.__meteoLayers) return;
+
+    var ids = ['mlNubes','mlNubesAqua','mlVapor','mlVaporNight',
+               'mlTemp','mlTempNight','mlTempOcean','mlViento',
+               'mlAod','mlFire','mlNieve','mlVeget','mlCo','mlRadar'];
+
+    ids.forEach(function(id){
+      var chk = document.getElementById(id);
+      if(!chk || chk.__bound) return;
+      chk.__bound = true;
+      chk.addEventListener('change', function(){
+        if(id === 'mlRadar'){
+          if(!window.__rvLayer) return;
+          if(this.checked) window.__rvLayer.addTo(map);
+          else             map.removeLayer(window.__rvLayer);
+          return;
+        }
+        var layer = window.__meteoLayers[id];
+        if(!layer) return;
+        if(this.checked) layer.addTo(map);
+        else             map.removeLayer(layer);
+      });
+    });
+  };
 
   window.__meteoLayersReady = true;
 };
