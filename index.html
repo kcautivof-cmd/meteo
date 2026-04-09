@@ -6300,65 +6300,76 @@ window.__dmcMapLayers.refreshAlerts = __dmcRefreshAlertsLayer;
 // ── CAPAS METEOROLÓGICAS ─────────────────────────────────────────────────
 (function(){
   var PROXY = 'https://meteo-proxy.kcautivof.workers.dev';
+  var _built = false;
 
-  function owm(layer, op){
-    return L.tileLayer(
-      PROXY+'/owm-tile/'+layer+'/{z}/{x}/{y}',
-      {opacity:op||0.8, attribution:'© OpenWeatherMap', tileSize:256, maxZoom:18, zIndex:100}
-    );
-  }
+  function build(){
+    if(_built) return;
+    _built = true;
 
-  function gibs(product, ext){
-    var d=new Date(); d.setDate(d.getDate()-1);
-    return L.tileLayer(
-      'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/'+product+
-      '/default/'+d.toISOString().slice(0,10)+'/GoogleMapsCompatible/{z}/{y}/{x}.'+(ext||'png'),
-      {opacity:0.8, attribution:'NASA GIBS', tileSize:256, maxZoom:8, zIndex:150}
-    );
-  }
+    function owm(layer){
+      return L.tileLayer(
+        PROXY+'/owm-tile/'+layer+'/{z}/{x}/{y}',
+        {opacity:0.85, attribution:'OWM', tileSize:256, maxZoom:18, zIndex:100}
+      );
+    }
+    function gibs(product, ext){
+      var d=new Date(); d.setDate(d.getDate()-1);
+      return L.tileLayer(
+        'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/'+product+
+        '/default/'+d.toISOString().slice(0,10)+'/GoogleMapsCompatible/{z}/{y}/{x}.'+(ext||'png'),
+        {opacity:0.85, attribution:'NASA GIBS', tileSize:256, maxZoom:8, zIndex:150}
+      );
+    }
 
-  function loadRV(cb){
+    window.__ML = {
+      mlNubes:   owm('clouds_new'),
+      mlPrecip:  owm('precipitation_new'),
+      mlViento:  owm('wind_new'),
+      mlPresion: owm('pressure_new'),
+      mlTemp:    owm('temp_new'),
+      mlVapor:   gibs('MODIS_Terra_Water_Vapor_5km_Day',   'png'),
+      mlAod:     gibs('MODIS_Terra_Aerosol',               'png'),
+      mlFire:    gibs('MODIS_Terra_Thermal_Anomalies_All', 'png'),
+      mlNieve:   gibs('MODIS_Terra_Snow_Cover_Daily',      'png'),
+    };
+
+    // RainViewer
     fetch('https://api.rainviewer.com/public/weather-maps.json')
       .then(function(r){return r.json();})
       .then(function(js){
         var f=js&&js.radar&&js.radar.past;
-        if(!f||!f.length){cb(null);return;}
-        cb(L.tileLayer(
+        if(!f||!f.length) return;
+        window.__rvLayer = L.tileLayer(
           'https://tilecache.rainviewer.com'+f[f.length-1].path+'/256/{z}/{x}/{y}/4/1_1.png',
           {opacity:0.7, attribution:'RainViewer', tileSize:256, maxZoom:18, zIndex:200}
-        ));
-      }).catch(function(){cb(null);});
+        );
+        // Aplicar si ya está marcado
+        apply('mlRadar', !!document.getElementById('mlRadar')?.checked);
+        // Refresh cada 10 min
+        setInterval(function(){
+          fetch('https://api.rainviewer.com/public/weather-maps.json')
+            .then(function(r){return r.json();})
+            .then(function(js2){
+              var f2=js2&&js2.radar&&js2.radar.past;
+              if(!f2||!f2.length) return;
+              var newLayer = L.tileLayer(
+                'https://tilecache.rainviewer.com'+f2[f2.length-1].path+'/256/{z}/{x}/{y}/4/1_1.png',
+                {opacity:0.7, attribution:'RainViewer', tileSize:256, maxZoom:18, zIndex:200}
+              );
+              var map=window.__pickMap;
+              if(!map) return;
+              var wasOn=window.__rvLayer&&map.hasLayer(window.__rvLayer);
+              try{map.removeLayer(window.__rvLayer);}catch(e){}
+              window.__rvLayer=newLayer;
+              if(wasOn) newLayer.addTo(map);
+            }).catch(function(){});
+        }, 10*60*1000);
+      }).catch(function(){});
   }
 
-  window.__ML = {
-    mlNubes:   owm('clouds_new',        0.8),
-    mlPrecip:  owm('precipitation_new', 0.8),
-    mlViento:  owm('wind_new',          0.8),
-    mlPresion: owm('pressure_new',      0.8),
-    mlTemp:    owm('temp_new',          0.8),
-    mlVapor:   gibs('MODIS_Terra_Water_Vapor_5km_Day',   'png'),
-    mlAod:     gibs('MODIS_Terra_Aerosol',               'png'),
-    mlFire:    gibs('MODIS_Terra_Thermal_Anomalies_All', 'png'),
-    mlNieve:   gibs('MODIS_Terra_Snow_Cover_Daily',      'png'),
-  };
-  window.__rvLayer = null;
-
-  loadRV(function(rv){
-    window.__rvLayer = rv;
-    setInterval(function(){
-      loadRV(function(newRv){
-        if(!newRv||!window.__pickMap) return;
-        var on=window.__rvLayer&&window.__pickMap.hasLayer(window.__rvLayer);
-        try{window.__pickMap.removeLayer(window.__rvLayer);}catch(e){}
-        window.__rvLayer=newRv;
-        if(on) try{newRv.addTo(window.__pickMap);}catch(e){}
-      });
-    }, 10*60*1000);
-  });
-
-  window.__meteoApply = function(id, on){
+  function apply(id, on){
     var map=window.__pickMap;
-    if(!map) return;
+    if(!map||!window.__ML) return;
     if(id==='mlRadar'){
       if(!window.__rvLayer) return;
       try{ on?window.__rvLayer.addTo(map):map.removeLayer(window.__rvLayer); }catch(e){}
@@ -6367,9 +6378,13 @@ window.__dmcMapLayers.refreshAlerts = __dmcRefreshAlertsLayer;
     var layer=window.__ML[id];
     if(!layer) return;
     try{ on?layer.addTo(map):map.removeLayer(layer); }catch(e){}
-  };
+  }
+
+  window.__meteoApply = apply;
 
   window.__bindMeteoChecks = function(){
+    // Construir capas la primera vez que se abre el panel
+    build();
     var ids=['mlRadar','mlNubes','mlPrecip','mlViento','mlPresion',
              'mlTemp','mlVapor','mlAod','mlFire','mlNieve'];
     ids.forEach(function(id){
@@ -6377,15 +6392,20 @@ window.__dmcMapLayers.refreshAlerts = __dmcRefreshAlertsLayer;
       if(!chk) return;
       if(!chk.__mlBound){
         chk.__mlBound=true;
-        chk.addEventListener('change',function(){ window.__meteoApply(id,this.checked); });
+        chk.addEventListener('change',function(){ apply(id,this.checked); });
       }
-      window.__meteoApply(id, chk.checked);
+      // Aplicar estado actual
+      apply(id, chk.checked);
     });
   };
 
   window.__initMeteoLayers = function(){
     if(!window.__pickMap) return;
-    window.__bindMeteoChecks();
+    // Solo construir y aplicar si el panel ya está abierto con checkboxes marcados
+    var panel = document.getElementById('meteoLayersPanel');
+    if(panel && panel.style.display !== 'none'){
+      window.__bindMeteoChecks();
+    }
   };
 })();
 //  FIN CAPAS METEOROLÓGICAS
