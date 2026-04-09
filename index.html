@@ -4359,7 +4359,7 @@ body.role-user #cmpPanel { display:block !important; }
               <div id="pickMap"></div>
               <!-- Botón flotante capas meteorológicas centrado arriba -->
               <div style="position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:1000;pointer-events:auto;">
-                <button onclick="(function(){var p=document.getElementById('meteoLayersPanel');var a=document.getElementById('meteoLayersArrow');if(p.style.display==='none'){p.style.display='flex';a.textContent='▲';if(typeof window.__bindMeteoChecks==='function')window.__bindMeteoChecks();}else{p.style.display='none';a.textContent='▼';}})()"
+                <button onclick="(function(){var p=document.getElementById('meteoLayersPanel');var a=document.getElementById('meteoLayersArrow');if(p.style.display==='none'){p.style.display='flex';a.textContent='▲';window.__mlBuild&&window.__mlBuild();window.__bindMeteoChecks&&window.__bindMeteoChecks();}else{p.style.display='none';a.textContent='▼';}})()"
                   style="font-size:10px;font-weight:700;letter-spacing:.5px;padding:4px 12px;cursor:pointer;display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:3px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.3);">
                   CAPAS METEOROLOGICAS <span id="meteoLayersArrow">▼</span>
                 </button>
@@ -6402,6 +6402,21 @@ window.__bindMeteoChecks = function(){
 window.__initMeteoLayers = function(){
   if(window.__pickMap) __mlBuild();
 };
+
+// Seguro: si el panel está visible al cargar, ejecutar bind
+document.addEventListener('DOMContentLoaded', function(){
+  var _iv = setInterval(function(){
+    var p = document.getElementById('meteoLayersPanel');
+    if(p && p.style.display !== 'none'){
+      if(typeof window.__bindMeteoChecks === 'function'){
+        window.__bindMeteoChecks();
+        clearInterval(_iv);
+      }
+    }
+  }, 300);
+  // Limpiar después de 30s
+  setTimeout(function(){ clearInterval(_iv); }, 30000);
+});
 //  FIN CAPAS METEOROLÓGICAS
 // ══════════════════════════════════════════════════════════════════════
 
