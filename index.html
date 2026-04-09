@@ -6010,14 +6010,22 @@ try {
 
     function __dmcEnsureAlertsOverlay(){
         try{
-            __dmc.alertLayerAviso  = __dmc.alertLayerAviso  || L.layerGroup();
-            __dmc.alertLayerAlerta = __dmc.alertLayerAlerta || L.layerGroup();
-            __dmc.alertLayerAlarma = __dmc.alertLayerAlarma || L.layerGroup();
+            // Crear capas y añadirlas al mapa por defecto (visibles al cargar)
+            if(!__dmc.alertLayerAviso){
+                __dmc.alertLayerAviso = L.layerGroup().addTo(__pickMap);
+            }
+            if(!__dmc.alertLayerAlerta){
+                __dmc.alertLayerAlerta = L.layerGroup().addTo(__pickMap);
+            }
+            if(!__dmc.alertLayerAlarma){
+                __dmc.alertLayerAlarma = L.layerGroup().addTo(__pickMap);
+            }
             __dmc.alertLayer = __dmc.alertLayer || L.layerGroup([
                 __dmc.alertLayerAviso,
                 __dmc.alertLayerAlerta,
                 __dmc.alertLayerAlarma
             ]);
+            // Registrar en control de capas para poder activar/desactivar
             if (!__dmc._alertsAdded && __uav?.layersCtl) {
                 __uav.layersCtl.addOverlay(__dmc.alertLayerAviso,  'DMC · ALERTAS — AVISO');
                 __uav.layersCtl.addOverlay(__dmc.alertLayerAlerta, 'DMC · ALERTAS — ALERTA');
