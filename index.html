@@ -6327,61 +6327,26 @@ window.__initMeteoLayers = function __initMeteoLayers(){
 
   // ── Definir todas las capas ─────────────────────────────────────────
   const layers = {
-    // Radar / Satélite
-    nubes:      gibsLayer('MODIS_Terra_CorrectedReflectance_TrueColor', 0.75),
-    nubesAqua:  gibsLayer('MODIS_Aqua_CorrectedReflectance_TrueColor',  0.75),
-    vapor:      gibsLayer('MODIS_Terra_Water_Vapor_5km_Day',             0.65),
-    vaporNight: gibsLayer('MODIS_Terra_Water_Vapor_5km_Night',           0.65),
-    // Temperatura
-    temp:       gibsLayer('MODIS_Terra_Land_Surface_Temp_Day',           0.65),
-    tempNight:  gibsLayer('MODIS_Terra_Land_Surface_Temp_Night',         0.65),
-    tempOcean:  gibsLayer('MODIS_Terra_Sea_Surface_Temp_Day',            0.65),
-    // Viento
-    viento:     gibsLayer('OSCAR_L4_OC_third-deg_V2.0_Sea_Surface_Velocity', 0.70),
-    // Otras
-    aod:        gibsLayer('MODIS_Terra_Aerosol',                         0.60),
-    fire:       gibsLayer('MODIS_Terra_Thermal_Anomalies_All',           0.85),
-    nieve:      gibsLayer('MODIS_Terra_Snow_Cover_Daily',                0.70),
-    veget:      gibsLayer('MODIS_Terra_NDVI_8Day',                       0.65),
-    co:         gibsLayer('MOPITT_CO_Monthly_Surface_Mixing_Ratio_Day',  0.65),
+    mlNubes:      gibsLayer('MODIS_Terra_CorrectedReflectance_TrueColor', 0.75),
+    mlNubesAqua:  gibsLayer('MODIS_Aqua_CorrectedReflectance_TrueColor',  0.75),
+    mlVapor:      gibsLayer('MODIS_Terra_Water_Vapor_5km_Day',             0.65),
+    mlVaporNight: gibsLayer('MODIS_Terra_Water_Vapor_5km_Night',           0.65),
+    mlTemp:       gibsLayer('MODIS_Terra_Land_Surface_Temp_Day',           0.65),
+    mlTempNight:  gibsLayer('MODIS_Terra_Land_Surface_Temp_Night',         0.65),
+    mlTempOcean:  gibsLayer('MODIS_Terra_Sea_Surface_Temp_Day',            0.65),
+    mlViento:     gibsLayer('OSCAR_L4_OC_third-deg_V2.0_Sea_Surface_Velocity', 0.70),
+    mlAod:        gibsLayer('MODIS_Terra_Aerosol',                         0.60),
+    mlFire:       gibsLayer('MODIS_Terra_Thermal_Anomalies_All',           0.85),
+    mlNieve:      gibsLayer('MODIS_Terra_Snow_Cover_Daily',                0.70),
+    mlVeget:      gibsLayer('MODIS_Terra_NDVI_8Day',                       0.65),
+    mlCo:         gibsLayer('MOPITT_CO_Monthly_Surface_Mixing_Ratio_Day',  0.65),
   };
   window.__meteoLayers = layers;
-
-  // ── Conectar checkboxes del panel ────────────────────────────────────
-  function bindCheck(id, layer){
-    var chk = document.getElementById(id);
-    if(!chk) return;
-    chk.addEventListener('change', function(){
-      if(this.checked) layer.addTo(map);
-      else             map.removeLayer(layer);
-    });
-  }
-  bindCheck('mlNubes',     layers.nubes);
-  bindCheck('mlNubesAqua', layers.nubesAqua);
-  bindCheck('mlVapor',     layers.vapor);
-  bindCheck('mlVaporNight',layers.vaporNight);
-  bindCheck('mlTemp',      layers.temp);
-  bindCheck('mlTempNight', layers.tempNight);
-  bindCheck('mlTempOcean', layers.tempOcean);
-  bindCheck('mlViento',    layers.viento);
-  bindCheck('mlAod',       layers.aod);
-  bindCheck('mlFire',      layers.fire);
-  bindCheck('mlNieve',     layers.nieve);
-  bindCheck('mlVeget',     layers.veget);
-  bindCheck('mlCo',        layers.co);
 
   // ── RainViewer ───────────────────────────────────────────────────────
   buildRainViewerLayer().then(function(rvLayer){
     if(!rvLayer) return;
     window.__rvLayer = rvLayer;
-    var chk = document.getElementById('mlRadar');
-    if(chk){
-      chk.addEventListener('change', function(){
-        if(this.checked) window.__rvLayer.addTo(map);
-        else             map.removeLayer(window.__rvLayer);
-      });
-    }
-    // Actualizar radar cada 10 min
     setInterval(async function(){
       try{
         var newLayer = await buildRainViewerLayer();
@@ -6392,14 +6357,27 @@ window.__initMeteoLayers = function __initMeteoLayers(){
         if(wasOn) newLayer.addTo(map);
       }catch(e){}
     }, 10*60*1000);
+  });
 
-    var st = document.getElementById('meteoLayersStatus');
-    if(st) st.textContent = 'RADAR LISTO';
+  // ── Delegación de eventos en el documento ────────────────────────────
+  // Funciona aunque los checkboxes estén dentro de un template dinámico
+  document.addEventListener('change', function(ev){
+    var chk = ev.target;
+    if(!chk || chk.type !== 'checkbox') return;
+    var id = chk.id;
+    if(id === 'mlRadar'){
+      if(!window.__rvLayer) return;
+      if(chk.checked) window.__rvLayer.addTo(map);
+      else            map.removeLayer(window.__rvLayer);
+      return;
+    }
+    var layer = window.__meteoLayers && window.__meteoLayers[id];
+    if(!layer) return;
+    if(chk.checked) layer.addTo(map);
+    else            map.removeLayer(layer);
   });
 
   window.__meteoLayersReady = true;
-  var st = document.getElementById('meteoLayersStatus');
-  if(st) st.textContent = 'CAPAS LISTAS';
 };
 // Intentar ahora por si el mapa ya está listo
 window.__initMeteoLayers();
