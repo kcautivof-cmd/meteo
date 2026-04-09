@@ -6297,128 +6297,7 @@ window.__dmcMapLayers.refreshAlerts = __dmcRefreshAlertsLayer;
 //  Para activar OWM: window.__OWM_KEY = 'TU_API_KEY'  (gratis en openweathermap.org)
 // ══════════════════════════════════════════════════════════════════════
 
-// ── CAPAS METEOROLÓGICAS ─────────────────────────────────────────────────
-var __PROXY = 'https://meteo-proxy.kcautivof.workers.dev';
-var __mlBuilt = false;
-
-function __mlBuild(){
-  if(__mlBuilt){ console.log('[ML] ya construido'); return; }
-  if(typeof L === 'undefined'){ console.error('[ML] L no disponible'); return; }
-  if(!window.__pickMap){ console.warn('[ML] pickMap no existe aún'); }
-  console.log('[ML] construyendo capas...');
-  __mlBuilt = true;
-
-  function owm(layer){
-    return L.tileLayer(
-      __PROXY+'/owm-tile/'+layer+'/{z}/{x}/{y}',
-      {opacity:0.85, attribution:'OWM', tileSize:256, maxZoom:18, zIndex:100}
-    );
-  }
-  function gibs(product, ext){
-    var d=new Date(); d.setDate(d.getDate()-1);
-    return L.tileLayer(
-      'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/'+product+
-      '/default/'+d.toISOString().slice(0,10)+'/GoogleMapsCompatible/{z}/{y}/{x}.'+(ext||'png'),
-      {opacity:0.85, attribution:'NASA GIBS', tileSize:256, maxZoom:8, zIndex:150}
-    );
-  }
-
-  window.__ML = {
-    mlNubes:   owm('clouds_new'),
-    mlPrecip:  owm('precipitation_new'),
-    mlViento:  owm('wind_new'),
-    mlPresion: owm('pressure_new'),
-    mlTemp:    owm('temp_new'),
-    mlVapor:   gibs('MODIS_Terra_Water_Vapor_5km_Day',   'png'),
-    mlAod:     gibs('MODIS_Terra_Aerosol',               'png'),
-    mlFire:    gibs('MODIS_Terra_Thermal_Anomalies_All', 'png'),
-    mlNieve:   gibs('MODIS_Terra_Snow_Cover_Daily',      'png'),
-  };
-
-  // RainViewer
-  fetch('https://api.rainviewer.com/public/weather-maps.json')
-    .then(function(r){return r.json();})
-    .then(function(js){
-      var f=js&&js.radar&&js.radar.past;
-      if(!f||!f.length) return;
-      window.__rvLayer = L.tileLayer(
-        'https://tilecache.rainviewer.com'+f[f.length-1].path+'/256/{z}/{x}/{y}/4/1_1.png',
-        {opacity:0.7, attribution:'RainViewer', tileSize:256, maxZoom:18, zIndex:200}
-      );
-      var chk=document.getElementById('mlRadar');
-      if(chk && chk.checked && window.__pickMap) window.__rvLayer.addTo(window.__pickMap);
-      setInterval(function(){
-        fetch('https://api.rainviewer.com/public/weather-maps.json')
-          .then(function(r){return r.json();})
-          .then(function(js2){
-            var f2=js2&&js2.radar&&js2.radar.past;
-            if(!f2||!f2.length||!window.__pickMap) return;
-            var newRv=L.tileLayer(
-              'https://tilecache.rainviewer.com'+f2[f2.length-1].path+'/256/{z}/{x}/{y}/4/1_1.png',
-              {opacity:0.7,attribution:'RainViewer',tileSize:256,maxZoom:18,zIndex:200}
-            );
-            var wasOn=window.__rvLayer&&window.__pickMap.hasLayer(window.__rvLayer);
-            try{window.__pickMap.removeLayer(window.__rvLayer);}catch(e){}
-            window.__rvLayer=newRv;
-            if(wasOn) newRv.addTo(window.__pickMap);
-          }).catch(function(){});
-      }, 10*60*1000);
-    }).catch(function(){});
-}
-
-function __mlApply(id, on){
-  __mlBuild();
-  var map=window.__pickMap;
-  if(!map) return;
-  if(id==='mlRadar'){
-    if(!window.__rvLayer) return;
-    try{ on?window.__rvLayer.addTo(map):map.removeLayer(window.__rvLayer); }catch(e){}
-    return;
-  }
-  if(!window.__ML) return;
-  var layer=window.__ML[id];
-  if(!layer) return;
-  try{ on?layer.addTo(map):map.removeLayer(layer); }catch(e){}
-}
-
-window.__meteoApply = __mlApply;
-
-window.__bindMeteoChecks = function(){
-  console.log('[ML] bindMeteoChecks llamado, __ML=', !!window.__ML, '__pickMap=', !!window.__pickMap);
-  __mlBuild();
-  var ids=['mlRadar','mlNubes','mlPrecip','mlViento','mlPresion',
-           'mlTemp','mlVapor','mlAod','mlFire','mlNieve'];
-  ids.forEach(function(id){
-    var chk=document.getElementById(id);
-    if(!chk) return;
-    if(!chk.__mlBound){
-      chk.__mlBound=true;
-      chk.addEventListener('change',function(){ __mlApply(id,this.checked); });
-    }
-    __mlApply(id, chk.checked);
-  });
-};
-
-window.__initMeteoLayers = function(){
-  if(window.__pickMap) __mlBuild();
-};
-
-// Seguro: si el panel está visible al cargar, ejecutar bind
-document.addEventListener('DOMContentLoaded', function(){
-  var _iv = setInterval(function(){
-    var p = document.getElementById('meteoLayersPanel');
-    if(p && p.style.display !== 'none'){
-      if(typeof window.__bindMeteoChecks === 'function'){
-        window.__bindMeteoChecks();
-        clearInterval(_iv);
-      }
-    }
-  }, 300);
-  // Limpiar después de 30s
-  setTimeout(function(){ clearInterval(_iv); }, 30000);
-});
-//  FIN CAPAS METEOROLÓGICAS
-// ══════════════════════════════════════════════════════════════════════
+// CAPAS METEOROLÓGICAS — ver script separado al final
 
 function hideInteractiveMapAlertsMenu(){
     const mapRoot = document.getElementById('pickMap');
@@ -16771,5 +16650,128 @@ window.closeBulletinMenu = function(){
 </script>
 
 
+
+<script>
+// ── CAPAS METEOROLÓGICAS — script independiente ──────────────────────────
+(function(){
+  var PROXY = 'https://meteo-proxy.kcautivof.workers.dev';
+  var _built = false;
+
+  function build(){
+    if(_built) return;
+    if(typeof L === 'undefined'){ console.error('[ML] Leaflet no disponible'); return; }
+    _built = true;
+    console.log('[ML] construyendo capas...');
+
+    function owm(layer){
+      return L.tileLayer(
+        PROXY+'/owm-tile/'+layer+'/{z}/{x}/{y}',
+        {opacity:0.85, attribution:'OWM', tileSize:256, maxZoom:18, zIndex:100}
+      );
+    }
+    function gibs(product, ext){
+      var d=new Date(); d.setDate(d.getDate()-1);
+      return L.tileLayer(
+        'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/'+product+
+        '/default/'+d.toISOString().slice(0,10)+'/GoogleMapsCompatible/{z}/{y}/{x}.'+(ext||'png'),
+        {opacity:0.85, attribution:'NASA GIBS', tileSize:256, maxZoom:8, zIndex:150}
+      );
+    }
+
+    window.__ML = {
+      mlNubes:   owm('clouds_new'),
+      mlPrecip:  owm('precipitation_new'),
+      mlViento:  owm('wind_new'),
+      mlPresion: owm('pressure_new'),
+      mlTemp:    owm('temp_new'),
+      mlVapor:   gibs('MODIS_Terra_Water_Vapor_5km_Day',   'png'),
+      mlAod:     gibs('MODIS_Terra_Aerosol',               'png'),
+      mlFire:    gibs('MODIS_Terra_Thermal_Anomalies_All', 'png'),
+      mlNieve:   gibs('MODIS_Terra_Snow_Cover_Daily',      'png'),
+    };
+    console.log('[ML] capas creadas:', Object.keys(window.__ML));
+
+    // RainViewer
+    fetch('https://api.rainviewer.com/public/weather-maps.json')
+      .then(function(r){return r.json();})
+      .then(function(js){
+        var f=js&&js.radar&&js.radar.past;
+        if(!f||!f.length) return;
+        window.__rvLayer = L.tileLayer(
+          'https://tilecache.rainviewer.com'+f[f.length-1].path+'/256/{z}/{x}/{y}/4/1_1.png',
+          {opacity:0.7, attribution:'RainViewer', tileSize:256, maxZoom:18, zIndex:200}
+        );
+        console.log('[ML] RainViewer listo');
+        apply('mlRadar', !!document.getElementById('mlRadar')?.checked);
+        setInterval(function(){
+          fetch('https://api.rainviewer.com/public/weather-maps.json')
+            .then(function(r){return r.json();})
+            .then(function(js2){
+              var f2=js2&&js2.radar&&js2.radar.past;
+              if(!f2||!f2.length) return;
+              var nL=L.tileLayer('https://tilecache.rainviewer.com'+f2[f2.length-1].path+'/256/{z}/{x}/{y}/4/1_1.png',{opacity:0.7,tileSize:256,maxZoom:18,zIndex:200});
+              var m=window.__pickMap;
+              if(!m) return;
+              var on=window.__rvLayer&&m.hasLayer(window.__rvLayer);
+              try{m.removeLayer(window.__rvLayer);}catch(e){}
+              window.__rvLayer=nL;
+              if(on) nL.addTo(m);
+            }).catch(function(){});
+        }, 10*60*1000);
+      }).catch(function(){});
+  }
+
+  function apply(id, on){
+    var map=window.__pickMap;
+    if(!map) return;
+    if(id==='mlRadar'){
+      if(!window.__rvLayer) return;
+      try{ on?window.__rvLayer.addTo(map):map.removeLayer(window.__rvLayer); }catch(e){}
+      return;
+    }
+    if(!window.__ML) return;
+    var layer=window.__ML[id];
+    if(!layer) return;
+    try{ on?layer.addTo(map):map.removeLayer(layer); }catch(e){}
+  }
+
+  window.__meteoApply = apply;
+
+  window.__bindMeteoChecks = function(){
+    console.log('[ML] bind, __ML=', !!window.__ML, 'map=', !!window.__pickMap);
+    build();
+    var ids=['mlRadar','mlNubes','mlPrecip','mlViento','mlPresion',
+             'mlTemp','mlVapor','mlAod','mlFire','mlNieve'];
+    ids.forEach(function(id){
+      var chk=document.getElementById(id);
+      if(!chk) return;
+      if(!chk.__mlBound){
+        chk.__mlBound=true;
+        chk.addEventListener('change',function(){ apply(id,this.checked); });
+      }
+      apply(id, chk.checked);
+    });
+    console.log('[ML] bind completo');
+  };
+
+  window.__initMeteoLayers = function(){
+    if(!window.__pickMap) return;
+    build();
+  };
+
+  // Intentar cada 500ms hasta que el mapa esté listo
+  var _t = setInterval(function(){
+    if(window.__pickMap && typeof L !== 'undefined'){
+      clearInterval(_t);
+      build();
+      // Si el panel ya está abierto, hacer bind
+      var p=document.getElementById('meteoLayersPanel');
+      if(p && p.style.display !== 'none') window.__bindMeteoChecks();
+    }
+  }, 500);
+
+  console.log('[ML] script cargado, esperando mapa...');
+})();
+</script>
 </body>
 </html>
