@@ -3005,6 +3005,10 @@ input, select {
     .aero-compact th, .aero-compact td{ padding:3px 4px; font-size:8.8px; }
   }
 
+
+/* Capas meteorológicas OWM — mejor contraste */
+.owm-layer { mix-blend-mode: multiply; }
+.leaflet-tile-pane .owm-layer { filter: contrast(1.15) saturate(1.3); }
 </style>
 <style>
 
@@ -4365,13 +4369,16 @@ body.role-user #cmpPanel { display:block !important; }
                 </button>
                 <div style="display:none;flex-direction:column;gap:4px;margin-top:4px;background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:10px 12px;box-shadow:0 4px 12px rgba(0,0,0,.3);min-width:240px;" id="meteoLayersPanel">
 
-                  <div style="font-size:8px;font-weight:700;color:var(--muted);letter-spacing:.5px;margin-bottom:2px;">TIEMPO REAL</div>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:9px;cursor:pointer;"><input type="checkbox" id="mlRadar" style="margin:0;"> RADAR DE LLUVIA</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:9px;cursor:pointer;"><input type="checkbox" id="mlNubes" style="margin:0;"> NUBOSIDAD</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:9px;cursor:pointer;"><input type="checkbox" id="mlPrecip" style="margin:0;"> PRECIPITACION</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:9px;cursor:pointer;"><input type="checkbox" id="mlViento" style="margin:0;"> VIENTO</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:9px;cursor:pointer;"><input type="checkbox" id="mlPresion" style="margin:0;"> PRESION</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:9px;cursor:pointer;"><input type="checkbox" id="mlTemp" style="margin:0;"> TEMPERATURA</label>
+                  <div style="font-size:8px;font-weight:700;color:var(--muted);letter-spacing:.5px;margin-bottom:4px;">CAPAS EN TIEMPO REAL</div>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:9px;cursor:pointer;"><input type="checkbox" id="mlRadar" style="margin:0;"> RADAR LLUVIA <span style="font-size:7px;color:var(--muted);margin-left:2px;">(RainViewer · <span id="mlRadarTs">—</span>)</span></label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:9px;cursor:pointer;"><input type="checkbox" id="mlNubes" style="margin:0;"> NUBOSIDAD <span style="font-size:7px;color:var(--muted);margin-left:2px;">(OWM · tiempo real)</span></label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:9px;cursor:pointer;"><input type="checkbox" id="mlPrecip" style="margin:0;"> PRECIPITACION <span style="font-size:7px;color:var(--muted);margin-left:2px;">(OWM · tiempo real)</span></label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:9px;cursor:pointer;"><input type="checkbox" id="mlViento" style="margin:0;"> VIENTO <span style="font-size:7px;color:var(--muted);margin-left:2px;">(OWM · tiempo real)</span></label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:9px;cursor:pointer;"><input type="checkbox" id="mlPresion" style="margin:0;"> PRESION <span style="font-size:7px;color:var(--muted);margin-left:2px;">(OWM · tiempo real)</span></label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:9px;cursor:pointer;"><input type="checkbox" id="mlTemp" style="margin:0;"> TEMPERATURA <span style="font-size:7px;color:var(--muted);margin-left:2px;">(OWM · tiempo real)</span></label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:9px;cursor:pointer;"><input type="checkbox" id="mlSnow" style="margin:0;"> NIEVE/HIELO <span style="font-size:7px;color:var(--muted);margin-left:2px;">(OWM · tiempo real)</span></label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:9px;cursor:pointer;"><input type="checkbox" id="mlHumidity" style="margin:0;"> HUMEDAD RELATIVA <span style="font-size:7px;color:var(--muted);margin-left:2px;">(OWM · tiempo real)</span></label>
+                  <div id="mlLastUpdate" style="font-size:7px;color:var(--muted);margin-top:4px;"></div>
 
 
                   <div id="meteoLayersStatus" style="font-size:8px;margin-top:4px;"></div>
@@ -16652,52 +16659,64 @@ window.closeBulletinMenu = function(){
   var PROXY = 'https://meteo-proxy.kcautivof.workers.dev';
   var _built = false;
 
+  function ts(){ return new Date().toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit',hour12:false}); }
+  function updateTs(id,txt){ var el=document.getElementById(id); if(el) el.textContent=txt; }
+  function updateLastUpdate(){ var el=document.getElementById('mlLastUpdate'); if(el) el.textContent='Actualizado: '+ts(); }
+
   function build(){
     if(_built) return;
-    if(typeof L === 'undefined'){ console.error('[ML] Leaflet no disponible'); return; }
+    if(typeof L==='undefined') return;
     _built = true;
 
-    function owm(layer){
+    function owm(layer, op){
       return L.tileLayer(
         PROXY+'/owm-tile/'+layer+'/{z}/{x}/{y}',
-        {opacity:0.85, attribution:'OWM', tileSize:256, maxZoom:18, zIndex:100}
+        {opacity:op||0.85, attribution:'© OpenWeatherMap', tileSize:256, maxZoom:18, zIndex:100, className:'owm-layer'}
       );
     }
+
     window.__ML = {
-      mlNubes:   owm('clouds_new'),
-      mlPrecip:  owm('precipitation_new'),
-      mlViento:  owm('wind_new'),
-      mlPresion: owm('pressure_new'),
-      mlTemp:    owm('temp_new'),
+      mlNubes:    owm('clouds_new',        0.80),
+      mlPrecip:   owm('precipitation_new', 0.90),
+      mlViento:   owm('wind_new',          0.85),
+      mlPresion:  owm('pressure_new',      0.80),
+      mlTemp:     owm('temp_new',          0.85),
+      mlSnow:     owm('snow',              0.90),
+      mlHumidity: owm('humidity',          0.80),
     };
 
-    // RainViewer
-    fetch('https://api.rainviewer.com/public/weather-maps.json')
-      .then(function(r){return r.json();})
-      .then(function(js){
-        var f=js&&js.radar&&js.radar.past;
-        if(!f||!f.length) return;
-        window.__rvLayer = L.tileLayer(
-          'https://tilecache.rainviewer.com'+f[f.length-1].path+'/256/{z}/{x}/{y}/4/1_1.png',
-          {opacity:0.7, attribution:'RainViewer', tileSize:256, maxZoom:18, zIndex:200}
-        );
-            apply('mlRadar', !!document.getElementById('mlRadar')?.checked);
-        setInterval(function(){
-          fetch('https://api.rainviewer.com/public/weather-maps.json')
-            .then(function(r){return r.json();})
-            .then(function(js2){
-              var f2=js2&&js2.radar&&js2.radar.past;
-              if(!f2||!f2.length) return;
-              var nL=L.tileLayer('https://tilecache.rainviewer.com'+f2[f2.length-1].path+'/256/{z}/{x}/{y}/4/1_1.png',{opacity:0.7,tileSize:256,maxZoom:18,zIndex:200});
-              var m=window.__pickMap;
-              if(!m) return;
-              var on=window.__rvLayer&&m.hasLayer(window.__rvLayer);
-              try{m.removeLayer(window.__rvLayer);}catch(e){}
-              window.__rvLayer=nL;
-              if(on) nL.addTo(m);
-            }).catch(function(){});
-        }, 10*60*1000);
-      }).catch(function(){});
+    function loadRV(){
+      return fetch('https://api.rainviewer.com/public/weather-maps.json')
+        .then(function(r){return r.json();})
+        .then(function(js){
+          var f=js&&js.radar&&js.radar.past;
+          if(!f||!f.length) return null;
+          var last=f[f.length-1];
+          var dt=new Date(last.time*1000);
+          updateTs('mlRadarTs', dt.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit',hour12:false}));
+          return L.tileLayer(
+            'https://tilecache.rainviewer.com'+last.path+'/256/{z}/{x}/{y}/4/1_1.png',
+            {opacity:0.75, attribution:'RainViewer', tileSize:256, maxZoom:18, zIndex:200}
+          );
+        });
+    }
+
+    loadRV().then(function(rv){
+      if(!rv) return;
+      window.__rvLayer=rv;
+      apply('mlRadar', !!document.getElementById('mlRadar')?.checked);
+      updateLastUpdate();
+      setInterval(function(){
+        loadRV().then(function(newRv){
+          if(!newRv||!window.__pickMap) return;
+          var on=window.__rvLayer&&window.__pickMap.hasLayer(window.__rvLayer);
+          try{window.__pickMap.removeLayer(window.__rvLayer);}catch(e){}
+          window.__rvLayer=newRv;
+          if(on) newRv.addTo(window.__pickMap);
+          updateLastUpdate();
+        }).catch(function(){});
+      }, 10*60*1000);
+    }).catch(function(){});
   }
 
   function apply(id, on){
@@ -16712,13 +16731,14 @@ window.closeBulletinMenu = function(){
     var layer=window.__ML[id];
     if(!layer) return;
     try{ on?layer.addTo(map):map.removeLayer(layer); }catch(e){}
+    if(on) updateLastUpdate();
   }
 
   window.__meteoApply = apply;
 
   window.__bindMeteoChecks = function(){
     build();
-    var ids=['mlRadar','mlNubes','mlPrecip','mlViento','mlPresion','mlTemp'];
+    var ids=['mlRadar','mlNubes','mlPrecip','mlViento','mlPresion','mlTemp','mlSnow','mlHumidity'];
     ids.forEach(function(id){
       var chk=document.getElementById(id);
       if(!chk) return;
@@ -16735,14 +16755,12 @@ window.closeBulletinMenu = function(){
     build();
   };
 
-  // Intentar cada 500ms hasta que el mapa esté listo
-  var _t = setInterval(function(){
-    if(window.__pickMap && typeof L !== 'undefined'){
+  var _t=setInterval(function(){
+    if(window.__pickMap && typeof L!=='undefined'){
       clearInterval(_t);
       build();
-      // Si el panel ya está abierto, hacer bind
       var p=document.getElementById('meteoLayersPanel');
-      if(p && p.style.display !== 'none') window.__bindMeteoChecks();
+      if(p && p.style.display!=='none') window.__bindMeteoChecks();
     }
   }, 500);
 
