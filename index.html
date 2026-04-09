@@ -6301,131 +6301,106 @@ window.__initMeteoLayers = function(){
   if(window.__meteoLayersReady) return;
   if(!window.__pickMap) return;
 
-  var map = window.__pickMap;
+  var WORKER = 'https://meteo-proxy.kcautivof.workers.dev';
 
-  // ── OpenWeatherMap tiles via proxy worker (key oculta) ───────────────
-  // WORKER_BASE_URL se lee en runtime para asegurar que está definida
-  function owmLayer(layer, opacity){
-    var base = (window.WORKER_BASE_URL || 'https://meteo-proxy.kcautivof.workers.dev').replace(/\/$/, '');
+  // Capas OWM via proxy (tiempo real)
+  function owm(layer){ 
     return L.tileLayer(
-      base + '/owm-tile/' + layer + '/{z}/{x}/{y}',
-      { opacity: opacity||0.65, attribution:'OpenWeatherMap', tileSize:256, maxZoom:18, zIndex:100 }
+      WORKER+'/owm-tile/'+layer+'/{z}/{x}/{y}',
+      {opacity:0.65, attribution:'OWM', tileSize:256, maxZoom:18, zIndex:100}
     );
   }
 
-  // ── RainViewer (radar lluvia tiempo real, sin key) ───────────────────
-  function buildRainViewer(cb){
+  // Capas NASA GIBS (diarias)
+  function gibs(product, ext){
+    var d=new Date(); d.setDate(d.getDate()-1);
+    var date=d.toISOString().slice(0,10);
+    return L.tileLayer(
+      'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/'+product+'/default/'+date+'/GoogleMapsCompatible/{z}/{y}/{x}.'+(ext||'png'),
+      {opacity:0.7, attribution:'NASA GIBS', tileSize:256, maxZoom:8, zIndex:150}
+    );
+  }
+
+  // RainViewer
+  function loadRainViewer(cb){
     fetch('https://api.rainviewer.com/public/weather-maps.json')
-      .then(function(r){ return r.json(); })
+      .then(function(r){return r.json();})
       .then(function(js){
-        var past = js && js.radar && js.radar.past;
-        if(!past || !past.length){ cb(null); return; }
-        var last = past[past.length - 1];
-        var layer = L.tileLayer(
-          'https://tilecache.rainviewer.com' + last.path + '/256/{z}/{x}/{y}/4/1_1.png',
-          { opacity:0.6, attribution:'RainViewer', tileSize:256, maxZoom:18, zIndex:200 }
-        );
-        cb(layer);
-      })
-      .catch(function(){ cb(null); });
+        var f=js&&js.radar&&js.radar.past;
+        if(!f||!f.length){cb(null);return;}
+        cb(L.tileLayer(
+          'https://tilecache.rainviewer.com'+f[f.length-1].path+'/256/{z}/{x}/{y}/4/1_1.png',
+          {opacity:0.65, attribution:'RainViewer', tileSize:256, maxZoom:18, zIndex:200}
+        ));
+      }).catch(function(){cb(null);});
   }
 
-  // ── NASA GIBS (imágenes satelitales diarias — NO tiempo real) ────────
-  // Se usan como complemento para capas que OWM no tiene
-  function gibsLayer(product, ext, opacity){
-    ext = ext || 'jpg';
-    var d = new Date();
-    d.setDate(d.getDate() - 1);
-    var date = d.toISOString().slice(0,10);
-    return L.tileLayer(
-      'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/' + product +
-      '/default/' + date + '/GoogleMapsCompatible/{z}/{y}/{x}.' + ext,
-      { opacity: opacity||0.7, attribution:'NASA GIBS', tileSize:256, maxZoom:8, zIndex:150 }
-    );
-  }
+  // Definir capas globalmente para que siempre sean accesibles
+  window.__ML = {
+    mlNubes:   owm('clouds_new'),
+    mlPrecip:  owm('precipitation_new'),
+    mlViento:  owm('wind_new'),
+    mlPresion: owm('pressure_new'),
+    mlTemp:    owm('temp_new'),
+    mlVapor:   gibs('MODIS_Terra_Water_Vapor_5km_Day','png'),
+    mlAod:     gibs('MODIS_Terra_Aerosol','png'),
+    mlFire:    gibs('MODIS_Terra_Thermal_Anomalies_All','png'),
+    mlNieve:   gibs('MODIS_Terra_Snow_Cover_Daily','png'),
+  };
+  window.__meteoLayers = window.__ML;
 
-  // ── Construir objeto de capas ────────────────────────────────────────
-  var layers = {};
-
-  // Tiempo real (RainViewer) — se carga async
-  window.__rvLayer = null;
-
-  // OWM tiempo real (solo si hay key)
-  // OWM tiempo real via proxy (key en el worker, no expuesta)
-  layers.mlNubes   = owmLayer('clouds_new',        0.65);
-  layers.mlPrecip  = owmLayer('precipitation_new', 0.65);
-  layers.mlViento  = owmLayer('wind_new',          0.65);
-  layers.mlPresion = owmLayer('pressure_new',      0.65);
-  layers.mlTemp    = owmLayer('temp_new',          0.65);
-  // NASA GIBS para capas que OWM no tiene
-  layers.mlVapor   = gibsLayer('MODIS_Terra_Water_Vapor_5km_Day',       'png', 0.65);
-  layers.mlAod     = gibsLayer('MODIS_Terra_Aerosol',                   'png', 0.60);
-  layers.mlFire    = gibsLayer('MODIS_Terra_Thermal_Anomalies_All',     'png', 0.85);
-  layers.mlNieve   = gibsLayer('MODIS_Terra_Snow_Cover_Daily',          'png', 0.70);
-
-  window.__meteoLayers = layers;
-
-  // Cargar RainViewer
-  buildRainViewer(function(rv){
-    if(!rv) return;
+  // Cargar RainViewer y guardar globalmente
+  loadRainViewer(function(rv){
     window.__rvLayer = rv;
-    // Actualizar cada 10 min
+    // Si mlRadar está marcado, activarlo
+    var chk=document.getElementById('mlRadar');
+    if(rv && chk && chk.checked) try{rv.addTo(window.__pickMap);}catch(e){}
+    // Refrescar cada 10 min
     setInterval(function(){
-      buildRainViewer(function(newRv){
+      loadRainViewer(function(newRv){
         if(!newRv) return;
-        var wasOn = map.hasLayer(window.__rvLayer);
-        try{ map.removeLayer(window.__rvLayer); }catch(e){}
+        var wasOn = window.__pickMap && window.__rvLayer && window.__pickMap.hasLayer(window.__rvLayer);
+        try{if(window.__rvLayer) window.__pickMap.removeLayer(window.__rvLayer);}catch(e){}
         window.__rvLayer = newRv;
-        if(wasOn) try{ newRv.addTo(map); }catch(e){}
-        // Re-sincronizar checkbox
-        var chk = document.getElementById('mlRadar');
-        if(chk && chk.checked) try{ newRv.addTo(map); }catch(e){}
+        if(wasOn) try{newRv.addTo(window.__pickMap);}catch(e){}
       });
     }, 10*60*1000);
-    // Si el checkbox ya está marcado, activar
-    var chk = document.getElementById('mlRadar');
-    if(chk && chk.checked) try{ rv.addTo(map); }catch(e){}
   });
-
-  // ── Aplicar capa según estado del checkbox ───────────────────────────
-  function applyLayer(id, on){
-    if(id === 'mlRadar'){
-      if(!window.__rvLayer) return;
-      try{ on ? window.__rvLayer.addTo(map) : map.removeLayer(window.__rvLayer); }catch(e){}
-      return;
-    }
-    var layer = window.__meteoLayers && window.__meteoLayers[id];
-    if(!layer) return;
-    try{ on ? layer.addTo(map) : map.removeLayer(layer); }catch(e){}
-  }
-
-  // ── Conectar checkboxes ───────────────────────────────────────────────
-  window.__bindMeteoChecks = function(){
-    var allIds = ['mlRadar','mlNubes','mlPrecip','mlViento','mlPresion',
-                  'mlTemp','mlVapor','mlAod','mlFire','mlNieve'];
-    allIds.forEach(function(id){
-      var chk = document.getElementById(id);
-      if(!chk) return;
-      if(!chk.__mlBound){
-        chk.__mlBound = true;
-        chk.addEventListener('change', function(){ applyLayer(id, this.checked); });
-      }
-      // Sincronizar estado actual → si está marcado, activar capa ya
-      applyLayer(id, chk.checked);
-    });
-
-    // Mostrar estado en el panel
-    var st = document.getElementById('meteoLayersStatus');
-    if(st){
-      st.textContent = 'OWM TIEMPO REAL ACTIVO (via proxy)';
-      st.style.color = '#2ecc71';
-    }
-  };
 
   window.__meteoLayersReady = true;
 };
 
-// Se llama desde initPickMap cuando el mapa ya existe
+// Función global de aplicar capa — usa siempre window.__pickMap actual
+window.__meteoApply = function(id, on){
+  var map = window.__pickMap;
+  if(!map) return;
+  if(id==='mlRadar'){
+    var rv=window.__rvLayer;
+    if(!rv) return;
+    try{ on ? rv.addTo(map) : map.removeLayer(rv); }catch(e){}
+    return;
+  }
+  var layer = window.__ML && window.__ML[id];
+  if(!layer) return;
+  try{ on ? layer.addTo(map) : map.removeLayer(layer); }catch(e){}
+};
+
+// Conectar checkboxes — llamado al abrir el panel
+window.__bindMeteoChecks = function(){
+  if(!window.__meteoLayersReady) window.__initMeteoLayers();
+  var ids=['mlRadar','mlNubes','mlPrecip','mlViento','mlPresion','mlTemp','mlVapor','mlAod','mlFire','mlNieve'];
+  ids.forEach(function(id){
+    var chk=document.getElementById(id);
+    if(!chk) return;
+    if(!chk.__mlBound){
+      chk.__mlBound=true;
+      chk.addEventListener('change',function(){ window.__meteoApply(id,this.checked); });
+    }
+    // Aplicar estado actual inmediatamente
+    window.__meteoApply(id, chk.checked);
+  });
+};
+
 window.__initMeteoLayers();
 // ══════════════════════════════════════════════════════════════════════
 //  FIN CAPAS METEOROLÓGICAS
