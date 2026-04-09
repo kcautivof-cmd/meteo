@@ -6302,8 +6302,10 @@ var __PROXY = 'https://meteo-proxy.kcautivof.workers.dev';
 var __mlBuilt = false;
 
 function __mlBuild(){
-  if(__mlBuilt) return;
-  if(typeof L === 'undefined') return;
+  if(__mlBuilt){ console.log('[ML] ya construido'); return; }
+  if(typeof L === 'undefined'){ console.error('[ML] L no disponible'); return; }
+  if(!window.__pickMap){ console.warn('[ML] pickMap no existe aún'); }
+  console.log('[ML] construyendo capas...');
   __mlBuilt = true;
 
   function owm(layer){
@@ -6382,6 +6384,7 @@ function __mlApply(id, on){
 window.__meteoApply = __mlApply;
 
 window.__bindMeteoChecks = function(){
+  console.log('[ML] bindMeteoChecks llamado, __ML=', !!window.__ML, '__pickMap=', !!window.__pickMap);
   __mlBuild();
   var ids=['mlRadar','mlNubes','mlPrecip','mlViento','mlPresion',
            'mlTemp','mlVapor','mlAod','mlFire','mlNieve'];
