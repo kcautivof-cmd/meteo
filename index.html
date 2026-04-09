@@ -4366,12 +4366,12 @@ body.role-user #cmpPanel { display:block !important; }
                 <div style="display:none;flex-direction:column;gap:4px;margin-top:4px;background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:10px 12px;box-shadow:0 4px 12px rgba(0,0,0,.3);min-width:240px;" id="meteoLayersPanel">
 
                   <div style="font-size:8px;font-weight:700;color:var(--muted);letter-spacing:.5px;margin-bottom:2px;">TIEMPO REAL</div>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:9px;cursor:pointer;"><input type="checkbox" id="mlRadar" style="margin:0;"> RADAR LLUVIA (RainViewer · tiempo real)</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:9px;cursor:pointer;"><input type="checkbox" id="mlNubes" style="margin:0;"> NUBOSIDAD (OWM · tiempo real *)</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:9px;cursor:pointer;"><input type="checkbox" id="mlPrecip" style="margin:0;"> PRECIPITACION (OWM · tiempo real *)</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:9px;cursor:pointer;"><input type="checkbox" id="mlViento" style="margin:0;"> VIENTO (OWM · tiempo real *)</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:9px;cursor:pointer;"><input type="checkbox" id="mlPresion" style="margin:0;"> PRESION (OWM · tiempo real *)</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:9px;cursor:pointer;"><input type="checkbox" id="mlTemp" style="margin:0;"> TEMPERATURA (OWM / NASA)</label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:9px;cursor:pointer;"><input type="checkbox" id="mlRadar" style="margin:0;"> RADAR DE LLUVIA</label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:9px;cursor:pointer;"><input type="checkbox" id="mlNubes" style="margin:0;"> NUBOSIDAD</label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:9px;cursor:pointer;"><input type="checkbox" id="mlPrecip" style="margin:0;"> PRECIPITACION</label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:9px;cursor:pointer;"><input type="checkbox" id="mlViento" style="margin:0;"> VIENTO</label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:9px;cursor:pointer;"><input type="checkbox" id="mlPresion" style="margin:0;"> PRESION</label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:9px;cursor:pointer;"><input type="checkbox" id="mlTemp" style="margin:0;"> TEMPERATURA</label>
 
                   <div style="font-size:8px;font-weight:700;color:var(--muted);letter-spacing:.5px;margin:4px 0 2px;">SATELITE NASA (diario)</div>
                   <label style="display:flex;align-items:center;gap:6px;font-size:9px;cursor:pointer;"><input type="checkbox" id="mlVapor" style="margin:0;"> VAPOR DE AGUA</label>
@@ -4380,7 +4380,7 @@ body.role-user #cmpPanel { display:block !important; }
                   <label style="display:flex;align-items:center;gap:6px;font-size:9px;cursor:pointer;"><input type="checkbox" id="mlNieve" style="margin:0;"> COBERTURA DE NIEVE</label>
 
                   <div id="meteoLayersStatus" style="font-size:8px;margin-top:4px;"></div>
-                  <div style="font-size:7.5px;color:var(--muted);margin-top:2px;line-height:1.3;">OWM: tiempo real via proxy · NASA: imagen del dia anterior</div>
+                  <div style="font-size:7.5px;color:var(--muted);margin-top:2px;line-height:1.3;"></div>
                 </div>
               </div>
             </div>
@@ -6304,12 +6304,12 @@ window.__initMeteoLayers = function(){
   var map = window.__pickMap;
 
   // ── OpenWeatherMap tiles via proxy worker (key oculta) ───────────────
-  var OWM_BASE = (window.WORKER_BASE_URL || '').replace(/\/$/, '') + '/owm-tile';
-
+  // WORKER_BASE_URL se lee en runtime para asegurar que está definida
   function owmLayer(layer, opacity){
+    var base = (window.WORKER_BASE_URL || 'https://meteo-proxy.kcautivof.workers.dev').replace(/\/$/, '');
     return L.tileLayer(
-      OWM_BASE + '/' + layer + '/{z}/{x}/{y}',
-      { opacity: opacity||0.65, attribution:'OpenWeatherMap', tileSize:256, maxZoom:18 }
+      base + '/owm-tile/' + layer + '/{z}/{x}/{y}',
+      { opacity: opacity||0.65, attribution:'OpenWeatherMap', tileSize:256, maxZoom:18, zIndex:100 }
     );
   }
 
