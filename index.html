@@ -6366,10 +6366,23 @@ window.__initMeteoLayers = function __initMeteoLayers(){
     }, 10*60*1000);
   });
 
-  // ── Función para conectar checkboxes (se llama al abrir el panel) ──────
+  // ── Conectar Y sincronizar checkboxes ────────────────────────────────
   window.__bindMeteoChecks = function(){
     var map = window.__pickMap;
     if(!map || !window.__meteoLayers) return;
+
+    function applyLayer(id, checked){
+      if(id === 'mlRadar'){
+        if(!window.__rvLayer) return;
+        if(checked){ try{ window.__rvLayer.addTo(map); }catch(e){} }
+        else        { try{ map.removeLayer(window.__rvLayer); }catch(e){} }
+        return;
+      }
+      var layer = window.__meteoLayers[id];
+      if(!layer) return;
+      if(checked){ try{ layer.addTo(map); }catch(e){} }
+      else        { try{ map.removeLayer(layer); }catch(e){} }
+    }
 
     var ids = ['mlNubes','mlNubesAqua','mlVapor','mlVaporNight',
                'mlTemp','mlTempNight','mlTempOcean','mlViento',
@@ -6377,20 +6390,18 @@ window.__initMeteoLayers = function __initMeteoLayers(){
 
     ids.forEach(function(id){
       var chk = document.getElementById(id);
-      if(!chk || chk.__bound) return;
-      chk.__bound = true;
-      chk.addEventListener('change', function(){
-        if(id === 'mlRadar'){
-          if(!window.__rvLayer) return;
-          if(this.checked) window.__rvLayer.addTo(map);
-          else             map.removeLayer(window.__rvLayer);
-          return;
-        }
-        var layer = window.__meteoLayers[id];
-        if(!layer) return;
-        if(this.checked) layer.addTo(map);
-        else             map.removeLayer(layer);
-      });
+      if(!chk) return;
+
+      // Si ya tenía listener, solo sincronizar estado visual
+      if(!chk.__bound){
+        chk.__bound = true;
+        chk.addEventListener('change', function(){
+          applyLayer(id, this.checked);
+        });
+      }
+
+      // SIEMPRE sincronizar el estado actual del checkbox con el mapa
+      applyLayer(id, chk.checked);
     });
   };
 
