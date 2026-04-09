@@ -6304,10 +6304,10 @@ window.__initMeteoLayers = function(){
   var WORKER = 'https://meteo-proxy.kcautivof.workers.dev';
 
   // Capas OWM via proxy (tiempo real)
-  function owm(layer){ 
+  function owm(layer, opacity){ 
     return L.tileLayer(
       WORKER+'/owm-tile/'+layer+'/{z}/{x}/{y}',
-      {opacity:0.65, attribution:'OWM', tileSize:256, maxZoom:18, zIndex:100}
+      {opacity:opacity||0.85, attribution:'OWM', tileSize:256, maxZoom:18, zIndex:100}
     );
   }
 
@@ -6337,11 +6337,11 @@ window.__initMeteoLayers = function(){
 
   // Definir capas globalmente para que siempre sean accesibles
   window.__ML = {
-    mlNubes:   owm('clouds_new'),
-    mlPrecip:  owm('precipitation_new'),
-    mlViento:  owm('wind_new'),
-    mlPresion: owm('pressure_new'),
-    mlTemp:    owm('temp_new'),
+    mlNubes:   owm('clouds_new',   0.85),
+    mlPrecip:  owm('precipitation_new', 0.85),
+    mlViento:  owm('wind_new',     0.85),
+    mlPresion: owm('pressure_new', 0.85),
+    mlTemp:    owm('temp_new',     0.85),
     mlVapor:   gibs('MODIS_Terra_Water_Vapor_5km_Day','png'),
     mlAod:     gibs('MODIS_Terra_Aerosol','png'),
     mlFire:    gibs('MODIS_Terra_Thermal_Anomalies_All','png'),
