@@ -6302,11 +6302,18 @@ window.__initMeteoLayers = function __initMeteoLayers(){
   const map = window.__pickMap;
 
   // ── NASA GIBS ────────────────────────────────────────────────────────
+  // URL correcta: /Product/default/YYYY-MM-DD/GoogleMapsCompatible/{z}/{y}/{x}.png
   const GIBS = 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best';
+  function gibsDate(){
+    // Usar ayer para asegurar que el tile existe (hoy puede no estar procesado aún)
+    var d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().slice(0,10);
+  }
   function gibsLayer(product, opacity){
     return L.tileLayer(
-      GIBS + '/' + product + '/default/GoogleMapsCompatible/{z}/{y}/{x}.png',
-      { opacity: opacity||0.7, attribution:'NASA GIBS', tileSize:256, maxZoom:9 }
+      GIBS + '/' + product + '/default/' + gibsDate() + '/GoogleMapsCompatible/{z}/{y}/{x}.jpg',
+      { opacity: opacity||0.7, attribution:'NASA GIBS', tileSize:256, maxZoom:8 }
     );
   }
 
