@@ -6323,7 +6323,7 @@ window.__initMeteoLayers = function __initMeteoLayers(){
   }
   function buildGibsLayer(product, opacity){
     const layer = L.tileLayer(
-      GIBS + '/' + product + '/default/' + gibsDate() + '/GoogleMapsCompatible/{z}/{y}/{x}.png',
+      GIBS + '/' + product + '/default/' + gibsDate() + '/GoogleMapsCompatible/{z}/{x}/{y}.png',
       {
         opacity: opacity||0.7,
         attribution:'NASA GIBS',
@@ -6341,7 +6341,7 @@ window.__initMeteoLayers = function __initMeteoLayers(){
     layer.on('tileerror', function(){
       if(!layer.__jpgFallback){
         layer.__jpgFallback = true;
-        try{ layer.setUrl(GIBS + '/' + product + '/default/' + gibsDate() + '/GoogleMapsCompatible/{z}/{y}/{x}.jpg'); }catch(_e){}
+        try{ layer.setUrl(GIBS + '/' + product + '/default/' + gibsDate() + '/GoogleMapsCompatible/{z}/{x}/{y}.jpg'); }catch(_e){}
       }
     });
     return layer;
@@ -6407,14 +6407,14 @@ window.__initMeteoLayers = function __initMeteoLayers(){
       if(id === 'mlRadar'){
         if(!window.__rvLayer) return;
         try{ window.__rvLayer.options.pane = METEO_PANE; window.__rvLayer.setZIndex && window.__rvLayer.setZIndex(470); }catch(_e){}
-        if(checked){ window.__rvLayer.addTo(map); }
+        if(checked){ window.__rvLayer.addTo(map); try{ window.__rvLayer.bringToFront && window.__rvLayer.bringToFront(); window.__rvLayer.redraw && window.__rvLayer.redraw(); }catch(_e){} }
         else if(map.hasLayer(window.__rvLayer)) { map.removeLayer(window.__rvLayer); }
         return;
       }
       var layer = window.__meteoLayers && window.__meteoLayers[id];
       if(!layer) return;
       try{ layer.options.pane = METEO_PANE; layer.setZIndex && layer.setZIndex(460); }catch(_e){}
-      if(checked){ layer.addTo(map); }
+      if(checked){ layer.addTo(map); try{ layer.bringToFront && layer.bringToFront(); layer.redraw && layer.redraw(); }catch(_e){} }
       else if(map.hasLayer(layer)) { map.removeLayer(layer); }
     }catch(e){}
   }
