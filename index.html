@@ -16748,5 +16748,26 @@ window.closeBulletinMenu = function(){
 
 })();
 </script>
+<script>
+// Funciones del boletín — stubs para evitar errores en consola
+if(typeof openBulletinMenu === 'undefined'){
+  window.openBulletinMenu = function(){ 
+    var m = document.getElementById('bulletinQuickModal');
+    if(m) m.style.display = 'flex';
+  };
+}
+if(typeof closeQuickBulletinModal === 'undefined'){
+  window.closeQuickBulletinModal = function(){
+    var m = document.getElementById('bulletinQuickModal');
+    if(m) m.style.display = 'none';
+  };
+}
+if(typeof closeBulletinMenu === 'undefined'){
+  window.closeBulletinMenu = function(){
+    var m = document.getElementById('bulletinQuickModal');
+    if(m) m.style.display = 'none';
+  };
+}
+</script>
 </body>
 </html>
