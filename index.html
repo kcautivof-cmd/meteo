@@ -6296,116 +6296,186 @@ window.__dmcMapLayers.refreshAlerts = __dmcRefreshAlertsLayer;
 //  Fuentes: NASA GIBS (satélite oficial) + RainViewer (radar lluvia)
 // ══════════════════════════════════════════════════════════════════════
 window.__initMeteoLayers = function __initMeteoLayers(){
-  if (window.__meteoLayersReady) return;
-  if (!window.__pickMap) return;
+  if (window.__meteoLayersReady) {
+    if (typeof window.__bindMeteoChecks === 'function') window.__bindMeteoChecks();
+    if (typeof window.__refreshMeteoLayersNow === 'function') window.__refreshMeteoLayersNow(false);
+    return;
+  }
+  if (!window.__pickMap || typeof L === 'undefined') return;
 
   const map = window.__pickMap;
+  const statusEl = document.getElementById('meteoLayersStatus');
+  function setStatus(msg){ if(statusEl) statusEl.textContent = msg || ''; }
 
   // ── NASA GIBS ────────────────────────────────────────────────────────
-  // URL correcta: /Product/default/YYYY-MM-DD/GoogleMapsCompatible/{z}/{y}/{x}.png
   const GIBS = 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best';
   function gibsDate(){
-    // Usar ayer para asegurar que el tile existe (hoy puede no estar procesado aún)
     var d = new Date();
     d.setDate(d.getDate() - 1);
     return d.toISOString().slice(0,10);
   }
-  function gibsLayer(product, opacity){
+  function buildGibsLayer(product, opacity){
     return L.tileLayer(
       GIBS + '/' + product + '/default/' + gibsDate() + '/GoogleMapsCompatible/{z}/{y}/{x}.jpg',
-      { opacity: opacity||0.7, attribution:'NASA GIBS', tileSize:256, maxZoom:8 }
+      { opacity: opacity||0.7, attribution:'NASA GIBS', tileSize:256, maxZoom:8, crossOrigin:true }
     );
   }
 
+  const layerDefs = {
+    mlNubes:      ['MODIS_Terra_CorrectedReflectance_TrueColor', 0.75],
+    mlNubesAqua:  ['MODIS_Aqua_CorrectedReflectance_TrueColor',  0.75],
+    mlVapor:      ['MODIS_Terra_Water_Vapor_5km_Day',            0.65],
+    mlVaporNight: ['MODIS_Terra_Water_Vapor_5km_Night',          0.65],
+    mlTemp:       ['MODIS_Terra_Land_Surface_Temp_Day',          0.65],
+    mlTempNight:  ['MODIS_Terra_Land_Surface_Temp_Night',        0.65],
+    mlTempOcean:  ['MODIS_Terra_Sea_Surface_Temp_Day',           0.65],
+    mlViento:     ['OSCAR_L4_OC_third-deg_V2.0_Sea_Surface_Velocity', 0.70],
+    mlAod:        ['MODIS_Terra_Aerosol',                        0.60],
+    mlFire:       ['MODIS_Terra_Thermal_Anomalies_All',          0.85],
+    mlNieve:      ['MODIS_Terra_Snow_Cover_Daily',               0.70],
+    mlVeget:      ['MODIS_Terra_NDVI_8Day',                      0.65],
+    mlCo:         ['MOPITT_CO_Monthly_Surface_Mixing_Ratio_Day', 0.65]
+  };
+
+  const layers = {};
+  Object.keys(layerDefs).forEach(function(id){
+    const def = layerDefs[id];
+    layers[id] = buildGibsLayer(def[0], def[1]);
+  });
+  window.__meteoLayers = layers;
+  window.__meteoLayerDefs = layerDefs;
+  window.__meteoLayersLastDate = gibsDate();
+
   // ── RainViewer ───────────────────────────────────────────────────────
   async function buildRainViewerLayer(){
-    try{
-      const r  = await fetch('https://api.rainviewer.com/public/weather-maps.json');
-      const js = await r.json();
-      const frames = js && js.radar && js.radar.past;
-      if(!frames || !frames.length) return null;
-      const last = frames[frames.length-1];
-      return L.tileLayer(
+    const res = await fetch('https://api.rainviewer.com/public/weather-maps.json', { cache:'no-store' });
+    if(!res.ok) throw new Error('RainViewer HTTP ' + res.status);
+    const js = await res.json();
+    const frames = js && js.radar && Array.isArray(js.radar.past) ? js.radar.past : [];
+    if(!frames.length) return null;
+    const last = frames[frames.length-1];
+    return {
+      ts: Number(last.time || 0),
+      layer: L.tileLayer(
         'https://tilecache.rainviewer.com'+last.path+'/256/{z}/{x}/{y}/2/1_1.png',
-        { opacity:0.65, attribution:'RainViewer', tileSize:256, maxZoom:18 }
-      );
-    }catch(e){ return null; }
+        { opacity:0.65, attribution:'RainViewer', tileSize:256, maxZoom:18, crossOrigin:true }
+      )
+    };
   }
 
-  // ── Definir todas las capas ─────────────────────────────────────────
-  const layers = {
-    mlNubes:      gibsLayer('MODIS_Terra_CorrectedReflectance_TrueColor', 0.75),
-    mlNubesAqua:  gibsLayer('MODIS_Aqua_CorrectedReflectance_TrueColor',  0.75),
-    mlVapor:      gibsLayer('MODIS_Terra_Water_Vapor_5km_Day',             0.65),
-    mlVaporNight: gibsLayer('MODIS_Terra_Water_Vapor_5km_Night',           0.65),
-    mlTemp:       gibsLayer('MODIS_Terra_Land_Surface_Temp_Day',           0.65),
-    mlTempNight:  gibsLayer('MODIS_Terra_Land_Surface_Temp_Night',         0.65),
-    mlTempOcean:  gibsLayer('MODIS_Terra_Sea_Surface_Temp_Day',            0.65),
-    mlViento:     gibsLayer('OSCAR_L4_OC_third-deg_V2.0_Sea_Surface_Velocity', 0.70),
-    mlAod:        gibsLayer('MODIS_Terra_Aerosol',                         0.60),
-    mlFire:       gibsLayer('MODIS_Terra_Thermal_Anomalies_All',           0.85),
-    mlNieve:      gibsLayer('MODIS_Terra_Snow_Cover_Daily',                0.70),
-    mlVeget:      gibsLayer('MODIS_Terra_NDVI_8Day',                       0.65),
-    mlCo:         gibsLayer('MOPITT_CO_Monthly_Surface_Mixing_Ratio_Day',  0.65),
-  };
-  window.__meteoLayers = layers;
+  function applyLayer(id, checked){
+    try{
+      if(id === 'mlRadar'){
+        if(!window.__rvLayer) return;
+        if(checked){ window.__rvLayer.addTo(map); }
+        else { map.removeLayer(window.__rvLayer); }
+        return;
+      }
+      var layer = window.__meteoLayers && window.__meteoLayers[id];
+      if(!layer) return;
+      if(checked){ layer.addTo(map); }
+      else { map.removeLayer(layer); }
+    }catch(e){}
+  }
 
-  // ── RainViewer ───────────────────────────────────────────────────────
-  buildRainViewerLayer().then(function(rvLayer){
-    if(!rvLayer) return;
-    window.__rvLayer = rvLayer;
-    setInterval(async function(){
-      try{
-        var newLayer = await buildRainViewerLayer();
-        if(!newLayer) return;
-        var wasOn = map.hasLayer(window.__rvLayer);
-        map.removeLayer(window.__rvLayer);
-        window.__rvLayer = newLayer;
-        if(wasOn) newLayer.addTo(map);
-      }catch(e){}
-    }, 10*60*1000);
-  });
+  function currentCheckedState(){
+    const ids = ['mlNubes','mlNubesAqua','mlVapor','mlVaporNight','mlTemp','mlTempNight','mlTempOcean','mlViento','mlAod','mlFire','mlNieve','mlVeget','mlCo','mlRadar'];
+    const state = {};
+    ids.forEach(function(id){
+      state[id] = !!document.getElementById(id)?.checked;
+    });
+    return state;
+  }
+
+  function syncAllFromChecks(){
+    const state = currentCheckedState();
+    Object.keys(state).forEach(function(id){ applyLayer(id, state[id]); });
+  }
+
+  async function refreshRainViewer(preserve){
+    try{
+      const built = await buildRainViewerLayer();
+      if(!built || !built.layer) {
+        setStatus('Radar RainViewer no disponible.');
+        return;
+      }
+      const chk = !!document.getElementById('mlRadar')?.checked;
+      const oldLayer = window.__rvLayer;
+      const oldTs = window.__rvLayerTs || 0;
+      window.__rvLayer = built.layer;
+      window.__rvLayerTs = built.ts || 0;
+      if(oldLayer && map.hasLayer(oldLayer)) map.removeLayer(oldLayer);
+      if(chk || (preserve && oldLayer && map.hasLayer(oldLayer))){
+        try{ window.__rvLayer.addTo(map); }catch(e){}
+      }
+      if(oldLayer && oldLayer !== window.__rvLayer){
+        try{ oldLayer.off(); }catch(e){}
+      }
+      const stamp = window.__rvLayerTs ? new Date(window.__rvLayerTs * 1000) : null;
+      setStatus(stamp && !isNaN(stamp) ? ('Radar actualizado: ' + stamp.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit',hour12:false})) : 'Capas meteorológicas listas.');
+      if(oldTs && window.__rvLayerTs && oldTs !== window.__rvLayerTs && chk){
+        try{ window.__rvLayer.redraw(); }catch(e){}
+      }
+    }catch(e){
+      setStatus('Sin conexión con radar en tiempo real.');
+    }
+  }
+
+  window.__refreshMeteoLayersNow = async function(forceStatus){
+    try{
+      const todayDate = gibsDate();
+      if(window.__meteoLayersLastDate !== todayDate && window.__meteoLayerDefs){
+        const checked = currentCheckedState();
+        Object.keys(window.__meteoLayerDefs).forEach(function(id){
+          const oldLayer = window.__meteoLayers[id];
+          if(oldLayer && map.hasLayer(oldLayer)) map.removeLayer(oldLayer);
+          const def = window.__meteoLayerDefs[id];
+          window.__meteoLayers[id] = buildGibsLayer(def[0], def[1]);
+          if(checked[id]){
+            try{ window.__meteoLayers[id].addTo(map); }catch(e){}
+          }
+        });
+        window.__meteoLayersLastDate = todayDate;
+      }
+      await refreshRainViewer(true);
+      if(forceStatus === false && !document.getElementById('mlRadar')?.checked){
+        if(statusEl && /Radar actualizado/.test(statusEl.textContent || '')) setStatus('Capas meteorológicas listas.');
+      }
+      syncAllFromChecks();
+    }catch(e){}
+  };
 
   // ── Conectar Y sincronizar checkboxes ────────────────────────────────
   window.__bindMeteoChecks = function(){
-    var map = window.__pickMap;
-    if(!map || !window.__meteoLayers) return;
-
-    function applyLayer(id, checked){
-      if(id === 'mlRadar'){
-        if(!window.__rvLayer) return;
-        if(checked){ try{ window.__rvLayer.addTo(map); }catch(e){} }
-        else        { try{ map.removeLayer(window.__rvLayer); }catch(e){} }
-        return;
-      }
-      var layer = window.__meteoLayers[id];
-      if(!layer) return;
-      if(checked){ try{ layer.addTo(map); }catch(e){} }
-      else        { try{ map.removeLayer(layer); }catch(e){} }
-    }
-
-    var ids = ['mlNubes','mlNubesAqua','mlVapor','mlVaporNight',
-               'mlTemp','mlTempNight','mlTempOcean','mlViento',
-               'mlAod','mlFire','mlNieve','mlVeget','mlCo','mlRadar'];
-
+    if(!window.__pickMap || !window.__meteoLayers) return;
+    var ids = ['mlNubes','mlNubesAqua','mlVapor','mlVaporNight','mlTemp','mlTempNight','mlTempOcean','mlViento','mlAod','mlFire','mlNieve','mlVeget','mlCo','mlRadar'];
     ids.forEach(function(id){
       var chk = document.getElementById(id);
       if(!chk) return;
-
-      // Si ya tenía listener, solo sincronizar estado visual
       if(!chk.__bound){
         chk.__bound = true;
         chk.addEventListener('change', function(){
           applyLayer(id, this.checked);
+          if(id === 'mlRadar' && this.checked && !window.__rvLayer && typeof window.__refreshMeteoLayersNow === 'function'){
+            window.__refreshMeteoLayersNow(true);
+          }
+          if(id !== 'mlRadar'){
+            setStatus('Capa ' + this.parentNode.textContent.trim() + (this.checked ? ' activada.' : ' desactivada.'));
+          }
         });
       }
-
-      // SIEMPRE sincronizar el estado actual del checkbox con el mapa
       applyLayer(id, chk.checked);
     });
   };
 
+  if(window.__meteoLayersTimer) clearInterval(window.__meteoLayersTimer);
+  window.__meteoLayersTimer = setInterval(function(){
+    if(typeof window.__refreshMeteoLayersNow === 'function') window.__refreshMeteoLayersNow(false);
+  }, 5*60*1000);
+
   window.__meteoLayersReady = true;
+  window.__bindMeteoChecks();
+  window.__refreshMeteoLayersNow(false);
 };
 // Intentar ahora por si el mapa ya está listo
 window.__initMeteoLayers();
