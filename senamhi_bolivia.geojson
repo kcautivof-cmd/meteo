@@ -1,0 +1,2190 @@
+{
+  "type": "FeatureCollection",
+  "name": "SENAMHI Bolivia - Estaciones Meteorologicas",
+  "source": "senamhi.gob.bo - datos oficiales",
+  "generated": "2026-04-10",
+  "api_datos": "https://senamhi.gob.bo/pronjsondiario.php?dias=1",
+  "api_alertas": "https://senamhi.gob.bo/alerts2.php",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -63.1833,
+          -15.9167
+        ]
+      },
+      "properties": {
+        "codigo": "BO001",
+        "nombre": "Ascencion de Guarayos",
+        "departamento": "Santa Cruz",
+        "altitud": 236,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Ascencion de Guarayos",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Ascencion de Guarayos"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -63.5167,
+          -20.05
+        ]
+      },
+      "properties": {
+        "codigo": "BO002",
+        "nombre": "Camiri",
+        "departamento": "Santa Cruz",
+        "altitud": 810,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Camiri",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Camiri"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -64.5333,
+          -17.9167
+        ]
+      },
+      "properties": {
+        "codigo": "BO003",
+        "nombre": "Comarapa",
+        "departamento": "Santa Cruz",
+        "altitud": 1650,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Comarapa",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Comarapa"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -62.0333,
+          -16.1333
+        ]
+      },
+      "properties": {
+        "codigo": "BO004",
+        "nombre": "Concepcion",
+        "departamento": "Santa Cruz",
+        "altitud": 490,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Concepcion",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Concepcion"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -62.5167,
+          -16.5833
+        ]
+      },
+      "properties": {
+        "codigo": "BO005",
+        "nombre": "Cuatro Cañadas - Colonia Chihuahua",
+        "departamento": "Santa Cruz",
+        "altitud": 390,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Cuatro Cañadas - Colonia Chihuahua",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Cuatro Cañadas - Colonia Chihuahua"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -62.5333,
+          -16.6167
+        ]
+      },
+      "properties": {
+        "codigo": "BO006",
+        "nombre": "Cuatro cañadas CEA-2",
+        "departamento": "Santa Cruz",
+        "altitud": 388,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Cuatro cañadas CEA-2",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Cuatro cañadas CEA-2"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -63.05,
+          -18.95
+        ]
+      },
+      "properties": {
+        "codigo": "BO007",
+        "nombre": "El Puente",
+        "departamento": "Santa Cruz",
+        "altitud": 530,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=El Puente",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=El Puente"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -62.7333,
+          -17.7333
+        ]
+      },
+      "properties": {
+        "codigo": "BO008",
+        "nombre": "Pailon - Pozo del Tigre",
+        "departamento": "Santa Cruz",
+        "altitud": 350,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Pailon - Pozo del Tigre",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Pailon - Pozo del Tigre"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -57.8,
+          -18.95
+        ]
+      },
+      "properties": {
+        "codigo": "BO009",
+        "nombre": "Puerto Suárez",
+        "departamento": "Santa Cruz",
+        "altitud": 132,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Puerto Suárez",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Puerto Suárez"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -59.7667,
+          -18.3333
+        ]
+      },
+      "properties": {
+        "codigo": "BO010",
+        "nombre": "Robore",
+        "departamento": "Santa Cruz",
+        "altitud": 302,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Robore",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Robore"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -63.7,
+          -17.75
+        ]
+      },
+      "properties": {
+        "codigo": "BO011",
+        "nombre": "San Antonio - Los Ángeles",
+        "departamento": "Santa Cruz",
+        "altitud": 380,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=San Antonio - Los Ángeles",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=San Antonio - Los Ángeles"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -60.95,
+          -16.3667
+        ]
+      },
+      "properties": {
+        "codigo": "BO012",
+        "nombre": "San Ignacio de Velasco",
+        "departamento": "Santa Cruz",
+        "altitud": 440,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=San Ignacio de Velasco",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=San Ignacio de Velasco"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -62.5167,
+          -16.2833
+        ]
+      },
+      "properties": {
+        "codigo": "BO013",
+        "nombre": "San Javier",
+        "departamento": "Santa Cruz",
+        "altitud": 420,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=San Javier",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=San Javier"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -60.75,
+          -17.85
+        ]
+      },
+      "properties": {
+        "codigo": "BO014",
+        "nombre": "San Jose",
+        "departamento": "Santa Cruz",
+        "altitud": 350,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=San Jose",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=San Jose"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -62.6833,
+          -17.1667
+        ]
+      },
+      "properties": {
+        "codigo": "BO015",
+        "nombre": "San Julian - Comunidad Los Angeles",
+        "departamento": "Santa Cruz",
+        "altitud": 380,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=San Julian - Comunidad Los Angeles",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=San Julian - Comunidad Los Angeles"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -62.75,
+          -17.0833
+        ]
+      },
+      "properties": {
+        "codigo": "BO016",
+        "nombre": "San Julián - Núcleo 32",
+        "departamento": "Santa Cruz",
+        "altitud": 375,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=San Julián - Núcleo 32",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=San Julián - Núcleo 32"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -58.4,
+          -16.3667
+        ]
+      },
+      "properties": {
+        "codigo": "BO017",
+        "nombre": "San Matias",
+        "departamento": "Santa Cruz",
+        "altitud": 150,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=San Matias",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=San Matias"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -63.8167,
+          -15.95
+        ]
+      },
+      "properties": {
+        "codigo": "BO018",
+        "nombre": "San Pedro - Río Victoria",
+        "departamento": "Santa Cruz",
+        "altitud": 200,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=San Pedro - Río Victoria",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=San Pedro - Río Victoria"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -63.1667,
+          -17.8
+        ]
+      },
+      "properties": {
+        "codigo": "BO019",
+        "nombre": "Santa Cruz - Trompillo",
+        "departamento": "Santa Cruz",
+        "altitud": 416,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Santa Cruz - Trompillo",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Santa Cruz - Trompillo"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -63.1333,
+          -17.65
+        ]
+      },
+      "properties": {
+        "codigo": "BO020",
+        "nombre": "Santa Cruz - Viru Viru",
+        "departamento": "Santa Cruz",
+        "altitud": 373,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Santa Cruz - Viru Viru",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Santa Cruz - Viru Viru"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -63.05,
+          -15.55
+        ]
+      },
+      "properties": {
+        "codigo": "BO021",
+        "nombre": "Urubichá",
+        "departamento": "Santa Cruz",
+        "altitud": 280,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Urubichá",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Urubichá"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -64.1,
+          -18.4833
+        ]
+      },
+      "properties": {
+        "codigo": "BO022",
+        "nombre": "Vallegrande",
+        "departamento": "Santa Cruz",
+        "altitud": 2070,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Vallegrande",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Vallegrande"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -68.5167,
+          -14.7167
+        ]
+      },
+      "properties": {
+        "codigo": "BO023",
+        "nombre": "Apolo",
+        "departamento": "La Paz",
+        "altitud": 1350,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Apolo",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Apolo"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -68.75,
+          -16.2333
+        ]
+      },
+      "properties": {
+        "codigo": "BO024",
+        "nombre": "Chachacomani",
+        "departamento": "La Paz",
+        "altitud": 4620,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Chachacomani",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Chachacomani"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.4333,
+          -17.5833
+        ]
+      },
+      "properties": {
+        "codigo": "BO025",
+        "nombre": "Charaña",
+        "departamento": "La Paz",
+        "altitud": 4054,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Charaña",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Charaña"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -68.9833,
+          -15.1833
+        ]
+      },
+      "properties": {
+        "codigo": "BO026",
+        "nombre": "Charazani",
+        "departamento": "La Paz",
+        "altitud": 3200,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Charazani",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Charazani"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -68.1833,
+          -16.5167
+        ]
+      },
+      "properties": {
+        "codigo": "BO027",
+        "nombre": "El Alto",
+        "departamento": "La Paz",
+        "altitud": 4063,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=El Alto",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=El Alto"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -67.4667,
+          -16.4667
+        ]
+      },
+      "properties": {
+        "codigo": "BO028",
+        "nombre": "Irupana",
+        "departamento": "La Paz",
+        "altitud": 1780,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Irupana",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Irupana"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -68.1333,
+          -17.0833
+        ]
+      },
+      "properties": {
+        "codigo": "BO029",
+        "nombre": "Isquillani",
+        "departamento": "La Paz",
+        "altitud": 4050,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Isquillani",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Isquillani"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -68.1193,
+          -16.4897
+        ]
+      },
+      "properties": {
+        "codigo": "BO030",
+        "nombre": "La Paz - Centro",
+        "departamento": "La Paz",
+        "altitud": 3632,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=La Paz - Centro",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=La Paz - Centro"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -68.0667,
+          -16.55
+        ]
+      },
+      "properties": {
+        "codigo": "BO031",
+        "nombre": "La Paz - Zona Sur",
+        "departamento": "La Paz",
+        "altitud": 3400,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=La Paz - Zona Sur",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=La Paz - Zona Sur"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -67.65,
+          -17.1
+        ]
+      },
+      "properties": {
+        "codigo": "BO032",
+        "nombre": "Luribay",
+        "departamento": "La Paz",
+        "altitud": 2385,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Luribay",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Luribay"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -68.0333,
+          -16.3333
+        ]
+      },
+      "properties": {
+        "codigo": "BO033",
+        "nombre": "San Roque - La Paz",
+        "departamento": "La Paz",
+        "altitud": 3780,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=San Roque - La Paz",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=San Roque - La Paz"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -68.4667,
+          -17.25
+        ]
+      },
+      "properties": {
+        "codigo": "BO034",
+        "nombre": "Santiago de Callapa",
+        "departamento": "La Paz",
+        "altitud": 3860,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Santiago de Callapa",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Santiago de Callapa"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -68.2833,
+          -16.65
+        ]
+      },
+      "properties": {
+        "codigo": "BO035",
+        "nombre": "Viacha",
+        "departamento": "La Paz",
+        "altitud": 3800,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Viacha",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Viacha"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -68.4,
+          -16.35
+        ]
+      },
+      "properties": {
+        "codigo": "BO036",
+        "nombre": "Yaurichambi - Batallas",
+        "departamento": "La Paz",
+        "altitud": 3820,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Yaurichambi - Batallas",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Yaurichambi - Batallas"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -63.5833,
+          -13.5833
+        ]
+      },
+      "properties": {
+        "codigo": "BO037",
+        "nombre": "Baures",
+        "departamento": "Beni",
+        "altitud": 155,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Baures",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Baures"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -65.35,
+          -10.8167
+        ]
+      },
+      "properties": {
+        "codigo": "BO038",
+        "nombre": "Guayaramerin",
+        "departamento": "Beni",
+        "altitud": 135,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Guayaramerin",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Guayaramerin"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -64.0667,
+          -13.2667
+        ]
+      },
+      "properties": {
+        "codigo": "BO039",
+        "nombre": "Magdalena",
+        "departamento": "Beni",
+        "altitud": 155,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Magdalena",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Magdalena"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -67.3667,
+          -14.3
+        ]
+      },
+      "properties": {
+        "codigo": "BO040",
+        "nombre": "Reyes",
+        "departamento": "Beni",
+        "altitud": 230,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Reyes",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Reyes"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.0667,
+          -11.0
+        ]
+      },
+      "properties": {
+        "codigo": "BO041",
+        "nombre": "Riberalta",
+        "departamento": "Beni",
+        "altitud": 175,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Riberalta",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Riberalta"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -67.5333,
+          -14.4333
+        ]
+      },
+      "properties": {
+        "codigo": "BO042",
+        "nombre": "Rurrenabaque",
+        "departamento": "Beni",
+        "altitud": 220,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Rurrenabaque",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Rurrenabaque"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.75,
+          -14.85
+        ]
+      },
+      "properties": {
+        "codigo": "BO043",
+        "nombre": "San Borja",
+        "departamento": "Beni",
+        "altitud": 195,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=San Borja",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=San Borja"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -65.6333,
+          -14.9667
+        ]
+      },
+      "properties": {
+        "codigo": "BO044",
+        "nombre": "San Ignacio de Moxos",
+        "departamento": "Beni",
+        "altitud": 236,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=San Ignacio de Moxos",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=San Ignacio de Moxos"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -64.8,
+          -13.0667
+        ]
+      },
+      "properties": {
+        "codigo": "BO045",
+        "nombre": "San Joaquin",
+        "departamento": "Beni",
+        "altitud": 155,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=San Joaquin",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=San Joaquin"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -64.7,
+          -13.2833
+        ]
+      },
+      "properties": {
+        "codigo": "BO046",
+        "nombre": "San Ramon",
+        "departamento": "Beni",
+        "altitud": 155,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=San Ramon",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=San Ramon"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -65.5833,
+          -13.7667
+        ]
+      },
+      "properties": {
+        "codigo": "BO047",
+        "nombre": "Santa Ana",
+        "departamento": "Beni",
+        "altitud": 160,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Santa Ana",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Santa Ana"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.7833,
+          -10.8333
+        ]
+      },
+      "properties": {
+        "codigo": "BO048",
+        "nombre": "Santa Rosa",
+        "departamento": "Beni",
+        "altitud": 145,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Santa Rosa",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Santa Rosa"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -64.9,
+          -14.8333
+        ]
+      },
+      "properties": {
+        "codigo": "BO049",
+        "nombre": "Trinidad",
+        "departamento": "Beni",
+        "altitud": 236,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Trinidad",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Trinidad"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -65.4333,
+          -17.9667
+        ]
+      },
+      "properties": {
+        "codigo": "BO050",
+        "nombre": "Alalay",
+        "departamento": "Cochabamba",
+        "altitud": 2750,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Alalay",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Alalay"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -65.9333,
+          -17.3833
+        ]
+      },
+      "properties": {
+        "codigo": "BO051",
+        "nombre": "Arbieto",
+        "departamento": "Cochabamba",
+        "altitud": 2580,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Arbieto",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Arbieto"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.1667,
+          -17.4167
+        ]
+      },
+      "properties": {
+        "codigo": "BO052",
+        "nombre": "Cochabamba - Aeropuerto",
+        "departamento": "Cochabamba",
+        "altitud": 2548,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Cochabamba - Aeropuerto",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Cochabamba - Aeropuerto"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.1568,
+          -17.3895
+        ]
+      },
+      "properties": {
+        "codigo": "BO053",
+        "nombre": "Cochabamba",
+        "departamento": "Cochabamba",
+        "altitud": 2548,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Cochabamba",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Cochabamba"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.8,
+          -17.15
+        ]
+      },
+      "properties": {
+        "codigo": "BO054",
+        "nombre": "Independencia",
+        "departamento": "Cochabamba",
+        "altitud": 2850,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Independencia",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Independencia"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -65.8833,
+          -17.4667
+        ]
+      },
+      "properties": {
+        "codigo": "BO055",
+        "nombre": "La Angostura",
+        "departamento": "Cochabamba",
+        "altitud": 2600,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=La Angostura",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=La Angostura"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -65.5833,
+          -17.0833
+        ]
+      },
+      "properties": {
+        "codigo": "BO056",
+        "nombre": "La Violeta",
+        "departamento": "Cochabamba",
+        "altitud": 2200,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=La Violeta",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=La Violeta"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.1667,
+          -17.15
+        ]
+      },
+      "properties": {
+        "codigo": "BO057",
+        "nombre": "Misicuni-Sivingani",
+        "departamento": "Cochabamba",
+        "altitud": 3900,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Misicuni-Sivingani",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Misicuni-Sivingani"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -65.35,
+          -17.9333
+        ]
+      },
+      "properties": {
+        "codigo": "BO058",
+        "nombre": "Mizque",
+        "departamento": "Cochabamba",
+        "altitud": 2450,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Mizque",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Mizque"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -64.6,
+          -18.3
+        ]
+      },
+      "properties": {
+        "codigo": "BO059",
+        "nombre": "Pasorapa",
+        "departamento": "Cochabamba",
+        "altitud": 1800,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Pasorapa",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Pasorapa"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -65.8333,
+          -17.55
+        ]
+      },
+      "properties": {
+        "codigo": "BO060",
+        "nombre": "Punata",
+        "departamento": "Cochabamba",
+        "altitud": 2720,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Punata",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Punata"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -65.7667,
+          -17.5333
+        ]
+      },
+      "properties": {
+        "codigo": "BO061",
+        "nombre": "San Benito",
+        "departamento": "Cochabamba",
+        "altitud": 2680,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=San Benito",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=San Benito"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -65.4167,
+          -16.9833
+        ]
+      },
+      "properties": {
+        "codigo": "BO062",
+        "nombre": "Villa Tunari",
+        "departamento": "Cochabamba",
+        "altitud": 300,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Villa Tunari",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Villa Tunari"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -67.5833,
+          -18.3333
+        ]
+      },
+      "properties": {
+        "codigo": "BO063",
+        "nombre": "Antequera",
+        "departamento": "Oruro",
+        "altitud": 3780,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Antequera",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Antequera"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -67.65,
+          -17.9167
+        ]
+      },
+      "properties": {
+        "codigo": "BO064",
+        "nombre": "Aroma",
+        "departamento": "Oruro",
+        "altitud": 3750,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Aroma",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Aroma"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -67.2167,
+          -17.65
+        ]
+      },
+      "properties": {
+        "codigo": "BO065",
+        "nombre": "Caracollo",
+        "departamento": "Oruro",
+        "altitud": 3750,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Caracollo",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Caracollo"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -68.05,
+          -18.05
+        ]
+      },
+      "properties": {
+        "codigo": "BO066",
+        "nombre": "Carangas",
+        "departamento": "Oruro",
+        "altitud": 3750,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Carangas",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Carangas"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -68.0833,
+          -19.4167
+        ]
+      },
+      "properties": {
+        "codigo": "BO067",
+        "nombre": "Chipaya",
+        "departamento": "Oruro",
+        "altitud": 3660,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Chipaya",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Chipaya"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -68.0833,
+          -18.35
+        ]
+      },
+      "properties": {
+        "codigo": "BO068",
+        "nombre": "Corque",
+        "departamento": "Oruro",
+        "altitud": 3700,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Corque",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Corque"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -67.65,
+          -18.8833
+        ]
+      },
+      "properties": {
+        "codigo": "BO069",
+        "nombre": "Orinoca",
+        "departamento": "Oruro",
+        "altitud": 3700,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Orinoca",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Orinoca"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -67.0667,
+          -17.9667
+        ]
+      },
+      "properties": {
+        "codigo": "BO070",
+        "nombre": "Oruro - Aeropuerto",
+        "departamento": "Oruro",
+        "altitud": 3706,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Oruro - Aeropuerto",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Oruro - Aeropuerto"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -67.1,
+          -17.9833
+        ]
+      },
+      "properties": {
+        "codigo": "BO071",
+        "nombre": "Oruro - CEAC - Condoriri",
+        "departamento": "Oruro",
+        "altitud": 3710,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Oruro - CEAC - Condoriri",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Oruro - CEAC - Condoriri"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -67.1167,
+          -17.9667
+        ]
+      },
+      "properties": {
+        "codigo": "BO072",
+        "nombre": "Oruro - Ciudad",
+        "departamento": "Oruro",
+        "altitud": 3706,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Oruro - Ciudad",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Oruro - Ciudad"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -67.1,
+          -17.95
+        ]
+      },
+      "properties": {
+        "codigo": "BO073",
+        "nombre": "Oruro - FCAN - UTO",
+        "departamento": "Oruro",
+        "altitud": 3700,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Oruro - FCAN - UTO",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Oruro - FCAN - UTO"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.9667,
+          -19.25
+        ]
+      },
+      "properties": {
+        "codigo": "BO074",
+        "nombre": "Quillacas",
+        "departamento": "Oruro",
+        "altitud": 3680,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Quillacas",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Quillacas"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -67.6667,
+          -19.6333
+        ]
+      },
+      "properties": {
+        "codigo": "BO075",
+        "nombre": "Salinas",
+        "departamento": "Oruro",
+        "altitud": 3660,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Salinas",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Salinas"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -67.35,
+          -17.7833
+        ]
+      },
+      "properties": {
+        "codigo": "BO076",
+        "nombre": "Soracachi",
+        "departamento": "Oruro",
+        "altitud": 3780,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Soracachi",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Soracachi"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -67.8167,
+          -17.8167
+        ]
+      },
+      "properties": {
+        "codigo": "BO077",
+        "nombre": "Toledo",
+        "departamento": "Oruro",
+        "altitud": 3750,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Toledo",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Toledo"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.05,
+          -18.3
+        ]
+      },
+      "properties": {
+        "codigo": "BO078",
+        "nombre": "Acasio",
+        "departamento": "Potosí",
+        "altitud": 3200,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Acasio",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Acasio"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -67.6667,
+          -20.75
+        ]
+      },
+      "properties": {
+        "codigo": "BO079",
+        "nombre": "Colcha K",
+        "departamento": "Potosí",
+        "altitud": 3690,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Colcha K",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Colcha K"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -65.7833,
+          -18.5667
+        ]
+      },
+      "properties": {
+        "codigo": "BO080",
+        "nombre": "Irupata",
+        "departamento": "Potosí",
+        "altitud": 3200,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Irupata",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Irupata"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -65.5167,
+          -18.85
+        ]
+      },
+      "properties": {
+        "codigo": "BO081",
+        "nombre": "Kokani",
+        "departamento": "Potosí",
+        "altitud": 2900,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Kokani",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Kokani"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -65.7333,
+          -19.55
+        ]
+      },
+      "properties": {
+        "codigo": "BO082",
+        "nombre": "Potosí Aeropuerto",
+        "departamento": "Potosí",
+        "altitud": 3967,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Potosí Aeropuerto",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Potosí Aeropuerto"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -65.7597,
+          -19.5833
+        ]
+      },
+      "properties": {
+        "codigo": "BO083",
+        "nombre": "Potosi",
+        "departamento": "Potosí",
+        "altitud": 3967,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Potosi",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Potosi"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.85,
+          -18.7833
+        ]
+      },
+      "properties": {
+        "codigo": "BO084",
+        "nombre": "Quivincha",
+        "departamento": "Potosí",
+        "altitud": 4000,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Quivincha",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Quivincha"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -65.6667,
+          -19.4667
+        ]
+      },
+      "properties": {
+        "codigo": "BO085",
+        "nombre": "Tarapaya",
+        "departamento": "Potosí",
+        "altitud": 3300,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Tarapaya",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Tarapaya"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.8167,
+          -20.4667
+        ]
+      },
+      "properties": {
+        "codigo": "BO086",
+        "nombre": "Uyuni",
+        "departamento": "Potosí",
+        "altitud": 3670,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Uyuni",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Uyuni"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -64.2,
+          -19.6167
+        ]
+      },
+      "properties": {
+        "codigo": "BO087",
+        "nombre": "El Villar",
+        "departamento": "Chuquisaca",
+        "altitud": 1980,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=El Villar",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=El Villar"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -63.7333,
+          -20.7333
+        ]
+      },
+      "properties": {
+        "codigo": "BO088",
+        "nombre": "Huacaya",
+        "departamento": "Chuquisaca",
+        "altitud": 1500,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Huacaya",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Huacaya"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -64.1667,
+          -20.1167
+        ]
+      },
+      "properties": {
+        "codigo": "BO089",
+        "nombre": "Incahuasi",
+        "departamento": "Chuquisaca",
+        "altitud": 3200,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Incahuasi",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Incahuasi"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -65.15,
+          -19.1
+        ]
+      },
+      "properties": {
+        "codigo": "BO090",
+        "nombre": "La Palca",
+        "departamento": "Chuquisaca",
+        "altitud": 2850,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=La Palca",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=La Palca"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -63.9667,
+          -19.8167
+        ]
+      },
+      "properties": {
+        "codigo": "BO091",
+        "nombre": "Monteagudo",
+        "departamento": "Chuquisaca",
+        "altitud": 1200,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Monteagudo",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Monteagudo"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -64.3,
+          -19.3
+        ]
+      },
+      "properties": {
+        "codigo": "BO092",
+        "nombre": "Padilla",
+        "departamento": "Chuquisaca",
+        "altitud": 2200,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Padilla",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Padilla"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -65.0,
+          -19.05
+        ]
+      },
+      "properties": {
+        "codigo": "BO093",
+        "nombre": "San Roque - Chuquisaca",
+        "departamento": "Chuquisaca",
+        "altitud": 3100,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=San Roque - Chuquisaca",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=San Roque - Chuquisaca"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -65.2596,
+          -19.0333
+        ]
+      },
+      "properties": {
+        "codigo": "BO094",
+        "nombre": "Sucre",
+        "departamento": "Chuquisaca",
+        "altitud": 2810,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Sucre",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Sucre"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -64.1167,
+          -19.5
+        ]
+      },
+      "properties": {
+        "codigo": "BO095",
+        "nombre": "Tomina",
+        "departamento": "Chuquisaca",
+        "altitud": 1850,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Tomina",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Tomina"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -64.5,
+          -19.4
+        ]
+      },
+      "properties": {
+        "codigo": "BO096",
+        "nombre": "Villa Alcalá",
+        "departamento": "Chuquisaca",
+        "altitud": 2100,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Villa Alcalá",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Villa Alcalá"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -65.4,
+          -19.8333
+        ]
+      },
+      "properties": {
+        "codigo": "BO097",
+        "nombre": "Villa Charcas",
+        "departamento": "Chuquisaca",
+        "altitud": 3200,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Villa Charcas",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Villa Charcas"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -64.2833,
+          -19.25
+        ]
+      },
+      "properties": {
+        "codigo": "BO098",
+        "nombre": "Pulquina",
+        "departamento": "Chuquisaca",
+        "altitud": 2400,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Pulquina",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Pulquina"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -64.35,
+          -22.7333
+        ]
+      },
+      "properties": {
+        "codigo": "BO099",
+        "nombre": "Bermejo",
+        "departamento": "Tarija",
+        "altitud": 414,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Bermejo",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Bermejo"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -63.65,
+          -21.0
+        ]
+      },
+      "properties": {
+        "codigo": "BO100",
+        "nombre": "Caigua",
+        "departamento": "Tarija",
+        "altitud": 650,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Caigua",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Caigua"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -62.85,
+          -21.9167
+        ]
+      },
+      "properties": {
+        "codigo": "BO101",
+        "nombre": "Ibibobo",
+        "departamento": "Tarija",
+        "altitud": 380,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Ibibobo",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Ibibobo"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -64.2333,
+          -21.6833
+        ]
+      },
+      "properties": {
+        "codigo": "BO102",
+        "nombre": "Pasajes",
+        "departamento": "Tarija",
+        "altitud": 1450,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Pasajes",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Pasajes"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -64.5333,
+          -21.75
+        ]
+      },
+      "properties": {
+        "codigo": "BO103",
+        "nombre": "Rodeo",
+        "departamento": "Tarija",
+        "altitud": 1800,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Rodeo",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Rodeo"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -64.7297,
+          -21.5333
+        ]
+      },
+      "properties": {
+        "codigo": "BO104",
+        "nombre": "Tarija - Centro",
+        "departamento": "Tarija",
+        "altitud": 1854,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Tarija - Centro",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Tarija - Centro"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -63.4833,
+          -21.25
+        ]
+      },
+      "properties": {
+        "codigo": "BO105",
+        "nombre": "Villamontes",
+        "departamento": "Tarija",
+        "altitud": 385,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Villamontes",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Villamontes"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -63.6833,
+          -22.0333
+        ]
+      },
+      "properties": {
+        "codigo": "BO106",
+        "nombre": "Yacuiba",
+        "departamento": "Tarija",
+        "altitud": 640,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Yacuiba",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Yacuiba"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -64.05,
+          -21.0667
+        ]
+      },
+      "properties": {
+        "codigo": "BO107",
+        "nombre": "Yuticancha",
+        "departamento": "Tarija",
+        "altitud": 900,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Yuticancha",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Yuticancha"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -64.0,
+          -21.5333
+        ]
+      },
+      "properties": {
+        "codigo": "BO108",
+        "nombre": "Zurita",
+        "departamento": "Tarija",
+        "altitud": 1200,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Zurita",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Zurita"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -68.7333,
+          -11.0333
+        ]
+      },
+      "properties": {
+        "codigo": "BO109",
+        "nombre": "Cobija",
+        "departamento": "Pando",
+        "altitud": 290,
+        "pais": "Bolivia",
+        "fuente": "SENAMHI Bolivia",
+        "api_pronostico": "https://senamhi.gob.bo/pronosticodiarioJson.php?ciudad=Cobija",
+        "api_extendido": "https://senamhi.gob.bo/pronosticojson.php?ciudad=Cobija"
+      }
+    }
+  ]
+}
