@@ -228,13 +228,20 @@ def parse_html_visual(html, reg):
         if not loc:
             continue
         
+        # Intentar extraer viento del HTML cercano a la ciudad
+        wind_val = None
+        # Buscar patrón de viento en el texto cercano: "25-40 Km/h" o "entre X y Y km"
+        city_pos = text.find(ciudad_raw)
+        nearby = text[max(0, city_pos-200):city_pos+200] if city_pos > 0 else ""
+        wind_val = extract_wind([nearby]) if nearby else None
+
         # Build a 1-day entry (only today available from HTML)
         daily = {
             "time": [base.isoformat()],
             "temperature_2m_max": [float(tmax)],
             "temperature_2m_min": [float(tmin)],
             "precipitation_sum": [0.0],
-            "wind_speed_10m_max": [None],
+            "wind_speed_10m_max": [wind_val],
             "weather_code": [0],
             "__summary_text": [[]],
         }
@@ -350,8 +357,14 @@ def parse_block(block):
         for dm in re.finditer(r'\[([^\[\]]*)\]', texto_raw):
             texts = re.findall(r'["\']([^"\']*)["\']', dm.group(1))
             if texts: texto_days.append(texts)
+    # Intentar extraer campo 'viento' o 'velocidad' del JS si existe
+    viento_raw = get_array('viento') or get_array('velocidad') or get_array('vel')
+    vientos = []
+    if viento_raw:
+        vientos = re.findall(r"""["']([^"']*)["']""", viento_raw)
+
     return {"indice": indice, "tope": tope, "temps": temps,
-            "fechas": fechas, "texto_days": texto_days}
+            "fechas": fechas, "texto_days": texto_days, "vientos": vientos}
 
 def parse_temp(s):
     s = str(s or "").strip()
@@ -365,14 +378,42 @@ def parse_temp(s):
     except: return None, None
 
 def extract_wind(texts):
+    """Extrae velocidad de viento máxima desde textos de pronóstico DMC.
+    Patrones: 'entre 20 y 40 km/h', '25-40 km/h', '40 km/h', '25 a 40 km'
+    """
     t = " ".join(str(x) for x in texts if x)
     best = None
+
+    # "entre X y Y km" o "entre X y Y km/h"
     for m in re.finditer(r"entre\s+(\d+)\s+y\s+(\d+)\s*km", t, re.I):
         v = max(float(m.group(1)), float(m.group(2)))
         if best is None or v > best: best = v
+
+    # "X a Y km/h" o "X a Y km"
+    for m in re.finditer(r"(\d+)\s+a\s+(\d+)\s*km", t, re.I):
+        v = max(float(m.group(1)), float(m.group(2)))
+        if best is None or v > best: best = v
+
+    # "X-Y km/h"
+    for m in re.finditer(r"(\d+)\s*-\s*(\d+)\s*km", t, re.I):
+        v = max(float(m.group(1)), float(m.group(2)))
+        if best is None or v > best: best = v
+
+    # "X km/h" aislado
     for m in re.finditer(r"(\d+)\s*km/h", t, re.I):
         v = float(m.group(1))
         if best is None or v > best: best = v
+
+    # "vientos de X km" sin /h
+    for m in re.finditer(r"vientos?\s+(?:de\s+)?(\d+)\s*km(?!/h)", t, re.I):
+        v = float(m.group(1))
+        if best is None or v > best: best = v
+
+    # Rangos como "25-40 Km/h" en labels del mapa HTML
+    for m in re.finditer(r"(\d+)-(\d+)\s*Km", t, re.I):
+        v = max(float(m.group(1)), float(m.group(2)))
+        if best is None or v > best: best = v
+
     return best
 
 def wmo_from_text(texts):
@@ -413,7 +454,11 @@ def build_daily(p, loc):
         at = " ".join(t for t in pt if t).lower()
         daily["precipitation_sum"].append(2.0 if re.search(r"lluvi|chubasc|precipit", at)
                                           else 0.5 if "llovizna" in at else 0.0)
-        daily["wind_speed_10m_max"].append(extract_wind(pt))
+        # Primero intentar campo viento directo, luego extraer del texto
+        wind_from_field = None
+        if "vientos" in p and i < len(p["vientos"]):
+            wind_from_field = extract_wind([p["vientos"][i]])
+        daily["wind_speed_10m_max"].append(wind_from_field if wind_from_field is not None else extract_wind(pt))
         daily["weather_code"].append(wmo_from_text(pt))
         daily["__summary_text"].append(summarize(pt))
     return {"indice": loc["indice"], "ciudad": loc["ciudad"], "reg": loc["reg"],
