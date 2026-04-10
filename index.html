@@ -3009,7 +3009,8 @@ input, select {
 /* Capas meteorológicas OWM — mejor contraste */
 .owm-layer { mix-blend-mode: multiply; }
 .leaflet-tile-pane .owm-layer { filter: contrast(1.3) saturate(1.5) brightness(0.95); }
-.leaflet-tile-pane .owm-clouds { filter: contrast(3.0) brightness(0.6); opacity: 1 !important; }
+/* Nubosidad satelital — sin blend para mostrar imagen real */
+.leaflet-tile-pane .sat-clouds { filter: contrast(1.1) brightness(1.0); opacity: 1 !important; }
 </style>
 <style>
 
@@ -4372,7 +4373,7 @@ body.role-user #cmpPanel { display:block !important; }
 
                   <div style="font-size:8px;font-weight:700;color:var(--muted);letter-spacing:.5px;margin-bottom:4px;">CAPAS EN TIEMPO REAL</div>
                   <label style="display:flex;align-items:center;gap:6px;font-size:9px;cursor:pointer;"><input type="checkbox" id="mlRadar" style="margin:0;"> RADAR LLUVIA <span style="font-size:7px;color:var(--muted);margin-left:2px;">(RainViewer · <span id="mlRadarTs">—</span>)</span></label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:9px;cursor:pointer;"><input type="checkbox" id="mlNubes" style="margin:0;"> NUBOSIDAD <span style="font-size:7px;color:var(--muted);margin-left:2px;">(OWM · tiempo real)</span></label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:9px;cursor:pointer;"><input type="checkbox" id="mlNubes" style="margin:0;"> NUBOSIDAD <span style="font-size:7px;color:var(--muted);margin-left:2px;">(GOES-East IR · ~10min)</span></label>
                   <label style="display:flex;align-items:center;gap:6px;font-size:9px;cursor:pointer;"><input type="checkbox" id="mlPrecip" style="margin:0;"> PRECIPITACION <span style="font-size:7px;color:var(--muted);margin-left:2px;">(OWM · tiempo real)</span></label>
                   <label style="display:flex;align-items:center;gap:6px;font-size:9px;cursor:pointer;"><input type="checkbox" id="mlViento" style="margin:0;"> VIENTO <span style="font-size:7px;color:var(--muted);margin-left:2px;">(OWM · tiempo real)</span></label>
                   <label style="display:flex;align-items:center;gap:6px;font-size:9px;cursor:pointer;"><input type="checkbox" id="mlPresion" style="margin:0;"> PRESION <span style="font-size:7px;color:var(--muted);margin-left:2px;">(OWM · tiempo real)</span></label>
@@ -16675,8 +16676,19 @@ window.closeBulletinMenu = function(){
       );
     }
 
+    // GOES-East ABI Canal 13 Infrarrojo — imagen satelital real ~10min de retraso
+    function satCloudLayer(){
+      // NASA GIBS GOES-East infrared — más reciente disponible
+      // Usamos 'default' para que GIBS elija la imagen más reciente automáticamente
+      return L.tileLayer(
+        'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/' +
+        'GOES-East_ABI_Band13_Clean_Infrared/default/default/GoogleMapsCompatible/{z}/{y}/{x}.png',
+        {opacity:0.85, attribution:'NASA GIBS / NOAA GOES-East', tileSize:256, maxZoom:7, zIndex:100, className:'sat-clouds'}
+      );
+    }
+
     window.__ML = {
-      mlNubes:    owm('clouds_new',        0.95, 'owm-layer owm-clouds'),
+      mlNubes:    satCloudLayer(),
       mlPrecip:   owm('precipitation_new', 0.90),
       mlViento:   owm('wind_new',          0.85),
       mlPresion:  owm('pressure_new',      0.80),
