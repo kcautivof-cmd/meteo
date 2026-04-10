@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""fetch_dmc.py — fetches DMC region HTML + external JS files, parses Pronostico.push(...)"""
+"""fetch_dmc.py — fetches DMC region HTML + external JS files, parses Pronostico.push(...)
+   Fallback: parse temperaturas directamente del HTML visible si JS falla.
+"""
 
 import json, re, time, datetime, sys, ssl, unicodedata
 
@@ -90,6 +92,38 @@ LOC_BY_REG    = {}
 for l in LOCALITIES:
     LOC_BY_REG.setdefault(l["reg"], []).append(l)
 
+# Ciudad → indice mapping para parseo HTML directo
+CIUDAD_TO_INDICE = {
+    l["ciudad"].lower(): l["indice"] for l in LOCALITIES
+}
+# Variantes adicionales
+CIUDAD_ALIASES = {
+    "san pedro de atacama": "snpedro",
+    "san pedro": "snpedro",
+    "san antonio": "snantonio",
+    "san fernando": "snfernando",
+    "santa cruz": "stacruz",
+    "la serena": "serena",
+    "los vilos": "vilos",
+    "los angeles": "angeles",
+    "puerto montt": "pmontt",
+    "puerto natales": "natales",
+    "punta arenas": "parenas",
+    "puerto williams": "pwilliams",
+    "juan fernandez": "jfernandez",
+    "rapa nui": "rapanui",
+    "santiago oriente": "stgoo",
+    "santiago centro": "stgoc",
+    "santiago norte": "stgon",
+    "santiago sur": "stgos",
+    "santiago poniente": "stgop",
+    "el salvador": "salvador",
+    "vina del mar": "vdelmar",
+    "viña del mar": "vdelmar",
+    "valparaiso": "valpo",
+    "valparaíso": "valpo",
+}
+
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -115,7 +149,6 @@ def fetch_text(url, timeout=25):
     return raw.decode("utf-8", errors="replace")
 
 def extract_script_urls(html, base_url):
-    """Find <script src="..."> URLs that look like DMC data files (same as worker)."""
     urls = []
     seen = set()
     for m in re.finditer(r'<script[^>]+src\s*=\s*["\']([^"\']+)["\']', html, re.I):
@@ -124,7 +157,6 @@ def extract_script_urls(html, base_url):
             full = urljoin(base_url, src)
         except:
             continue
-        # Only include scripts that look like DMC forecast data files
         low = full.lower()
         if re.search(r'pronostic|condicion|tiempo|ciudad|region|portal', low):
             if full not in seen:
@@ -133,7 +165,6 @@ def extract_script_urls(html, base_url):
     return urls
 
 def extract_inline_scripts(html):
-    """Extract inline <script> content."""
     out = []
     for m in re.finditer(r'<script(?:[^>](?!src))*>(.*?)</script>', html, re.DOTALL | re.I):
         body = m.group(1).strip()
@@ -141,10 +172,84 @@ def extract_inline_scripts(html):
             out.append(body)
     return out
 
-# ── JS parsing: Pronostico.push({...}) ───────────────────────────────────────
+# ── HTML visual fallback parser ───────────────────────────────────────────────
+
+def normalize_ciudad(name):
+    """Normalize city name for lookup."""
+    s = unicodedata.normalize("NFD", name.lower())
+    s = re.sub(r"[\u0300-\u036f]", "", s).strip()
+    return s
+
+def parse_html_visual(html, reg):
+    """
+    Parse temperatures directly from the visible HTML map labels.
+    Pattern: <div ...>TMIN°</div><div ...>TMAX°</div>...<div ...>Ciudad</div>
+    or img alt tags with city names and temperature tooltips.
+    """
+    found = {}
+    base = datetime.date.today()
+
+    # Pattern 1: label blocks like: <div ...>18°</div><div ...>24°</div>...<div>Iquique</div>
+    # Try to find temperature+city pairs in the HTML
+    
+    # Remove HTML tags to get text, then find patterns
+    # Look for patterns like: 18° 24° ... Iquique
+    text = re.sub(r'<[^>]+>', ' ', html)
+    text = re.sub(r'\s+', ' ', text)
+    
+    # Pattern: NUMBER° NUMBER° CITYNAME
+    pattern = re.finditer(
+        r'(\d{1,3})°\s+(\d{1,3})°\s+([A-ZÁÉÍÓÚÑÜ][a-záéíóúñü A-ZÁÉÍÓÚÑÜ]{2,30}?)(?=\s+\d|\s*$|\s+[A-Z]{2,})',
+        text
+    )
+    
+    locs_in_reg = LOC_BY_REG.get(reg, [])
+    
+    for m in pattern:
+        t1, t2, ciudad_raw = int(m.group(1)), int(m.group(2)), m.group(3).strip()
+        tmin, tmax = min(t1, t2), max(t1, t2)
+        
+        # Lookup city
+        ciudad_norm = normalize_ciudad(ciudad_raw)
+        indice = CIUDAD_TO_INDICE.get(ciudad_norm) or CIUDAD_ALIASES.get(ciudad_norm)
+        
+        if not indice:
+            # Try partial match within region
+            for loc in locs_in_reg:
+                loc_norm = normalize_ciudad(loc["ciudad"])
+                if loc_norm in ciudad_norm or ciudad_norm in loc_norm:
+                    indice = loc["indice"]
+                    break
+        
+        if not indice or indice in found:
+            continue
+            
+        loc = LOC_BY_INDICE.get(indice)
+        if not loc:
+            continue
+        
+        # Build a 1-day entry (only today available from HTML)
+        daily = {
+            "time": [base.isoformat()],
+            "temperature_2m_max": [float(tmax)],
+            "temperature_2m_min": [float(tmin)],
+            "precipitation_sum": [0.0],
+            "wind_speed_10m_max": [None],
+            "weather_code": [0],
+            "__summary_text": [[]],
+        }
+        found[indice] = {
+            "indice": indice, "ciudad": loc["ciudad"],
+            "reg": loc["reg"], "lat": loc["lat"], "lon": loc["lon"],
+            "daily": daily, "horizon_days": 1
+        }
+        print(f"  HTML-visual OK {indice} ({ciudad_raw}): {tmin}/{tmax}")
+    
+    return found
+
+# ── JS parsing ────────────────────────────────────────────────────────────────
 
 def find_matching_brace(text, start):
-    """Find matching } for { at start, aware of quoted strings."""
     depth, i, in_str, sc, esc = 0, start, False, None, False
     while i < len(text):
         c = text[i]
@@ -162,24 +267,16 @@ def find_matching_brace(text, start):
     return None
 
 def extract_pronostico_blocks(js):
-    """
-    Extract all Pronostico.push({...}) blocks from merged JS.
-    Also tries var-assignment format: var stgoc = {...}
-    """
     blocks = []
-
-    # Format 1: Pronostico.push({...}) — standard DMC format
     for m in re.finditer(r'[Pp]ronostico\s*\.push\s*\(\s*\{', js):
         bpos = js.rfind('{', m.start(), m.end())
         block = find_matching_brace(js, bpos)
         if block and len(block) > 30:
             blocks.append(block)
-
     if blocks:
         print(f"    Format1 (push): {len(blocks)} blocks")
         return blocks
 
-    # Format 2: array of objects [{indice:"x",...},{...}]
     for m in re.finditer(r'[Pp]ronostico\s*=\s*\[', js):
         i = m.end() - 1
         depth, j = 0, i
@@ -196,12 +293,10 @@ def extract_pronostico_blocks(js):
                             blocks.append(b)
                     break
             j += 1
-
     if blocks:
         print(f"    Format2 (array): {len(blocks)} blocks")
         return blocks
 
-    # Format 3: indice-named variables: var stgoc = {...}; or stgoc = {...};
     for indice in LOC_BY_INDICE:
         for pat in [
             r'(?:var|let|const)\s+' + re.escape(indice) + r'\s*=\s*\{',
@@ -213,24 +308,18 @@ def extract_pronostico_blocks(js):
                 if block and len(block) > 30:
                     blocks.append(block)
                     break
-
     if blocks:
         print(f"    Format3 (var): {len(blocks)} blocks")
     return blocks
 
 def parse_block(block):
-    """Extract indice, tope, temperatura, texto, fecha from a JS object block."""
-    # indice
     m = re.search(r'indice\s*:\s*["\']?(\w+)["\']?', block, re.I)
     if not m:
         return None
     indice = m.group(1).strip().lower()
-
-    # tope
     mt = re.search(r'tope\s*:\s*(\d+)', block, re.I)
     tope = min(max(int(mt.group(1)) if mt else 5, 1), 10)
 
-    # temperatura: ["13/26","14/27",...] or [13/26,...] 
     def get_array(key):
         am = re.search(key + r'\s*:\s*(\[)', block, re.I)
         if not am:
@@ -253,21 +342,16 @@ def parse_block(block):
     temps = re.findall(r'["\']([^"\']*)["\']', temp_raw) if temp_raw else []
     if not temps and temp_raw:
         temps = re.findall(r'[\d./\-]+', temp_raw)
-
     fecha_raw = get_array('fecha')
     fechas = re.findall(r'["\']([^"\']*)["\']', fecha_raw) if fecha_raw else []
-
     texto_raw = get_array('texto')
     texto_days = []
     if texto_raw:
         for dm in re.finditer(r'\[([^\[\]]*)\]', texto_raw):
             texts = re.findall(r'["\']([^"\']*)["\']', dm.group(1))
             if texts: texto_days.append(texts)
-
     return {"indice": indice, "tope": tope, "temps": temps,
             "fechas": fechas, "texto_days": texto_days}
-
-# ── build daily ───────────────────────────────────────────────────────────────
 
 def parse_temp(s):
     s = str(s or "").strip()
@@ -348,15 +432,13 @@ def scrape_region(reg):
 
     print(f"[{reg}] HTML={len(html)} push={html.count('push(')} temperatura={html.count('temperatura')}")
 
-    # Merge: inline scripts + external JS files (KEY STEP - same as worker)
     inline = extract_inline_scripts(html)
     script_urls = extract_script_urls(html, url)
     print(f"  inline_scripts={len(inline)} external_scripts={len(script_urls)}")
-    for su in script_urls:
-        print(f"  fetching: {su}")
 
     merged = html + "\n".join(inline)
     for su in script_urls:
+        print(f"  fetching: {su}")
         try:
             js = fetch_text(su)
             merged += f"\n// SRC:{su}\n" + js
@@ -364,16 +446,10 @@ def scrape_region(reg):
         except Exception as e:
             print(f"    FAIL {su}: {e}")
 
-    # Print first occurrence of push( to understand the format
-    idx = merged.find("push(")
-    if idx >= 0:
-        print(f"  push( context: {repr(merged[max(0,idx-50):idx+80])}")
-
-    # Extract Pronostico blocks
+    # Try JS parsing first
     blocks = extract_pronostico_blocks(merged)
     print(f"  pronostico blocks: {len(blocks)}")
 
-    # Parse and build
     found = {}
     for block in blocks:
         p = parse_block(block)
@@ -386,11 +462,20 @@ def scrape_region(reg):
         tmin = result["daily"]["temperature_2m_min"][:3]
         print(f"  OK {p['indice']}: {p['tope']}d tmax={tmax} tmin={tmin}")
 
-    if not found:
-        print(f"  [!] 0 localities. Checking merged JS for known indices:")
-        for ind in list(LOC_BY_INDICE.keys())[:5]:
-            cnt = merged.count(ind)
-            print(f"    '{ind}' appears {cnt}x in merged JS")
+    # Fallback: parse HTML visual if JS parsing missed any localities in this region
+    locs_in_reg = LOC_BY_REG.get(reg, [])
+    missing = [l for l in locs_in_reg if l["indice"] not in found]
+    if missing:
+        print(f"  [fallback HTML-visual] missing: {[l['indice'] for l in missing]}")
+        html_found = parse_html_visual(html, reg)
+        for indice, data in html_found.items():
+            if indice not in found:
+                found[indice] = data
+
+    # Still missing after fallback
+    still_missing = [l["indice"] for l in locs_in_reg if l["indice"] not in found]
+    if still_missing:
+        print(f"  [!] still missing after fallback: {still_missing}")
 
     return found
 
