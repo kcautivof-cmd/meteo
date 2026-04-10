@@ -3007,18 +3007,9 @@ input, select {
 
 
 /* Capas meteorológicas OWM — mejor contraste */
-.owm-layer { mix-blend-mode: normal; }
-.leaflet-tile-pane .owm-presion {
-  mix-blend-mode: normal !important;
-  filter: contrast(3.0) saturate(4.0) brightness(0.85) hue-rotate(10deg);
-  opacity: 1 !important;
-}
+.owm-layer { mix-blend-mode: multiply; }
 .leaflet-tile-pane .owm-layer { filter: contrast(1.3) saturate(1.5) brightness(0.95); }
-.leaflet-tile-pane .owm-clouds { 
-  mix-blend-mode: normal !important;
-  filter: contrast(5.0) brightness(0.4) grayscale(0.8);
-  opacity: 1 !important; 
-}
+.leaflet-tile-pane .owm-clouds { filter: contrast(3.0) brightness(0.6); opacity: 1 !important; }
 </style>
 <style>
 
@@ -5573,10 +5564,66 @@ try {
     __uav.layerBuffers = __uav.layerBuffers || L.layerGroup();
     __uav.layerDraw = __uav.layerDraw || L.featureGroup();
 
+    // SENAMHI Bolivia — estaciones meteorológicas
+    __uav.layerBolivia = __uav.layerBolivia || L.geoJSON(null, {
+        pointToLayer: (f, latlng) => L.circleMarker(latlng, {
+            radius: 5, color: '#ff6f00', weight: 2, fillColor: '#ffb300', fillOpacity: 0.85
+        }),
+        onEachFeature: (f, layer) => {
+            const p = f.properties;
+            const ciudad = encodeURIComponent(p.nombre);
+            layer.bindPopup(`
+                <div style="min-width:180px">
+                <b style="color:#ff6f00">🇧🇴 SENAMHI Bolivia</b><br>
+                <b>${p.nombre}</b><br>
+                <small>${p.departamento} · ${p.altitud}m</small><br>
+                <hr style="margin:4px 0">
+                <div id="bo-data-${p.codigo}" style="font-size:11px;color:#aaa">Cargando...</div>
+                </div>
+            `, { maxWidth: 220 });
+            layer.on('popupopen', () => {
+                fetch('https://meteo-proxy.kcautivof.workers.dev/senamhi-bo?ciudad=' + ciudad)
+                    .then(r => r.ok ? r.json() : null)
+                    .then(d => {
+                        const el = document.getElementById('bo-data-' + p.codigo);
+                        if (!el) return;
+                        if (d && d.TMAX !== undefined) {
+                            el.innerHTML = `🌡️ ${d.TMIN}°/${d.TMAX}°C &nbsp; 💧${Math.round(d.HR||0)}% &nbsp; 🌧️${d.PCPN||0}mm<br><small style="color:#ccc">${d.fenomeno||''}</small>`;
+                        } else {
+                            el.innerHTML = '<small style="color:#aaa">Sin datos disponibles</small>';
+                        }
+                    }).catch(() => {
+                        const el = document.getElementById('bo-data-' + p.codigo);
+                        if (el) el.innerHTML = '<small style="color:#aaa">Sin conexión</small>';
+                    });
+            });
+        }
+    });
+
+    // SENAMHI Perú — estaciones meteorológicas
+    __uav.layerPeru = __uav.layerPeru || L.geoJSON(null, {
+        pointToLayer: (f, latlng) => L.circleMarker(latlng, {
+            radius: 5, color: '#c62828', weight: 2, fillColor: '#ef5350', fillOpacity: 0.85
+        }),
+        onEachFeature: (f, layer) => {
+            const p = f.properties;
+            layer.bindPopup(`
+                <div style="min-width:180px">
+                <b style="color:#ef5350">🇵🇪 SENAMHI Perú</b><br>
+                <b>${p.nombre}</b><br>
+                <small>${p.departamento} · ${p.provincia} · ${p.altitud}m</small><br>
+                <small style="color:#888">Cód: ${p.codigo}</small>
+                </div>
+            `, { maxWidth: 220 });
+        }
+    });
+
     // Add overlays (solo una vez)
     if (!__uav._added) {
         __uav.layerPRD.addTo(__pickMap);
         __uav.layerAirports.addTo(__pickMap);
+        __uav.layerBolivia.addTo(__pickMap);
+        __uav.layerPeru.addTo(__pickMap);
         __uav.layerBuffers.addTo(__pickMap);
         __uav.layerDraw.addTo(__pickMap);
 
@@ -5584,6 +5631,8 @@ try {
         __uav.layersCtl = L.control.layers(null, {
             "ZONAS DGAC (P/R/D) — CHILE": __uav.layerPRD,
             "AERÓDROMOS (CHILE)": __uav.layerAirports,
+            "ESTACIONES SENAMHI BOLIVIA": __uav.layerBolivia,
+            "ESTACIONES SENAMHI PERÚ": __uav.layerPeru,
             "BUFFERS RPAS": __uav.layerBuffers,
             "Layers edit": __uav.layerDraw
         }, { collapsed: true }).addTo(__pickMap);
@@ -5598,13 +5647,19 @@ try {
     if (!__uav._loaded) {
         Promise.allSettled([
             fetch("./chile_prd_zones.geojson", { cache: "no-store" }).then(r => r.ok ? r.json() : null),
-            fetch("./chile_airports.geojson", { cache: "no-store" }).then(r => r.ok ? r.json() : null)
-        ]).then(([prdRes, aptRes]) => {
+            fetch("./chile_airports.geojson", { cache: "no-store" }).then(r => r.ok ? r.json() : null),
+            fetch("./senamhi_bolivia.geojson", { cache: "no-store" }).then(r => r.ok ? r.json() : null),
+            fetch("./senamhi_peru.geojson", { cache: "no-store" }).then(r => r.ok ? r.json() : null)
+        ]).then(([prdRes, aptRes, boRes, peRes]) => {
             const prd = prdRes.status === "fulfilled" ? prdRes.value : null;
             const apts = aptRes.status === "fulfilled" ? aptRes.value : null;
+            const bo  = boRes.status  === "fulfilled" ? boRes.value  : null;
+            const pe  = peRes.status  === "fulfilled" ? peRes.value  : null;
 
-            if (prd && prd.features) __uav.layerPRD.addData(prd);
+            if (prd  && prd.features)  __uav.layerPRD.addData(prd);
             if (apts && apts.features) __uav.layerAirports.addData(apts);
+            if (bo   && bo.features)   __uav.layerBolivia.addData(bo);
+            if (pe   && pe.features)   __uav.layerPeru.addData(pe);
 
             __uav._loaded = true;
         }).catch(() => { /* silencioso */ });
@@ -16685,10 +16740,10 @@ window.closeBulletinMenu = function(){
     }
 
     window.__ML = {
-      mlNubes:    owm('clouds_new',        1.0,  'owm-layer owm-clouds'),
+      mlNubes:    owm('clouds_new',        0.95, 'owm-layer owm-clouds'),
       mlPrecip:   owm('precipitation_new', 0.90),
       mlViento:   owm('wind_new',          0.85),
-      mlPresion:  owm('pressure_new', 1.0, 'owm-layer owm-presion'),
+      mlPresion:  owm('pressure_new',      0.80),
       mlTemp:     owm('temp_new',          0.85),
 
     };
