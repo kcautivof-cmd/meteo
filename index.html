@@ -3009,8 +3009,11 @@ input, select {
 /* Capas meteorológicas OWM — mejor contraste */
 .owm-layer { mix-blend-mode: multiply; }
 .leaflet-tile-pane .owm-layer { filter: contrast(1.3) saturate(1.5) brightness(0.95); }
-/* Nubosidad satelital — sin blend para mostrar imagen real */
-.leaflet-tile-pane .sat-clouds { filter: contrast(1.1) brightness(1.0); opacity: 1 !important; }
+.leaflet-tile-pane .owm-clouds { filter: contrast(3.0) brightness(0.6); opacity: 1 !important; }
+/* Nubosidad satelital GOES-East — sin blend para mostrar colores reales IR */
+.leaflet-tile-pane .sat-clouds { mix-blend-mode: normal !important; filter: contrast(1.2) brightness(0.95); opacity: 1 !important; }
+/* Presión — invertir colores para mejor contraste isobaras */
+.leaflet-tile-pane .owm-presion { mix-blend-mode: normal !important; filter: contrast(1.8) saturate(2.5) brightness(1.1) hue-rotate(0deg); opacity: 1 !important; }
 </style>
 <style>
 
@@ -16676,22 +16679,15 @@ window.closeBulletinMenu = function(){
       );
     }
 
-    // GOES-East ABI Canal 13 Infrarrojo — imagen satelital real ~10min de retraso
-    function satCloudLayer(){
-      // NASA GIBS GOES-East infrared — más reciente disponible
-      // Usamos 'default' para que GIBS elija la imagen más reciente automáticamente
-      return L.tileLayer(
-        'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/' +
-        'GOES-East_ABI_Band13_Clean_Infrared/default/default/GoogleMapsCompatible/{z}/{y}/{x}.png',
-        {opacity:0.85, attribution:'NASA GIBS / NOAA GOES-East', tileSize:256, maxZoom:7, zIndex:100, className:'sat-clouds'}
-      );
-    }
-
     window.__ML = {
-      mlNubes:    satCloudLayer(),
+      // GOES-East ABI Band 13 infrarrojo — imagen satelital real NOAA/NASA
+      mlNubes:    L.tileLayer(
+        'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/GOES-East_ABI_Band13_Clean_Infrared/default/default/GoogleMapsCompatible/{z}/{y}/{x}.png',
+        {opacity:0.90, attribution:'NASA GIBS / NOAA GOES-East', tileSize:256, maxZoom:7, zIndex:100, className:'sat-clouds'}
+      ),
       mlPrecip:   owm('precipitation_new', 0.90),
       mlViento:   owm('wind_new',          0.85),
-      mlPresion:  owm('pressure_new',      0.80),
+      mlPresion:  owm('pressure_new',      0.95, 'owm-layer owm-presion'),
       mlTemp:     owm('temp_new',          0.85),
 
     };
