@@ -5573,29 +5573,54 @@ try {
             const p = f.properties;
             const ciudad = encodeURIComponent(p.nombre);
             layer.bindPopup(`
-                <div style="min-width:180px">
+                <div style="min-width:200px">
                 <b style="color:#ff6f00">🇧🇴 SENAMHI Bolivia</b><br>
                 <b>${p.nombre}</b><br>
                 <small>${p.departamento} · ${p.altitud}m</small><br>
                 <hr style="margin:4px 0">
                 <div id="bo-data-${p.codigo}" style="font-size:11px;color:#aaa">Cargando...</div>
                 </div>
-            `, { maxWidth: 220 });
-            layer.on('popupopen', () => {
-                fetch('https://meteo-proxy.kcautivof.workers.dev/senamhi-bo?ciudad=' + ciudad)
-                    .then(r => r.ok ? r.json() : null)
-                    .then(d => {
-                        const el = document.getElementById('bo-data-' + p.codigo);
-                        if (!el) return;
-                        if (d && d.TMAX !== undefined) {
-                            el.innerHTML = `🌡️ ${d.TMIN}°/${d.TMAX}°C &nbsp; 💧${Math.round(d.HR||0)}% &nbsp; 🌧️${d.PCPN||0}mm<br><small style="color:#ccc">${d.fenomeno||''}</small>`;
-                        } else {
-                            el.innerHTML = '<small style="color:#aaa">Sin datos disponibles</small>';
-                        }
-                    }).catch(() => {
-                        const el = document.getElementById('bo-data-' + p.codigo);
-                        if (el) el.innerHTML = '<small style="color:#aaa">Sin conexión</small>';
-                    });
+            `, { maxWidth: 260 });
+            layer.on('popupopen', function() {
+                var _cid = p.codigo, _nombre = p.nombre;
+                var _lat = f.geometry.coordinates[1], _lon = f.geometry.coordinates[0];
+                var _el = document.getElementById('bo-data-' + _cid);
+                if (!_el) return;
+                _el.innerHTML = '<small style="color:#aaa">&#9203; Cargando...</small>';
+                Promise.all([
+                    fetch('https://meteo-proxy.kcautivof.workers.dev/senamhi-bo?ciudad=' + encodeURIComponent(_nombre) + '&lat=' + _lat + '&lon=' + _lon)
+                        .then(function(r) {{ return r.ok ? r.json() : null; }}).catch(function() {{ return null; }}),
+                    fetch('https://meteo-proxy.kcautivof.workers.dev/senamhi-boforecast?ciudad=' + encodeURIComponent(_nombre))
+                        .then(function(r) {{ return r.ok ? r.json() : null; }}).catch(function() {{ return null; }})
+                ]).then(function(res) {{
+                    var hoy = res[0], fc = res[1];
+                    if (!_el) return;
+                    var html = '';
+                    if (hoy && hoy.TMAX !== undefined) {{
+                        html += '<table style="width:100%;border-collapse:collapse;font-size:11px">';
+                        html += '<tr><td>&#127777; Temp</td><td><b>' + (hoy.TMIN||'--') + '&deg;/' + (hoy.TMAX||'--') + '&deg;C</b></td><td>&#128167; HR</td><td>' + Math.round(hoy.HR||0) + '%</td></tr>';
+                        html += '<tr><td>&#127783; Precip</td><td>' + (hoy.PCPN||0) + ' mm</td><td>&#128168; Viento</td><td>' + (hoy.vientos||'--') + ' m/s</td></tr>';
+                        html += '<tr><td colspan="4" style="color:#ccc;font-size:10px">' + (hoy.fenomeno||'') + '</td></tr></table><hr style="margin:3px 0">';
+                    }}
+                    var daily = fc && fc.daily;
+                    if (daily && daily.fecha && daily.fecha.length) {{
+                        html += '<small style="color:#ff6f00;font-weight:700">&#x1F4C5; PRONÓSTICO 4 DÍAS</small>';
+                        html += '<table style="width:100%;border-collapse:collapse;font-size:10px;margin-top:2px">';
+                        html += '<tr style="color:#666;font-size:9px"><th style="text-align:left;padding:1px 3px">Día</th><th>Fen.</th><th>min/max</th><th>mm</th></tr>';
+                        for (var i = 0; i < daily.fecha.length; i++) {{
+                            html += '<tr style="background:' + (i%2 ? '' : 'rgba(255,255,255,0.04)') + '">';
+                            html += '<td style="padding:1px 4px;color:#aaa">' + (daily.fecha[i]||'--') + '</td>';
+                            html += '<td style="padding:1px 4px;color:#ccc;font-size:9px">' + (daily.fenomeno&&daily.fenomeno[i] ? daily.fenomeno[i].slice(0,11) : '--') + '</td>';
+                            html += '<td style="padding:1px 4px"><b>' + (daily.tmin&&daily.tmin[i]!==undefined?daily.tmin[i]:'?') + '/' + (daily.tmax&&daily.tmax[i]!==undefined?daily.tmax[i]:'?') + '&deg;</b></td>';
+                            html += '<td style="padding:1px 4px">' + (daily.pcpn&&daily.pcpn[i]!==undefined?daily.pcpn[i]:0) + '</td></tr>';
+                        }}
+                        html += '</table>';
+                    }} else {{
+                        html += '<small style="color:#666">Sin pronóstico extendido</small>';
+                    }}
+                    html += '<br><small style="color:#4caf50;font-weight:700">&#9679; SENAMHI Bolivia Oficial</small>';
+                    _el.innerHTML = html;
+                }}).catch(function() {{ if (_el) _el.innerHTML = '<small style="color:#aaa">Sin conexión</small>'; }});
             });
         }
     });
@@ -5607,14 +5632,24 @@ try {
         }),
         onEachFeature: (f, layer) => {
             const p = f.properties;
-            layer.bindPopup(`
-                <div style="min-width:180px">
-                <b style="color:#ef5350">🇵🇪 SENAMHI Perú</b><br>
-                <b>${p.nombre}</b><br>
-                <small>${p.departamento} · ${p.provincia} · ${p.altitud}m</small><br>
-                <small style="color:#888">Cód: ${p.codigo}</small>
-                </div>
-            `, { maxWidth: 220 });
+            layer.bindPopup(function() {
+                var div = L.DomUtil.create('div', '');
+                var cod = String(p.codigo || '');
+                var est = String(p.estado || 'REAL');
+                var tipo = String(p.tipo_est || 'M');
+                var cate = String(p.categoria || 'CONVENCIONAL').toUpperCase();
+                var codOld = String(p.codigo_ant || '');
+                div.style.minWidth = '860px';
+                div.innerHTML =
+                    '<div style="padding-bottom:4px"><b style="color:#ef5350">&#x1F1F5;&#x1F1EA; SENAMHI Per&uacute; Oficial</b>'
+                    + ' &middot; <b>' + p.nombre + '</b>'
+                    + ' <small style="color:#888">' + p.departamento + ' &middot; ' + p.altitud + 'm &middot; C&oacute;d:' + cod + '</small></div>'
+                    + '<iframe src="https://www.senamhi.gob.pe/mapas/mapa-estaciones-2/map_red_graf.php'
+                    + '?cod=' + cod + '&estado=' + est + '&tipo_esta=' + tipo
+                    + '&cate=' + encodeURIComponent(cate) + '&cod_old=' + codOld
+                    + '" width="850" height="430" frameborder="0" style="border:none;display:block"></iframe>';
+                return div;
+            }, { maxWidth: 'auto', minWidth: 860 })
         }
     });
 
