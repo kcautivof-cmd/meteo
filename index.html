@@ -3855,8 +3855,10 @@ body.role-user #cmpPanel { display:block !important; }
             <div class="alerts-controls">
                 <!-- Selector de fuente siempre visible -->
                 <select id="alertsSource" class="alerts-select" title="Fuente de alertas" onchange="__alertsSwitchSource(this.value)" style="font-weight:700;">
-                    <option value="senapred" selected>SENAPRED</option>
-                    <option value="dmc">DMC OFICIAL</option>
+                    <option value="senapred" selected>SENAPRED (CHILE)</option>
+                    <option value="dmc">DMC OFICIAL (CHILE)</option>
+                    <option value="senamhi_bo">SENAMHI BOLIVIA</option>
+                    <option value="senamhi_pe">SENAMHI PERÚ</option>
                 </select>
 
                 <!-- Filtros SENAPRED -->
@@ -5050,6 +5052,8 @@ async function fetchAlerts(){
 let __alertsActiveSource = 'senapred';
 
 function __alertsSwitchSource(src){
+    if(src === 'senamhi_bo'){ __alertsLoadSenamhiBo(); return; }
+    if(src === 'senamhi_pe'){ __alertsLoadSenamhiPe(); return; }
     __alertsActiveSource = src;
     const ctrl       = document.querySelector('.alerts-controls');
     const regSel     = document.getElementById('alertsFilterRegion');
@@ -5564,10 +5568,66 @@ try {
     __uav.layerBuffers = __uav.layerBuffers || L.layerGroup();
     __uav.layerDraw = __uav.layerDraw || L.featureGroup();
 
+    // SENAMHI Bolivia — estaciones meteorológicas
+    __uav.layerBolivia = __uav.layerBolivia || L.geoJSON(null, {
+        pointToLayer: (f, latlng) => L.circleMarker(latlng, {
+            radius: 5, color: '#ff6f00', weight: 2, fillColor: '#ffb300', fillOpacity: 0.85
+        }),
+        onEachFeature: (f, layer) => {
+            const p = f.properties;
+            const ciudad = encodeURIComponent(p.nombre);
+            layer.bindPopup(`
+                <div style="min-width:180px">
+                <b style="color:#ff6f00">🇧🇴 SENAMHI Bolivia</b><br>
+                <b>${p.nombre}</b><br>
+                <small>${p.departamento} · ${p.altitud}m</small><br>
+                <hr style="margin:4px 0">
+                <div id="bo-data-${p.codigo}" style="font-size:11px;color:#aaa">Cargando...</div>
+                </div>
+            `, { maxWidth: 220 });
+            layer.on('popupopen', () => {
+                fetch('https://meteo-proxy.kcautivof.workers.dev/senamhi-bo?ciudad=' + ciudad)
+                    .then(r => r.ok ? r.json() : null)
+                    .then(d => {
+                        const el = document.getElementById('bo-data-' + p.codigo);
+                        if (!el) return;
+                        if (d && d.TMAX !== undefined) {
+                            el.innerHTML = `🌡️ ${d.TMIN}°/${d.TMAX}°C &nbsp; 💧${Math.round(d.HR||0)}% &nbsp; 🌧️${d.PCPN||0}mm<br><small style="color:#ccc">${d.fenomeno||''}</small>`;
+                        } else {
+                            el.innerHTML = '<small style="color:#aaa">Sin datos disponibles</small>';
+                        }
+                    }).catch(() => {
+                        const el = document.getElementById('bo-data-' + p.codigo);
+                        if (el) el.innerHTML = '<small style="color:#aaa">Sin conexión</small>';
+                    });
+            });
+        }
+    });
+
+    // SENAMHI Perú — estaciones meteorológicas
+    __uav.layerPeru = __uav.layerPeru || L.geoJSON(null, {
+        pointToLayer: (f, latlng) => L.circleMarker(latlng, {
+            radius: 5, color: '#c62828', weight: 2, fillColor: '#ef5350', fillOpacity: 0.85
+        }),
+        onEachFeature: (f, layer) => {
+            const p = f.properties;
+            layer.bindPopup(`
+                <div style="min-width:180px">
+                <b style="color:#ef5350">🇵🇪 SENAMHI Perú</b><br>
+                <b>${p.nombre}</b><br>
+                <small>${p.departamento} · ${p.provincia} · ${p.altitud}m</small><br>
+                <small style="color:#888">Cód: ${p.codigo}</small>
+                </div>
+            `, { maxWidth: 220 });
+        }
+    });
+
     // Add overlays (solo una vez)
     if (!__uav._added) {
         __uav.layerPRD.addTo(__pickMap);
         __uav.layerAirports.addTo(__pickMap);
+        __uav.layerBolivia.addTo(__pickMap);
+        __uav.layerPeru.addTo(__pickMap);
         __uav.layerBuffers.addTo(__pickMap);
         __uav.layerDraw.addTo(__pickMap);
 
@@ -5575,6 +5635,8 @@ try {
         __uav.layersCtl = L.control.layers(null, {
             "ZONAS DGAC (P/R/D) — CHILE": __uav.layerPRD,
             "AERÓDROMOS (CHILE)": __uav.layerAirports,
+            "ESTACIONES SENAMHI BOLIVIA": __uav.layerBolivia,
+            "ESTACIONES SENAMHI PERÚ": __uav.layerPeru,
             "BUFFERS RPAS": __uav.layerBuffers,
             "Layers edit": __uav.layerDraw
         }, { collapsed: true }).addTo(__pickMap);
@@ -5589,13 +5651,19 @@ try {
     if (!__uav._loaded) {
         Promise.allSettled([
             fetch("./chile_prd_zones.geojson", { cache: "no-store" }).then(r => r.ok ? r.json() : null),
-            fetch("./chile_airports.geojson", { cache: "no-store" }).then(r => r.ok ? r.json() : null)
-        ]).then(([prdRes, aptRes]) => {
+            fetch("./chile_airports.geojson", { cache: "no-store" }).then(r => r.ok ? r.json() : null),
+            fetch("./senamhi_bolivia.geojson", { cache: "no-store" }).then(r => r.ok ? r.json() : null),
+            fetch("./senamhi_peru.geojson", { cache: "no-store" }).then(r => r.ok ? r.json() : null)
+        ]).then(([prdRes, aptRes, boRes, peRes]) => {
             const prd = prdRes.status === "fulfilled" ? prdRes.value : null;
             const apts = aptRes.status === "fulfilled" ? aptRes.value : null;
+            const bo  = boRes.status  === "fulfilled" ? boRes.value  : null;
+            const pe  = peRes.status  === "fulfilled" ? peRes.value  : null;
 
-            if (prd && prd.features) __uav.layerPRD.addData(prd);
+            if (prd  && prd.features)  __uav.layerPRD.addData(prd);
             if (apts && apts.features) __uav.layerAirports.addData(apts);
+            if (bo   && bo.features)   __uav.layerBolivia.addData(bo);
+            if (pe   && pe.features)   __uav.layerPeru.addData(pe);
 
             __uav._loaded = true;
         }).catch(() => { /* silencioso */ });
@@ -7450,36 +7518,23 @@ globalData = data;
                 // Construir etiqueta legible de fuente
                 if(!data?.__source_label){
                     const srcSel = (document.getElementById('sourceSelect')?.value || 'dmc_accu');
-                    if(data?.__source === 'senamhi_bo') window.__lastSourceLabel = 'SENAMHI BOLIVIA · ' + (data.__station || '');
-                    else if(data?.__source === 'senamhi_pe') window.__lastSourceLabel = 'SENAMHI PERÚ · ' + (data.__station || '');
-                    else if(srcSel === 'dmc_accu') window.__lastSourceLabel = 'DMC / ACCUWEATHER';
+                    if(srcSel === 'dmc_accu') window.__lastSourceLabel = 'DMC / ACCUWEATHER';
                     else if(srcSel === 'dmc') window.__lastSourceLabel = 'DMC (WRF)';
                     else if(srcSel === 'openmeteo') window.__lastSourceLabel = 'OPEN-METEO';
                     else window.__lastSourceLabel = usedSource;
                 }
 
-                // Guardar datos SENAMHI si aplica
-                if (data?.__source === 'senamhi_bo') {
-                    window.__senamhiBoData = data;
-                    window.__dmcCurrentData = null;
-                } else if (data?.__source === 'senamhi_pe') {
-                    window.__senamhiPeData = data;
-                    window.__dmcCurrentData = null;
-                } else {
-                    window.__senamhiBoData = null;
-                    window.__senamhiPeData = null;
-                    // Fetch DMC oficial en paralelo solo si estamos en Chile
-                    try {
-                        const _dmcBase = (WORKER_BASE_URL || '').replace(/\/$/, '');
-                        const _dmcUrl = `${_dmcBase}/dmc/current?lat=${latitude}&lon=${longitude}`;
-                        const _dmcRes = await fetch(_dmcUrl, { cache: 'no-store' });
-                        if (_dmcRes.ok) {
-                            window.__dmcCurrentData = await _dmcRes.json();
-                        } else {
-                            window.__dmcCurrentData = null;
-                        }
-                    } catch(_e) { window.__dmcCurrentData = null; }
-                }
+                // Fetch DMC oficial en paralelo para datos de estación de referencia
+                try {
+                    const _dmcBase = (WORKER_BASE_URL || '').replace(/\/$/, '');
+                    const _dmcUrl = `${_dmcBase}/dmc/current?lat=${latitude}&lon=${longitude}`;
+                    const _dmcRes = await fetch(_dmcUrl, { cache: 'no-store' });
+                    if (_dmcRes.ok) {
+                        window.__dmcCurrentData = await _dmcRes.json();
+                    } else {
+                        window.__dmcCurrentData = null;
+                    }
+                } catch(_e) { window.__dmcCurrentData = null; }
 
                 renderHeader(name, country, usedModel, latitude, longitude);
                 renderCurrent(data, latitude, longitude);
@@ -7681,44 +7736,11 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
             val('valGust', cur.wind_gusts_10m, " KM/H");
             val('valUv', cur.uv_index, "");
 
-            // === BLOQUE ESTACIÓN OFICIAL (DMC / SENAMHI) ===
+            // === BLOQUE DMC OFICIAL ===
             try {
                 const _set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-                
-                // Si es SENAMHI Bolivia
-                if (window.__senamhiBoData) {
-                    const d = window.__senamhiBoData;
-                    const lbl = document.getElementById('valDmcStation');
-                    if (lbl) { lbl.textContent = (d.__station || '--') + ' · ' + (d.__departamento || ''); }
-                    const stLbl = document.querySelector('#dmcRefBlock span[style*="0.62em"]');
-                    if (stLbl) stLbl.textContent = '🇧🇴 ESTACIÓN SENAMHI BOLIVIA';
-                    const tmax = d.daily?.temperature_2m_max?.[0];
-                    const tmin = d.daily?.temperature_2m_min?.[0];
-                    _set('valDmcObs', tmax != null ? tmax + '°/' + tmin + '°' : '--');
-                    _set('valDmcHora', 'HOY');
-                    _set('valDmcProno', d.daily?.__summary_text?.[0]?.[0] || '--');
-                    const elDiff = document.getElementById('valDmcDiff');
-                    if (elDiff) { elDiff.textContent = (d.__station_dist_km || '--') + 'km'; elDiff.style.color = 'var(--accent)'; }
-                    
-                // Si es SENAMHI Perú  
-                } else if (window.__senamhiPeData) {
-                    const d = window.__senamhiPeData;
-                    const lbl = document.getElementById('valDmcStation');
-                    if (lbl) { lbl.textContent = (d.__station || '--'); }
-                    const stLbl = document.querySelector('#dmcRefBlock span[style*="0.62em"]');
-                    if (stLbl) stLbl.textContent = '🇵🇪 ESTACIÓN SENAMHI PERÚ';
-                    _set('valDmcObs', '--');
-                    _set('valDmcHora', '--');
-                    _set('valDmcProno', '--');
-                    const elDiff = document.getElementById('valDmcDiff');
-                    if (elDiff) { elDiff.textContent = (d.__station_dist_km || '--') + 'km'; elDiff.style.color = 'var(--accent)'; }
-
-                // Chile — DMC normal
-                } else {
-                    const stLbl = document.querySelector('#dmcRefBlock span[style*="0.62em"]');
-                    if (stLbl) stLbl.textContent = 'ESTACIÓN OFICIAL DMC';
-                    const obs = getDmcObservedBundle();
-                    _set('valDmcStation', obs.stationName || '--');
+                const obs = getDmcObservedBundle();
+                _set('valDmcStation', obs.stationName || '--');
                 _set('valDmcHora', obs.hora || '--');
                 _set('valDmcObs', Number.isFinite(obs.obsTemp) ? obs.obsTemp.toFixed(1) + '°' : '--');
                 const pronoTemp = Number(obs.current?.temperature_2m);
@@ -7734,7 +7756,6 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
                         elDiff.style.color = 'var(--text)';
                     }
                 }
-                } // fin else Chile
             } catch(_e) {}
         }
 
@@ -16832,6 +16853,124 @@ if(typeof closeBulletinMenu === 'undefined'){
     if(m) m.style.display = 'none';
   };
 }
+</script>
+
+<script>
+// ── ALERTAS SENAMHI BOLIVIA ─────────────────────────────────────────────────
+async function __alertsLoadSenamhiBo(){
+    const meta = document.getElementById('alertsMeta');
+    const container = document.getElementById('alertsContainer') || document.getElementById('alertsList');
+    if(meta) meta.textContent = 'CARGANDO ALERTAS SENAMHI BOLIVIA...';
+    try {
+        const PROXY = 'https://meteo-proxy.kcautivof.workers.dev';
+        const r = await fetch(PROXY + '/senamhi-bo/alerts');
+        const data = r.ok ? await r.json() : { alerts: [] };
+        const alerts = data.alerts || [];
+        const now = new Date().toLocaleTimeString('es-CL',{hour12:false,hour:'2-digit',minute:'2-digit'});
+        if(meta) meta.textContent = `FUENTE: SENAMHI BOLIVIA | ${alerts.length} ALERTAS | ${now}`;
+        if(container){
+            if(!alerts.length){
+                container.innerHTML = '<div style="padding:12px;color:var(--muted);font-size:11px">SIN ALERTAS ACTIVAS EN BOLIVIA</div>';
+            } else {
+                container.innerHTML = alerts.map(a => {
+                    const col = a.nivel==='ROJO'?'#d32f2f':a.nivel==='NARANJA'?'#e65100':'#f9a825';
+                    return `<div style="padding:8px;border-left:3px solid ${col};margin-bottom:4px;background:var(--panel)">
+                        <span style="color:${col};font-weight:700;font-size:10px">🇧🇴 ${a.nivel}</span>
+                        <div style="font-size:11px;margin-top:2px">${a.titulo}</div>
+                        ${a.link?`<a href="${a.link}" target="_blank" style="font-size:9px;color:var(--accent)">VER →</a>`:''}
+                    </div>`;
+                }).join('');
+            }
+        }
+    } catch(e){ if(meta) meta.textContent = 'ERROR ALERTAS BOLIVIA'; }
+}
+
+// ── ALERTAS SENAMHI PERÚ ────────────────────────────────────────────────────
+async function __alertsLoadSenamhiPe(){
+    const meta = document.getElementById('alertsMeta');
+    const container = document.getElementById('alertsContainer') || document.getElementById('alertsList');
+    if(meta) meta.textContent = 'CARGANDO ALERTAS SENAMHI PERÚ...';
+    try {
+        const PROXY = 'https://meteo-proxy.kcautivof.workers.dev';
+        const r = await fetch(PROXY + '/senamhi-pe/alerts');
+        const data = r.ok ? await r.json() : { alerts: [] };
+        const alerts = data.alerts || [];
+        const now = new Date().toLocaleTimeString('es-CL',{hour12:false,hour:'2-digit',minute:'2-digit'});
+        if(meta) meta.textContent = `FUENTE: SENAMHI PERÚ | ${alerts.length} ALERTAS VIGENTES | ${now}`;
+        if(container){
+            if(!alerts.length){
+                container.innerHTML = '<div style="padding:12px;color:var(--muted);font-size:11px">SIN ALERTAS ACTIVAS EN PERÚ</div>';
+            } else {
+                container.innerHTML = alerts.map(a => {
+                    const col = a.nivel==='ROJO'?'#d32f2f':a.nivel==='NARANJA'?'#e65100':'#f9a825';
+                    return `<div style="padding:8px;border-left:3px solid ${col};margin-bottom:4px;background:var(--panel)">
+                        <span style="color:${col};font-weight:700;font-size:10px">🇵🇪 ${a.nivel}</span>
+                        <div style="font-size:11px;margin-top:2px">${a.titulo}</div>
+                        <div style="font-size:9px;color:var(--muted)">${a.inicio||''} → ${a.fin||''}</div>
+                        ${a.link?`<a href="https://www.senamhi.gob.pe${a.link}" target="_blank" style="font-size:9px;color:var(--accent)">VER →</a>`:''}
+                    </div>`;
+                }).join('');
+            }
+        }
+    } catch(e){ if(meta) meta.textContent = 'ERROR ALERTAS PERÚ'; }
+}
+
+// ── DETECCIÓN AUTOMÁTICA SENAMHI en respuesta /forecast ────────────────────
+(function patchForecastResponse(){
+    const _origFetch = window.fetch;
+    window.fetch = async function(...args){
+        const res = await _origFetch.apply(this, args);
+        const url = typeof args[0] === 'string' ? args[0] : (args[0]?.url || '');
+        if(url.includes('/forecast') && !url.includes('open-meteo') && !url.includes('archive')){
+            const clone = res.clone();
+            clone.json().then(data => {
+                if(!data) return;
+                // Guardar referencia global
+                if(data.__source === 'senamhi_bo'){
+                    window.__senamhiBoData = data;
+                    window.__senamhiPeData = null;
+                    // Actualizar etiqueta fuente
+                    window.__lastSourceLabel = '🇧🇴 SENAMHI BOLIVIA · ' + (data.__station || '');
+                    // Actualizar bloque estación
+                    requestAnimationFrame(() => {
+                        const lbl = document.getElementById('valDmcStation');
+                        if(lbl) lbl.textContent = (data.__station||'--') + ' · ' + (data.__departamento||'');
+                        const stLbl = document.querySelector('#dmcRefBlock span[style*="0.62em"]');
+                        if(stLbl) stLbl.textContent = '🇧🇴 ESTACIÓN SENAMHI BOLIVIA';
+                        const tmax = data.daily?.temperature_2m_max?.[0];
+                        const tmin = data.daily?.temperature_2m_min?.[0];
+                        const elObs = document.getElementById('valDmcObs');
+                        if(elObs) elObs.textContent = tmax!=null ? tmax+'°/'+tmin+'°' : '--';
+                        const elHora = document.getElementById('valDmcHora');
+                        if(elHora) elHora.textContent = 'HOY';
+                        const elProno = document.getElementById('valDmcProno');
+                        if(elProno) elProno.textContent = data.daily?.__summary_text?.[0]?.[0] || '--';
+                        const elDiff = document.getElementById('valDmcDiff');
+                        if(elDiff){ elDiff.textContent = (data.__station_dist_km||'--')+'km'; elDiff.style.color='var(--accent)'; }
+                    });
+                } else if(data.__source === 'senamhi_pe'){
+                    window.__senamhiPeData = data;
+                    window.__senamhiBoData = null;
+                    window.__lastSourceLabel = '🇵🇪 SENAMHI PERÚ · ' + (data.__station || '');
+                    requestAnimationFrame(() => {
+                        const lbl = document.getElementById('valDmcStation');
+                        if(lbl) lbl.textContent = data.__station || '--';
+                        const stLbl = document.querySelector('#dmcRefBlock span[style*="0.62em"]');
+                        if(stLbl) stLbl.textContent = '🇵🇪 ESTACIÓN SENAMHI PERÚ';
+                        const elDiff = document.getElementById('valDmcDiff');
+                        if(elDiff){ elDiff.textContent = (data.__station_dist_km||'--')+'km'; elDiff.style.color='var(--accent)'; }
+                    });
+                } else {
+                    window.__senamhiBoData = null;
+                    window.__senamhiPeData = null;
+                    const stLbl = document.querySelector('#dmcRefBlock span[style*="0.62em"]');
+                    if(stLbl) stLbl.textContent = 'ESTACIÓN OFICIAL DMC';
+                }
+            }).catch(()=>{});
+        }
+        return res;
+    };
+})();
 </script>
 </body>
 </html>
