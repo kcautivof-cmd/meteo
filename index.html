@@ -5585,21 +5585,25 @@ try {
                 <div id="bo-data-${p.codigo}" style="font-size:11px;color:#aaa">Cargando...</div>
                 </div>
             `, { maxWidth: 220 });
-            layer.on('popupopen', () => {
-                fetch('https://meteo-proxy.kcautivof.workers.dev/senamhi-bo?ciudad=' + ciudad)
-                    .then(r => r.ok ? r.json() : null)
-                    .then(d => {
-                        const el = document.getElementById('bo-data-' + p.codigo);
-                        if (!el) return;
-                        if (d && d.TMAX !== undefined) {
-                            el.innerHTML = `🌡️ ${d.TMIN}°/${d.TMAX}°C &nbsp; 💧${Math.round(d.HR||0)}% &nbsp; 🌧️${d.PCPN||0}mm<br><small style="color:#ccc">${d.fenomeno||''}</small>`;
-                        } else {
-                            el.innerHTML = '<small style="color:#aaa">Sin datos disponibles</small>';
-                        }
-                    }).catch(() => {
-                        const el = document.getElementById('bo-data-' + p.codigo);
-                        if (el) el.innerHTML = '<small style="color:#aaa">Sin conexión</small>';
-                    });
+            layer.on('popupopen', function() {
+                var _ciudad=ciudad,_cid=p.codigo;
+                fetch('https://meteo-proxy.kcautivof.workers.dev/senamhi-bo?ciudad='+_ciudad+'&dias=5')
+                    .then(function(r){return r.ok?r.json():null;})
+                    .then(function(d){
+                        var el=document.getElementById('bo-data-'+_cid);if(!el)return;
+                        if(d&&d.TMAX!==undefined){
+                            var html='<b style="color:#ff6f00">'+(d.TMIN||'--')+'&deg;/'+(d.TMAX||'--')+'&deg;C</b> &#128167;'+Math.round(d.HR||0)+'% &#127783;'+(d.PCPN||0)+'mm<br><small style="color:#ccc">'+(d.fenomeno||'')+'</small>';
+                            if(d.forecast&&d.forecast.length>1){
+                                html+='<hr style="margin:3px 0"><small style="color:#aaa;font-weight:700">PRON&Oacute;STICO SENAMHI BOLIVIA</small><table style="width:100%;font-size:10px;border-collapse:collapse">';
+                                d.forecast.slice(0,5).forEach(function(day){
+                                    html+='<tr><td style="color:#aaa;padding:1px 3px">'+(day.fecha?String(day.fecha).slice(5):'--')+'</td><td style="padding:1px 3px"><b>'+(day.TMIN||'--')+'&deg;/'+(day.TMAX||'--')+'&deg;C</b></td><td style="padding:1px 3px">&#127783;'+(day.PCPN||0)+'mm</td><td style="color:#888;font-size:9px">'+(day.fenomeno||'').slice(0,14)+'</td></tr>';
+                                });
+                                html+='</table>';
+                            }
+                            html+='<small style="color:#4caf50;font-weight:700">&#9679; SENAMHI Bolivia Oficial</small>';
+                            el.innerHTML=html;
+                        }else{el.innerHTML='<small style="color:#aaa">Sin datos</small>';}
+                    }).catch(function(){var el=document.getElementById('bo-data-'+_cid);if(el)el.innerHTML='<small style="color:#aaa">Sin conexi&oacute;n</small>';});
             });
         }
     });
@@ -5612,13 +5616,48 @@ try {
         onEachFeature: (f, layer) => {
             const p = f.properties;
             layer.bindPopup(`
-                <div style="min-width:180px">
-                <b style="color:#ef5350">🇵🇪 SENAMHI Perú</b><br>
+                <div style="min-width:250px;font-family:Consolas,monospace">
+                <b style="color:#ef5350">&#x1F1F5;&#x1F1EA; SENAMHI Per&uacute;</b><br>
                 <b>${p.nombre}</b><br>
-                <small>${p.departamento} · ${p.provincia} · ${p.altitud}m</small><br>
-                <small style="color:#888">Cód: ${p.codigo}</small>
+                <small>${p.departamento} &middot; ${p.provincia} &middot; ${p.altitud}m</small><br>
+                <small style="color:#888">C&oacute;d: ${p.codigo}</small>
+                <hr style="margin:4px 0">
+                <div id="pe-data-${p.codigo}" style="font-size:11px;color:#aaa">&#9203; Consultando WIS2...</div>
                 </div>
-            `, { maxWidth: 220 });
+            `, { maxWidth: 300 });
+        layer.on('popupopen', function() {
+            var _lat=feature.geometry.coordinates[1],_lon=feature.geometry.coordinates[0],_cid=p.codigo;
+            var _el=document.getElementById('pe-data-'+_cid);
+            var _ctrl=new AbortController();
+            var _timer=setTimeout(function(){_ctrl.abort();},7000);
+            fetch('https://meteo-proxy.kcautivof.workers.dev/senamhi-pe?lat='+_lat+'&lon='+_lon,{signal:_ctrl.signal})
+                .then(function(r){clearTimeout(_timer);return r.ok?r.json():Promise.reject("HTTP "+r.status);})
+                .then(function(d){
+                    if(!_el)return;
+                    if(d&&d.current&&(d.current.temperature2m!==null||d.current.relativehumidity2m!==null)){
+                        var c=d.current;
+                        var obs=d.observationTime?new Date(d.observationTime).toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'}):'-';
+                        _el.style.color='';
+                        _el.innerHTML=
+                            '<table style="width:100%;border-collapse:collapse;font-size:11px">'
+                            +'<tr><td>&#127777; Temperatura</td><td><b>'+(c.temperature2m!==null?c.temperature2m:'-')+'&deg;C</b></td></tr>'
+                            +'<tr><td>&#128167; HR</td><td>'+(c.relativehumidity2m!==null?c.relativehumidity2m:'-')+'%</td></tr>'
+                            +'<tr><td>&#128168; Viento</td><td>'+(c.windspeed10m!==null?c.windspeed10m:'-')+' km/h</td></tr>'
+                            +'<tr><td>&#127783; Precip.</td><td>'+(c.precipitation!==null?c.precipitation:'-')+' mm</td></tr>'
+                            +'<tr><td>&#128204; Presi&oacute;n</td><td>'+(c.pressuremsl!==null?c.pressuremsl:'-')+' hPa</td></tr>'
+                            +'</table>'
+                            +'<small style="color:#888">&#128336; '+obs+' &middot; '+(d.station||'')+' ('+(d.stationDistKm||'?')+'km)</small><br>'
+                            +'<small style="color:#4caf50;font-weight:700">&#9679; WIS2 SENAMHI Per&uacute; Oficial</small>';
+                    }else{
+                        _el.innerHTML='<small style="color:#ff6f00">&#9888; '+(d&&d.error?d.error:'WIS2 sin datos en esta zona')+'</small>';
+                    }
+                })
+                .catch(function(err){
+                    clearTimeout(_timer);
+                    if(!_el)return;
+                    _el.innerHTML='<small style="color:#ff6f00">&#9888; '+(err&&err.name==='AbortError'?'WIS2 sin respuesta (timeout 7s)':'Error: '+(err||'')+'</small>');
+                });
+        });
         }
     });
 
@@ -6124,6 +6163,73 @@ try {
                 __uav.layersCtl.addOverlay(__dmc.alertLayerAviso,  'DMC · ALERTAS — AVISO');
                 __uav.layersCtl.addOverlay(__dmc.alertLayerAlerta, 'DMC · ALERTAS — ALERTA');
                 __uav.layersCtl.addOverlay(__dmc.alertLayerAlarma, 'DMC · ALERTAS — ALARMA');
+                if(!__uav._peBoAlertsAdded){
+                    __uav.layerPeAlerts = __uav.layerPeAlerts || L.layerGroup().addTo(__pickMap);
+                    __uav.layerBoAlerts = __uav.layerBoAlerts || L.layerGroup().addTo(__pickMap);
+                    __uav.layersCtl.addOverlay(__uav.layerPeAlerts, '⚠️ SENAMHI · ALERTAS PERÚ');
+                    __uav.layersCtl.addOverlay(__uav.layerBoAlerts, '⚠️ SENAMHI · ALERTAS BOLIVIA');
+                    __uav._peBoAlertsAdded = true;
+                    var _PE_GJ={"type":"FeatureCollection","features":[{"type":"Feature","properties":{"name":"AMAZONAS"},"geometry":{"type":"Polygon","coordinates":[[[-77.7803,-6.942],[-77.7803,-6.942]]]}},{"type":"Feature","properties":{"name":"ANCASH"},"geometry":{"type":"Polygon","coordinates":[[[-77.2862,-10.5582],[-77.2862,-10.5582]]]}},{"type":"Feature","properties":{"name":"APURIMAC"},"geometry":{"type":"Polygon","coordinates":[[[-73.2403,-13.4763],[-73.2403,-13.4763]]]}},{"type":"Feature","properties":{"name":"AREQUIPA"},"geometry":{"type":"Polygon","coordinates":[[[-71.8424,-17.1726],[-71.8424,-17.1726]]]}},{"type":"Feature","properties":{"name":"AYACUCHO"},"geometry":{"type":"Polygon","coordinates":[[[-73.2933,-15.3921],[-73.2933,-15.3921]]]}},{"type":"Feature","properties":{"name":"CAJAMARCA"},"geometry":{"type":"Polygon","coordinates":[[[-77.8269,-7.3524],[-77.8269,-7.3524]]]}},{"type":"Feature","properties":{"name":"CALLAO"},"geometry":{"type":"Polygon","coordinates":[[[-77.1866,-11.8274],[-77.1866,-11.8274]]]}},{"type":"Feature","properties":{"name":"CUSCO"},"geometry":{"type":"Polygon","coordinates":[[[-71.0532,-15.4263],[-71.0532,-15.4263]]]}},{"type":"Feature","properties":{"name":"HUANCAVELICA"},"geometry":{"type":"Polygon","coordinates":[[[-74.7775,-14.0364],[-74.7775,-14.0364]]]}},{"type":"Feature","properties":{"name":"HUANUCO"},"geometry":{"type":"Polygon","coordinates":[[[-76.4796,-10.3294],[-76.4796,-10.3294]]]}},{"type":"Feature","properties":{"name":"ICA"},"geometry":{"type":"Polygon","coordinates":[[[-74.7841,-15.1119],[-74.7841,-15.1119]]]}},{"type":"Feature","properties":{"name":"JUNIN"},"geometry":{"type":"Polygon","coordinates":[[[-75.4259,-12.6267],[-75.4259,-12.6267]]]}},{"type":"Feature","properties":{"name":"LA LIBERTAD"},"geometry":{"type":"Polygon","coordinates":[[[-78.5575,-8.7832],[-78.5575,-8.7832]]]}},{"type":"Feature","properties":{"name":"LAMBAYEQUE"},"geometry":{"type":"Polygon","coordinates":[[[-79.8165,-6.9904],[-79.8165,-6.9904]]]}},{"type":"Feature","properties":{"name":"LIMA"},"geometry":{"type":"Polygon","coordinates":[[[-76.1222,-13.1716],[-76.1222,-13.1716]]]}},{"type":"Feature","properties":{"name":"LIMA"},"geometry":{"type":"Polygon","coordinates":[[[-76.7851,-12.5201],[-76.7851,-12.5201]]]}},{"type":"Feature","properties":{"name":"LORETO"},"geometry":{"type":"Polygon","coordinates":[[[-75.9606,-8.701],[-75.9606,-8.701]]]}},{"type":"Feature","properties":{"name":"MADRE DE DIOS"},"geometry":{"type":"Polygon","coordinates":[[[-70.4024,-13.1004],[-70.4024,-13.1004]]]}},{"type":"Feature","properties":{"name":"MOQUEGUA"},"geometry":{"type":"Polygon","coordinates":[[[-71.0839,-17.7252],[-71.0839,-17.7252]]]}},{"type":"Feature","properties":{"name":"PASCO"},"geometry":{"type":"Polygon","coordinates":[[[-76.274,-10.9496],[-76.274,-10.9496]]]}},{"type":"Feature","properties":{"name":"PIURA"},"geometry":{"type":"Polygon","coordinates":[[[-80.6279,-6.374],[-80.6279,-6.374]]]}},{"type":"Feature","properties":{"name":"PUNO"},"geometry":{"type":"Polygon","coordinates":[[[-69.5692,-17.1945],[-69.5692,-17.1945]]]}},{"type":"Feature","properties":{"name":"SAN MARTIN"},"geometry":{"type":"Polygon","coordinates":[[[-76.3517,-8.4253],[-76.3517,-8.4253]]]}},{"type":"Feature","properties":{"name":"TACNA"},"geometry":{"type":"Polygon","coordinates":[[[-69.8162,-18.1164],[-69.8162,-18.1164]]]}},{"type":"Feature","properties":{"name":"TUMBES"},"geometry":{"type":"Polygon","coordinates":[[[-80.672,-4.2107],[-80.672,-4.2107]]]}},{"type":"Feature","properties":{"name":"UCAYALI"},"geometry":{"type":"Polygon","coordinates":[[[-72.2468,-11.3216],[-72.2468,-11.3216]]]}}]};
+                    var _BO_GJ={"type":"FeatureCollection","features":[{"type":"Feature","properties":{"name":"BENI"},"geometry":{"type":"Polygon","coordinates":[[[-63.9744,-14.7294],[-63.9744,-14.7294]]]}},{"type":"Feature","properties":{"name":"CHUQUISACA"},"geometry":{"type":"Polygon","coordinates":[[[-65.202,-21.0714],[-65.202,-21.0714]]]}},{"type":"Feature","properties":{"name":"COCHABAMBA"},"geometry":{"type":"Polygon","coordinates":[[[-64.3367,-18.6672],[-64.3367,-18.6672]]]}},{"type":"Feature","properties":{"name":"LA PAZ"},"geometry":{"type":"Polygon","coordinates":[[[-68.3982,-17.6192],[-68.3982,-17.6192]]]}},{"type":"Feature","properties":{"name":"ORURO"},"geometry":{"type":"Polygon","coordinates":[[[-67.2111,-19.4462],[-67.2111,-19.4462]]]}},{"type":"Feature","properties":{"name":"PANDO"},"geometry":{"type":"Polygon","coordinates":[[[-67.9881,-11.8728],[-67.9881,-11.8728]]]}},{"type":"Feature","properties":{"name":"POTOSI"},"geometry":{"type":"Polygon","coordinates":[[[-66.973,-22.5407],[-66.973,-22.5407]],[[-67.5306,-19.8603],[-67.5306,-19.8603]]]}},{"type":"Feature","properties":{"name":"SANTA CRUZ"},"geometry":{"type":"Polygon","coordinates":[[[-63.4923,-20.457],[-63.4923,-20.457]]]}},{"type":"Feature","properties":{"name":"TARIJA"},"geometry":{"type":"Polygon","coordinates":[[[-64.3073,-22.8619],[-64.3073,-22.8619]]]}}]};
+                    var NIVELES=['ROJO','NARANJA','AMARILLO'];
+                    function _drawAlerts(alertData, layer, deptGJ, srcLbl, clr){
+                        layer.clearLayers();
+                        var alerts=(alertData&&alertData.alerts)?alertData.alerts:[];
+                        // Indexar alertas por departamento
+                        var alertIdx={};
+                        alerts.forEach(function(a){
+                            var dk=(a.departamento||a.region||'').toUpperCase()
+                                .replace(/REGI.N\s*/i,'').replace(/DEPARTAMENTO\s*/i,'').trim();
+                            dk=dk.replace(/[ÁÀÄÂ]/g,'A').replace(/[ÉÈËÊ]/g,'E').replace(/[ÍÌÏÎ]/g,'I')
+                                .replace(/[ÓÒÖÔ]/g,'O').replace(/[ÚÙÜÛ]/g,'U').replace(/Ñ/g,'N');
+                            deptGJ.features.forEach(function(feat){
+                                var fn=feat.properties.name;
+                                if(fn===dk||fn.indexOf(dk)>=0||dk.indexOf(fn)>=0){
+                                    if(!alertIdx[fn])alertIdx[fn]=[];
+                                    alertIdx[fn].push(a);
+                                }
+                            });
+                        });
+                        // Dibujar cada departamento como polígono real
+                        L.geoJSON(deptGJ, {
+                            style: function(feat){
+                                var da=alertIdx[feat.properties.name]||[];
+                                var top=da.length?da.slice().sort(function(a,b){
+                                    return NIVELES.indexOf(a.nivel)-NIVELES.indexOf(b.nivel);})[0]:null;
+                                var color=top?(top.nivel==='ROJO'?'#c62828':top.nivel==='NARANJA'?'#e65100':'#f9a825'):'#455a64';
+                                var fillOp=top?(top.nivel==='ROJO'?0.42:top.nivel==='NARANJA'?0.32:0.22):0.05;
+                                return {color:color,weight:top?2:1,fillColor:color,fillOpacity:fillOp,
+                                    dashArray:top&&top.nivel!=='ROJO'?'5,3':null};
+                            },
+                            onEachFeature: function(feat, lyr){
+                                var dept=feat.properties.name;
+                                var da=alertIdx[dept]||[];
+                                var pop='<div style="min-width:210px;font-family:Consolas,monospace">';
+                                pop+='<b style="color:'+clr+'">'+srcLbl+'</b> &middot; <b>'+dept+'</b><br>';
+                                if(da.length){
+                                    da.forEach(function(a){
+                                        var ac=a.nivel==='ROJO'?'#c62828':a.nivel==='NARANJA'?'#e65100':'#f9a825';
+                                        pop+='<hr style="margin:3px 0"><b style="color:'+ac+'">&#9888; '+(a.nivel||'AVISO')+'</b><br>';
+                                        pop+='<b>'+(a.titulo||'')+'</b><br>';
+                                        if(a.inicio)pop+='<small>Desde: '+a.inicio+'</small><br>';
+                                        if(a.fin)pop+='<small>Hasta: '+a.fin+'</small>';
+                                    });
+                                }else{
+                                    pop+='<small style="color:#888">Sin alertas activas</small>';
+                                }
+                                pop+='</div>';
+                                lyr.bindPopup(pop);
+                            }
+                        }).addTo(layer);
+                    }
+                    // Cargar alertas y dibujar
+                    fetch('https://meteo-proxy.kcautivof.workers.dev/senamhi-pealerts')
+                        .then(function(r){return r.ok?r.json():{alerts:[]};}).catch(function(){return{alerts:[]};}).then(function(d){
+                        _drawAlerts(d,__uav.layerPeAlerts,_PE_GJ,'SENAMHI PERÚ','#ef5350');});
+                    fetch('https://meteo-proxy.kcautivof.workers.dev/senamhi-boalerts')
+                        .then(function(r){return r.ok?r.json():{alerts:[]};}).catch(function(){return{alerts:[]};}).then(function(d){
+                        _drawAlerts(d,__uav.layerBoAlerts,_BO_GJ,'SENAMHI BOLIVIA','#ff6f00');});
+                }
                 __dmc._alertsAdded = true;
             }
         }catch(_e){}
@@ -16958,136 +17064,5 @@ async function __alertsLoadSenamhiPe(){
     };
 })();
 </script>
-
-<script>
-(function(){
-  const WORKER_BASE = 'https://meteo-proxy.kcautivof.workers.dev';
-
-  function esc(v){
-    return String(v == null ? '' : v)
-      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-  }
-  function num(v, suf=''){ return (v===0 || v) ? `${v}${suf}` : '—'; }
-  function popupShell(country, p, bodyId){
-    const dept = p.departamento || p.provincia || p.region || '';
-    const prov = p.provincia && p.provincia !== p.departamento ? (' · ' + p.provincia) : '';
-    return `<div style="min-width:235px;max-width:280px">
-      <div style="font-weight:800;color:${country==='bo'?'#ff6f00':'#c62828'}">${country==='bo'?'🇧🇴 SENAMHI BOLIVIA':'🇵🇪 SENAMHI PERÚ'}</div>
-      <div style="font-weight:800;font-size:15px;line-height:1.2;margin-top:2px">${esc(p.nombre || p.estacion || 'ESTACIÓN')}</div>
-      <div style="font-size:11px;color:#666">${esc(dept)}${esc(prov)}${p.altitud?` · ${esc(p.altitud)} m`:''}</div>
-      ${p.codigo?`<div style="font-size:10px;color:#888">CÓD: ${esc(p.codigo)}</div>`:''}
-      <hr style="margin:6px 0;border:none;border-top:1px solid #ddd">
-      <div id="${bodyId}" style="font-size:11px;color:#777">Cargando datos oficiales...</div>
-    </div>`;
-  }
-  function buildBoPopup(data){
-    const f0 = Array.isArray(data.forecast_preview) ? data.forecast_preview[0] : null;
-    const days = (data.forecast_preview || []).slice(0,3).map(d =>
-      `<div style="margin-top:4px"><b>${esc(d.day || 'Día')}</b>: ${num(d.tmin,'°')}/${num(d.tmax,'°')}C${d.summary?` · ${esc(d.summary)}`:''}</div>`
-    ).join('');
-    return `
-      <div><b>Actual:</b> Tmin/Tmax ${num(data.TMIN,'°')}/${num(data.TMAX,'°')}C · HR ${num(data.HR,'%')} · PCPN ${num(data.PCPN,' mm')}</div>
-      <div style="margin-top:4px"><b>Fenómeno:</b> ${esc(data.fenomeno || '—')}</div>
-      <div style="margin-top:4px"><b>Viento:</b> ${esc(data.vientos || '—')}</div>
-      ${f0 ? `<div style="margin-top:6px;font-weight:700;color:#444">Pronóstico oficial</div>${days}` : '<div style="margin-top:6px;color:#888">Sin pronóstico adicional disponible.</div>'}
-    `;
-  }
-  function buildPePopup(data){
-    const arr = Array.isArray(data.forecast_preview) ? data.forecast_preview : [];
-    if(!arr.length) return '<div style="color:#888">Sin pronóstico oficial disponible.</div>';
-    return `<div style="font-weight:700;color:#444">Pronóstico oficial</div>` + arr.slice(0,3).map(d =>
-      `<div style="margin-top:4px"><b>${esc(d.day || 'Día')}</b>: ${num(d.tmin,'°')}/${num(d.tmax,'°')}C${d.summary?` · ${esc(d.summary)}`:''}</div>`
-    ).join('');
-  }
-  function bindStationLayer(layer, country){
-    if(!layer || !layer.eachLayer) return;
-    layer.eachLayer(function(mk){
-      if(!mk || !mk.feature || mk.__senamhiPatched) return;
-      const p = mk.feature.properties || {};
-      const bodyId = `${country}-data-${esc(p.codigo || p.nombre || Math.random().toString(36).slice(2))}`.replace(/[^a-zA-Z0-9_-]/g,'_');
-      mk.unbindPopup();
-      mk.bindPopup(popupShell(country, p, bodyId), { maxWidth: 320 });
-      mk.on('popupopen', function(){
-        const el = document.getElementById(bodyId);
-        if(!el) return;
-        el.innerHTML = '<span style="color:#888">Consultando fuente oficial...</span>';
-        const url = country === 'bo'
-          ? `${WORKER_BASE}/senamhi-bo/station?ciudad=${encodeURIComponent(p.nombre || p.estacion || '')}`
-          : `${WORKER_BASE}/senamhi-pe/station?nombre=${encodeURIComponent(p.nombre || p.estacion || '')}&departamento=${encodeURIComponent(p.departamento || '')}`;
-        fetch(url, { cache:'no-store' })
-          .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP '+r.status)))
-          .then(data => { if(el) el.innerHTML = country === 'bo' ? buildBoPopup(data) : buildPePopup(data); })
-          .catch(err => { if(el) el.innerHTML = `<span style="color:#999">Sin datos oficiales disponibles</span>`; console.warn('SENAMHI popup error', country, err); });
-      });
-      mk.__senamhiPatched = true;
-    });
-  }
-  function makeAlertLayer(country){
-    return L.geoJSON(null, {
-      pointToLayer: function(f, latlng){
-        const nivel = String(f?.properties?.nivel || '').toUpperCase();
-        const c = nivel === 'ROJO' ? '#c62828' : (nivel === 'NARANJA' ? '#ef6c00' : '#f9a825');
-        return L.circleMarker(latlng, { radius: 6, color:c, weight:2, fillColor:c, fillOpacity:0.82 });
-      },
-      onEachFeature: function(f, layer){
-        const p = f.properties || {};
-        const title = country === 'bo' ? '🇧🇴 ALERTA SENAMHI BOLIVIA' : '🇵🇪 ALERTA SENAMHI PERÚ';
-        const link = p.link ? (country === 'pe' && /^\//.test(p.link) ? 'https://www.senamhi.gob.pe' + p.link : p.link) : '';
-        layer.bindPopup(`<div style="min-width:220px;max-width:280px"><div style="font-weight:800">${title}</div><div style="margin-top:4px;font-weight:700">${esc(p.titulo || 'ALERTA')}</div><div style="margin-top:4px;font-size:11px">Nivel: <b>${esc(p.nivel || 'AVISO')}</b></div>${p.emitido?`<div style="font-size:11px">Emitido: ${esc(p.emitido)}</div>`:''}${p.inicio||p.fin?`<div style="font-size:11px">Vigencia: ${esc(p.inicio||'—')} → ${esc(p.fin||'—')}</div>`:''}${link?`<div style="margin-top:6px"><a href="${esc(link)}" target="_blank">Ver fuente oficial</a></div>`:''}</div>`, { maxWidth: 320 });
-      }
-    });
-  }
-  function injectAlertLayers(){
-    if(!window.__pickMap || !window.__uav || !window.L) return;
-    if(!__uav.layerAlertsBo){
-      __uav.layerAlertsBo = makeAlertLayer('bo');
-      __uav.layerAlertsPe = makeAlertLayer('pe');
-      __uav.layerAlertsBo.addTo(__pickMap);
-      __uav.layerAlertsPe.addTo(__pickMap);
-      if(__uav.layersCtl && __uav.layersCtl.addOverlay){
-        __uav.layersCtl.addOverlay(__uav.layerAlertsBo, 'ALERTAS SENAMHI BOLIVIA');
-        __uav.layersCtl.addOverlay(__uav.layerAlertsPe, 'ALERTAS SENAMHI PERÚ');
-      }
-    }
-    if(__uav.__alertsLoading) return;
-    __uav.__alertsLoading = true;
-    Promise.allSettled([
-      fetch(`${WORKER_BASE}/senamhi-bo/alerts`, { cache:'no-store' }).then(r=>r.ok?r.json():{alerts:[]}),
-      fetch(`${WORKER_BASE}/senamhi-pe/alerts`, { cache:'no-store' }).then(r=>r.ok?r.json():{alerts:[]})
-    ]).then(function(results){
-      const center = arr => {
-        if(!Array.isArray(arr) || !arr.length) return null;
-        let lat=0, lon=0, n=0;
-        arr.forEach(f=>{ const c=f?.geometry?.coordinates; if(Array.isArray(c)&&c.length>=2){ lon += Number(c[0]); lat += Number(c[1]); n++; } });
-        return n ? [lon/n, lat/n] : null;
-      };
-      const boGeo = (results[0].status==='fulfilled' && results[0].value?.alerts?.length)
-        ? { type:'FeatureCollection', features: results[0].value.alerts.map((a,i)=>({ type:'Feature', geometry:{ type:'Point', coordinates: center((window.__uav?.layerBolivia?.toGeoJSON?.().features)||[]) || [-68.15,-16.5] }, properties:a })) }
-        : { type:'FeatureCollection', features: [] };
-      const peGeo = (results[1].status==='fulfilled' && results[1].value?.alerts?.length)
-        ? { type:'FeatureCollection', features: results[1].value.alerts.map((a,i)=>({ type:'Feature', geometry:{ type:'Point', coordinates: center((window.__uav?.layerPeru?.toGeoJSON?.().features)||[]) || [-75.0,-9.1] }, properties:a })) }
-        : { type:'FeatureCollection', features: [] };
-      __uav.layerAlertsBo.clearLayers(); __uav.layerAlertsBo.addData(boGeo);
-      __uav.layerAlertsPe.clearLayers(); __uav.layerAlertsPe.addData(peGeo);
-    }).catch(err => console.warn('SENAMHI alert layer error', err)).finally(function(){ __uav.__alertsLoading = false; });
-  }
-  function initPatch(){
-    if(window.__uav){
-      bindStationLayer(__uav.layerBolivia, 'bo');
-      bindStationLayer(__uav.layerPeru, 'pe');
-      injectAlertLayers();
-    }
-  }
-  let tries = 0;
-  const t = setInterval(function(){
-    tries++;
-    initPatch();
-    if(tries > 40) clearInterval(t);
-  }, 1500);
-  document.addEventListener('DOMContentLoaded', initPatch);
-})();
-</script>
-
 </body>
 </html>
