@@ -5592,14 +5592,16 @@ try {
                     .then(function(d){
                         var el=document.getElementById('bo-data-'+_cid);if(!el)return;
                         if(d&&d.TMAX!==undefined){
-                            var html='<b style="color:#ff6f00">'+(d.TMIN||'--')+'&deg;/'+(d.TMAX||'--')+'&deg;C</b> &#128167;'+Math.round(d.HR||0)+'% &#127783;'+(d.PCPN||0)+'mm<br><small style="color:#ccc">'+(d.fenomeno||'')+'</small>';
-                            if(d.forecast&&d.forecast.length>1){
-                                html+='<hr style="margin:3px 0"><small style="color:#aaa;font-weight:700">PRON&Oacute;STICO SENAMHI BOLIVIA</small><table style="width:100%;font-size:10px;border-collapse:collapse">';
-                                d.forecast.slice(0,5).forEach(function(day){
-                                    html+='<tr><td style="color:#aaa;padding:1px 3px">'+(day.fecha?String(day.fecha).slice(5):'--')+'</td><td style="padding:1px 3px"><b>'+(day.TMIN||'--')+'&deg;/'+(day.TMAX||'--')+'&deg;C</b></td><td style="padding:1px 3px">&#127783;'+(day.PCPN||0)+'mm</td><td style="color:#888;font-size:9px">'+(day.fenomeno||'').slice(0,14)+'</td></tr>';
-                                });
-                                html+='</table>';
-                            }
+                            var fecha=d.forecast&&d.forecast[0]&&d.forecast[0].fecha?d.forecast[0].fecha:'';
+                            var html='<table style="width:100%;border-collapse:collapse;font-size:11px">';
+                            html+='<tr><td>&#127777; Temperatura</td><td><b>'+(d.TMIN||'--')+'&deg;/'+(d.TMAX||'--')+'&deg;C</b></td></tr>';
+                            html+='<tr><td>&#128167; HR</td><td>'+Math.round(d.HR||0)+'%</td></tr>';
+                            html+='<tr><td>&#127783; Precipit.</td><td>'+(d.PCPN||0)+' mm</td></tr>';
+                            html+='<tr><td>&#128168; Viento</td><td>'+(d.vientos||'--')+' m/s</td></tr>';
+                            html+='<tr><td>&#9728; Fenómeno</td><td>'+(d.fenomeno||'--')+'</td></tr>';
+                            if(fecha)html+='<tr><td>&#128197; Fecha</td><td>'+fecha+'</td></tr>';
+                            html+='</table>';
+                            html+='<small style="color:#888">Pron&oacute;stico v&aacute;lido para hoy (API no entrega multi-d&iacute;a)</small><br>';
                             html+='<small style="color:#4caf50;font-weight:700">&#9679; SENAMHI Bolivia Oficial</small>';
                             el.innerHTML=html;
                         }else{el.innerHTML='<small style="color:#aaa">Sin datos</small>';}
@@ -5655,7 +5657,8 @@ try {
                 .catch(function(err){
                     clearTimeout(_timer);
                     if(!_el)return;
-                    _el.innerHTML='<small style="color:#ff6f00">&#9888; '+(err&&err.name==='AbortError'?'WIS2 sin respuesta (timeout 7s)':'Error: '+(err||'')+'</small>');
+                    var msg=(err&&err.name==='AbortError')?'WIS2 sin respuesta (timeout 7s)':'Error: '+String(err||'');
+                    _el.innerHTML='<small style="color:#ff6f00">&#9888; '+msg+'</small><br><small style="color:#666">Servicio: wis.senamhi.gob.pe</small>';
                 });
         });
         }
@@ -6197,8 +6200,8 @@ try {
                                 var top=da.length?da.slice().sort(function(a,b){
                                     return NIVELES.indexOf(a.nivel)-NIVELES.indexOf(b.nivel);})[0]:null;
                                 var color=top?(top.nivel==='ROJO'?'#c62828':top.nivel==='NARANJA'?'#e65100':'#f9a825'):'#455a64';
-                                var fillOp=top?(top.nivel==='ROJO'?0.42:top.nivel==='NARANJA'?0.32:0.22):0.05;
-                                return {color:color,weight:top?2:1,fillColor:color,fillOpacity:fillOp,
+                                var fillOp=top?(top.nivel==='ROJO'?0.42:top.nivel==='NARANJA'?0.32:0.22):0.13;
+                                return {color:color,weight:top?2.5:1.5,fillColor:color,fillOpacity:fillOp,
                                     dashArray:top&&top.nivel!=='ROJO'?'5,3':null};
                             },
                             onEachFeature: function(feat, lyr){
@@ -6222,13 +6225,16 @@ try {
                             }
                         }).addTo(layer);
                     }
-                    // Cargar alertas y dibujar
+                    // Dibujar INMEDIATAMENTE con color neutro (sin esperar al fetch)
+                    _drawAlerts({alerts:[]},__uav.layerPeAlerts,_PE_GJ,'SENAMHI PERÚ','#ef5350');
+                    _drawAlerts({alerts:[]},__uav.layerBoAlerts,_BO_GJ,'SENAMHI BOLIVIA','#ff6f00');
+                    // Luego actualizar con alertas reales
                     fetch('https://meteo-proxy.kcautivof.workers.dev/senamhi-pealerts')
                         .then(function(r){return r.ok?r.json():{alerts:[]};}).catch(function(){return{alerts:[]};}).then(function(d){
-                        _drawAlerts(d,__uav.layerPeAlerts,_PE_GJ,'SENAMHI PERÚ','#ef5350');});
+                        if(d&&d.alerts&&d.alerts.length)_drawAlerts(d,__uav.layerPeAlerts,_PE_GJ,'SENAMHI PERÚ','#ef5350');});
                     fetch('https://meteo-proxy.kcautivof.workers.dev/senamhi-boalerts')
                         .then(function(r){return r.ok?r.json():{alerts:[]};}).catch(function(){return{alerts:[]};}).then(function(d){
-                        _drawAlerts(d,__uav.layerBoAlerts,_BO_GJ,'SENAMHI BOLIVIA','#ff6f00');});
+                        if(d&&d.alerts&&d.alerts.length)_drawAlerts(d,__uav.layerBoAlerts,_BO_GJ,'SENAMHI BOLIVIA','#ff6f00');});
                 }
                 __dmc._alertsAdded = true;
             }
