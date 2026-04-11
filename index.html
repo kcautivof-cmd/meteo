@@ -5577,38 +5577,48 @@ try {
             const p = f.properties;
             const ciudad = encodeURIComponent(p.nombre);
             layer.bindPopup(`
-                <div style="min-width:250px">
+                <div style="min-width:180px">
                 <b style="color:#ff6f00">🇧🇴 SENAMHI Bolivia</b><br>
                 <b>${p.nombre}</b><br>
                 <small>${p.departamento} · ${p.altitud}m</small><br>
-                <small style="color:#888">Cód: ${p.codigo}</small>
                 <hr style="margin:4px 0">
-                <div id="bo-data-${p.codigo}" style="font-size:11px;color:#aaa">Cargando datos y pronóstico oficial...</div>
+                <div id="bo-data-${p.codigo}" style="font-size:11px;color:#aaa">Cargando...</div>
                 </div>
-            `, { maxWidth: 300 });
-            layer.on('popupopen', () => {
-                fetch('https://meteo-proxy.kcautivof.workers.dev/senamhi-bo/station?ciudad=' + ciudad)
-                    .then(r => r.ok ? r.json() : null)
-                    .then(d => {
-                        const el = document.getElementById('bo-data-' + p.codigo);
-                        if (!el) return;
-                        if (d && (d.TMAX !== undefined || Array.isArray(d.forecast_preview))) {
-                            const forecast = Array.isArray(d.forecast_preview) ? d.forecast_preview.slice(0,3).map(it =>
-                                `<div style="margin-top:3px;"><b>${it.day||'Día'}</b>: ${it.tmin ?? '--'}°/${it.tmax ?? '--'}°C${it.precip_mm!=null?` · 🌧️${it.precip_mm}mm`:''}${it.summary?`<br><small style="color:#ccc">${it.summary}</small>`:''}</div>`
-                            ).join('') : '';
-                            el.innerHTML = `
-                                <div>🌡️ <b>${d.TMIN ?? '--'}°/${d.TMAX ?? '--'}°C</b></div>
-                                <div>💧 HR: <b>${Math.round(d.HR||0)}%</b> · 🌧️ <b>${d.PCPN ?? 0} mm</b></div>
-                                <div>💨 Vientos: <b>${d.vientos || '--'}</b></div>
-                                <div style="margin-top:4px;"><small style="color:#ccc">${d.fenomeno||''}</small></div>
-                                ${forecast ? `<div style="margin-top:6px;border-top:1px solid rgba(255,255,255,.12);padding-top:5px;"><b>Pronóstico oficial</b>${forecast}</div>` : ''}
-                            `;
+            `, { maxWidth: 220 });
+            layer.on('popupopen', function() {
+                var _ciudad=ciudad, _cid=p.codigo;
+                fetch('https://meteo-proxy.kcautivof.workers.dev/senamhi-bo?ciudad='+_ciudad+'&dias=5')
+                    .then(function(r){return r.ok?r.json():null;})
+                    .then(function(d){
+                        var el=document.getElementById('bo-data-'+_cid); if(!el)return;
+                        if(d&&d.TMAX!==undefined){
+                            var html='<b style="color:#ff6f00">'+(d.TMIN||'--')+'&deg;/'+(d.TMAX||'--')+'&deg;C</b>'
+                                +' &nbsp; &#128167;'+Math.round(d.HR||0)+'%'
+                                +' &nbsp; &#127783;'+(d.PCPN||0)+'mm'
+                                +'<br><small style="color:#ccc">'+(d.fenomeno||'')+'</small>';
+                            if(d.forecast&&d.forecast.length>1){
+                                html+='<hr style="margin:3px 0"><small style="color:#aaa;font-weight:700">PRON&Oacute;STICO OFICIAL 5 D&Iacute;AS</small>';
+                                html+='<table style="width:100%;font-size:10px;border-collapse:collapse">';
+                                var fc=d.forecast.slice(0,5);
+                                for(var i=0;i<fc.length;i++){
+                                    var day=fc[i], fecha=day.fecha?String(day.fecha).slice(5):'--', fen=(day.fenomeno||'').slice(0,16);
+                                    html+='<tr>'
+                                        +'<td style="color:#aaa;padding:1px 3px">'+fecha+'</td>'
+                                        +'<td style="padding:1px 3px"><b>'+(day.TMIN||'--')+'&deg;/'+(day.TMAX||'--')+'&deg;C</b></td>'
+                                        +'<td style="padding:1px 3px">&#127783;'+(day.PCPN||0)+'mm</td>'
+                                        +'<td style="color:#888;font-size:9px;padding:1px 3px">'+fen+'</td>'
+                                        +'</tr>';
+                                }
+                                html+='</table>';
+                            }
+                            html+='<hr style="margin:3px 0"><a href="https://senamhi.gob.bo" target="_blank" style="font-size:9px;color:#ff6f00">&#128279; senamhi.gob.bo</a>';
+                            el.innerHTML=html;
                         } else {
-                            el.innerHTML = '<small style="color:#aaa">Sin datos oficiales disponibles</small>';
+                            el.innerHTML='<small style="color:#aaa">Sin datos disponibles</small>';
                         }
-                    }).catch(() => {
-                        const el = document.getElementById('bo-data-' + p.codigo);
-                        if (el) el.innerHTML = '<small style="color:#aaa">Sin conexión</small>';
+                    }).catch(function(){
+                        var el=document.getElementById('bo-data-'+_cid);
+                        if(el)el.innerHTML='<small style="color:#aaa">Sin conexi&oacute;n</small>';
                     });
             });
         }
@@ -5621,88 +5631,49 @@ try {
         }),
         onEachFeature: (f, layer) => {
             const p = f.properties;
-            const nombre = encodeURIComponent(p.nombre || '');
-            const depto = encodeURIComponent(p.departamento || '');
             layer.bindPopup(`
-                <div style="min-width:250px">
-                <b style="color:#ef5350">🇵🇪 SENAMHI Perú</b><br>
+                <div style="min-width:240px;font-family:Consolas,monospace">
+                <b style="color:#ef5350">&#x1F1F5;&#x1F1EA; SENAMHI Per&uacute;</b><br>
                 <b>${p.nombre}</b><br>
-                <small>${p.departamento} · ${p.provincia} · ${p.altitud}m</small><br>
-                <small style="color:#888">Cód: ${p.codigo}</small>
+                <small>${p.departamento} &middot; ${p.provincia} &middot; ${p.altitud}m</small><br>
+                <small style="color:#888">C&oacute;d: ${p.codigo}</small>
                 <hr style="margin:4px 0">
-                <div id="pe-data-${p.codigo}" style="font-size:11px;color:#aaa">Cargando pronóstico oficial...</div>
+                <div id="pe-data-${p.codigo}" style="font-size:11px;color:#aaa">Cargando datos WIS2 oficiales...</div>
                 </div>
-            `, { maxWidth: 300 });
-            layer.on('popupopen', () => {
-                fetch('https://meteo-proxy.kcautivof.workers.dev/senamhi-pe/station?nombre=' + nombre + '&departamento=' + depto)
-                    .then(r => r.ok ? r.json() : null)
-                    .then(d => {
-                        const el = document.getElementById('pe-data-' + p.codigo);
-                        if (!el) return;
-                        const forecast = Array.isArray(d?.forecast_preview) ? d.forecast_preview.slice(0,3).map(it =>
-                            `<div style="margin-top:3px;"><b>${it.day||'Día'}</b>: ${it.tmin ?? '--'}°/${it.tmax ?? '--'}°C${it.summary?`<br><small style="color:#ccc">${it.summary}</small>`:''}</div>`
-                        ).join('') : '';
-                        if (forecast) {
-                            el.innerHTML = `<div><b>Pronóstico oficial SENAMHI Perú</b></div>${forecast}`;
-                        } else {
-                            el.innerHTML = '<small style="color:#aaa">Sin pronóstico oficial disponible para esta localidad</small>';
-                        }
-                    }).catch(() => {
-                        const el = document.getElementById('pe-data-' + p.codigo);
-                        if (el) el.innerHTML = '<small style="color:#aaa">Sin conexión</small>';
-                    });
-            });
+            `, { maxWidth: 290 });
+        layer.on('popupopen', function() {
+            var _lat=feature.geometry.coordinates[1], _lon=feature.geometry.coordinates[0], _cid=p.codigo;
+            fetch('https://meteo-proxy.kcautivof.workers.dev/senamhi-pe?lat='+_lat+'&lon='+_lon)
+                .then(function(r){return r.ok?r.json():null;})
+                .then(function(d){
+                    var el=document.getElementById('pe-data-'+_cid); if(!el)return;
+                    if(d&&d.current&&d.current.temperature2m!==null){
+                        var c=d.current;
+                        var obs=d.observationTime?new Date(d.observationTime).toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'}):'--';
+                        el.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:11px">'
+                            +'<tr><td>&#127777; Temperatura</td><td><b>'+c.temperature2m+'&deg;C</b></td></tr>'
+                            +'<tr><td>&#128167; HR</td><td>'+(c.relativehumidity2m!==null?c.relativehumidity2m:'--')+'%</td></tr>'
+                            +'<tr><td>&#128168; Viento</td><td>'+(c.windspeed10m!==null?c.windspeed10m:'--')+' km/h</td></tr>'
+                            +'<tr><td>&#127783; Precipitaci&oacute;n</td><td>'+(c.precipitation!==null?c.precipitation:'--')+' mm</td></tr>'
+                            +'<tr><td>&#128204; Presi&oacute;n</td><td>'+(c.pressuremsl!==null?c.pressuremsl:'--')+' hPa</td></tr>'
+                            +'<tr><td>&#128205; Dist. est.</td><td>'+(d.stationDistKm!==null?d.stationDistKm:'--')+' km</td></tr>'
+                            +'</table>'
+                            +'<small style="color:#888">&#128336; '+obs+' &middot; <b>SENAMHI Per&uacute; WIS2 Oficial</b></small><br>'
+                            +'<small style="color:#888">'+(d.stationsInBbox||0)+' est. en &aacute;rea &middot; '+(d.station||'')+'</small><br>'
+                            +'<a href="https://www.senamhi.gob.pe/?p=pronostico-regional" target="_blank" style="font-size:10px;color:#ef5350">'
+                            +'&#128279; Pron&oacute;stico oficial SENAMHI Per&uacute;</a>';
+                    } else {
+                        el.innerHTML='<span style="color:#aaa">'+(d&&d.error?d.error:'Sin datos WIS2')+'</span>'
+                            +'<br><a href="https://www.senamhi.gob.pe" target="_blank" style="font-size:10px;color:#ef5350">'
+                            +'&#128279; senamhi.gob.pe</a>';
+                    }
+                }).catch(function(){
+                    var el=document.getElementById('pe-data-'+_cid);
+                    if(el)el.innerHTML='<span style="color:#aaa">Sin conexi&oacute;n WIS2</span>';
+                });
+        });
         }
     });
-
-
-    __uav.layerAlertsBo = __uav.layerAlertsBo || L.layerGroup();
-    __uav.layerAlertsPe = __uav.layerAlertsPe || L.layerGroup();
-
-    async function __loadSenamhiBoAlertLayer(force){
-        if(__uav._boAlertsLoaded && !force) return;
-        try{
-            const r = await fetch('https://meteo-proxy.kcautivof.workers.dev/senamhi-bo/alerts', { cache:'no-store' });
-            const data = r.ok ? await r.json() : { alerts: [] };
-            const alerts = Array.isArray(data.alerts) ? data.alerts : [];
-            __uav.layerAlertsBo.clearLayers();
-            const baseLat = -16.5, baseLon = -64.5;
-            alerts.slice(0, 20).forEach((a, i) => {
-                const color = a.nivel==='ROJO' ? '#d32f2f' : a.nivel==='NARANJA' ? '#e65100' : '#f9a825';
-                const angle = i * 0.8;
-                const lat = baseLat + Math.sin(angle) * 2.2;
-                const lon = baseLon + Math.cos(angle) * 3.0;
-                L.circleMarker([lat, lon], { radius: 7, color, weight: 2, fillColor: color, fillOpacity: 0.35 })
-                    .bindPopup(`<div style="min-width:240px"><b style="color:${color}">🇧🇴 ${a.nivel || 'AVISO'}</b><br><div style="margin-top:4px;font-weight:700">${a.titulo || 'Alerta oficial'}</div><div style="margin-top:4px;font-size:11px;">${a.inicio || '--'} → ${a.fin || '--'}</div><div style="margin-top:4px;font-size:11px;color:#94a3b8">Fuente oficial: SENAMHI Bolivia</div></div>`)
-                    .addTo(__uav.layerAlertsBo);
-            });
-            __uav._boAlertsLoaded = true;
-        }catch(err){ console.warn('[SENAMHI BO alerts layer]', err); }
-    }
-
-    async function __loadSenamhiPeAlertLayer(force){
-        if(__uav._peAlertsLoaded && !force) return;
-        try{
-            const r = await fetch('https://meteo-proxy.kcautivof.workers.dev/senamhi-pe/alerts', { cache:'no-store' });
-            const data = r.ok ? await r.json() : { alerts: [] };
-            const alerts = Array.isArray(data.alerts) ? data.alerts : [];
-            __uav.layerAlertsPe.clearLayers();
-            const baseLat = -9.5, baseLon = -75.5;
-            alerts.slice(0, 24).forEach((a, i) => {
-                const color = a.nivel==='ROJO' ? '#d32f2f' : a.nivel==='NARANJA' ? '#e65100' : '#f9a825';
-                const angle = i * 0.7;
-                const lat = baseLat + Math.sin(angle) * 4.0;
-                const lon = baseLon + Math.cos(angle) * 4.8;
-                L.circleMarker([lat, lon], { radius: 7, color, weight: 2, fillColor: color, fillOpacity: 0.35 })
-                    .bindPopup(`<div style="min-width:240px"><b style="color:${color}">🇵🇪 ${a.nivel || 'AVISO'}</b><br><div style="margin-top:4px;font-weight:700">${a.titulo || 'Aviso oficial'}</div><div style="margin-top:4px;font-size:11px;">Inicio: ${a.inicio || '--'}<br>Fin: ${a.fin || '--'}</div><div style="margin-top:4px;font-size:11px;color:#94a3b8">Fuente oficial: SENAMHI Perú</div></div>`)
-                    .addTo(__uav.layerAlertsPe);
-            });
-            __uav._peAlertsLoaded = true;
-        }catch(err){ console.warn('[SENAMHI PE alerts layer]', err); }
-    }
-
-    window.__loadSenamhiBoAlertLayer = __loadSenamhiBoAlertLayer;
-    window.__loadSenamhiPeAlertLayer = __loadSenamhiPeAlertLayer;
 
     // Add overlays (solo una vez)
     if (!__uav._added) {
@@ -5710,8 +5681,6 @@ try {
         __uav.layerAirports.addTo(__pickMap);
         __uav.layerBolivia.addTo(__pickMap);
         __uav.layerPeru.addTo(__pickMap);
-        __uav.layerAlertsBo.addTo(__pickMap);
-        __uav.layerAlertsPe.addTo(__pickMap);
         __uav.layerBuffers.addTo(__pickMap);
         __uav.layerDraw.addTo(__pickMap);
 
@@ -5721,8 +5690,6 @@ try {
             "AERÓDROMOS (CHILE)": __uav.layerAirports,
             "ESTACIONES SENAMHI BOLIVIA": __uav.layerBolivia,
             "ESTACIONES SENAMHI PERÚ": __uav.layerPeru,
-            "ALERTAS SENAMHI BOLIVIA": __uav.layerAlertsBo,
-            "ALERTAS SENAMHI PERÚ": __uav.layerAlertsPe,
             "BUFFERS RPAS": __uav.layerBuffers,
             "Layers edit": __uav.layerDraw
         }, { collapsed: true }).addTo(__pickMap);
@@ -5755,8 +5722,6 @@ try {
 
             console.log('[SENAMHI] Bolivia:', bo?.features?.length || 0, 'estaciones');
             console.log('[SENAMHI] Perú:',   pe?.features?.length || 0, 'estaciones');
-            __loadSenamhiBoAlertLayer();
-            __loadSenamhiPeAlertLayer();
             __uav._loaded = true;
         }).catch(err => { console.warn('[GeoJSON] Error:', err); });
     }
@@ -6212,6 +6177,39 @@ try {
                 __uav.layersCtl.addOverlay(__dmc.alertLayerAviso,  'DMC · ALERTAS — AVISO');
                 __uav.layersCtl.addOverlay(__dmc.alertLayerAlerta, 'DMC · ALERTAS — ALERTA');
                 __uav.layersCtl.addOverlay(__dmc.alertLayerAlarma, 'DMC · ALERTAS — ALARMA');
+                if(!__uav._peBoAlertsAdded){
+                    __uav.layerPeAlerts = __uav.layerPeAlerts || L.layerGroup().addTo(__pickMap);
+                    __uav.layerBoAlerts = __uav.layerBoAlerts || L.layerGroup().addTo(__pickMap);
+                    __uav.layersCtl.addOverlay(__uav.layerPeAlerts, '⚠️ SENAMHI · ALERTAS PERÚ');
+                    __uav.layersCtl.addOverlay(__uav.layerBoAlerts, '⚠️ SENAMHI · ALERTAS BOLIVIA');
+                    __uav._peBoAlertsAdded=true;
+                    var PE_DEPTS={'AMAZONAS':[-6.23,-77.87],'ANCASH':[-9.53,-77.53],'APURIMAC':[-13.63,-72.88],'AREQUIPA':[-16.41,-71.53],'AYACUCHO':[-13.16,-74.22],'CAJAMARCA':[-7.16,-78.51],'CALLAO':[-12.05,-77.13],'CUSCO':[-13.53,-71.97],'HUANCAVELICA':[-12.78,-74.97],'HUANUCO':[-9.93,-76.24],'ICA':[-14.07,-75.73],'JUNIN':[-11.16,-75.99],'LA LIBERTAD':[-8.11,-78.02],'LAMBAYEQUE':[-6.70,-79.91],'LIMA':[-12.04,-77.03],'LORETO':[-4.87,-75.55],'MADRE DE DIOS':[-12.59,-70.08],'MOQUEGUA':[-17.19,-70.93],'PASCO':[-10.68,-76.26],'PIURA':[-5.19,-80.63],'PUNO':[-15.84,-70.02],'SAN MARTIN':[-6.49,-76.36],'TACNA':[-18.01,-70.25],'TUMBES':[-3.57,-80.45],'UCAYALI':[-9.53,-74.02]};
+                    var BO_DEPTS={'BENI':[-14.83,-65.00],'CHUQUISACA':[-19.58,-64.73],'COCHABAMBA':[-17.39,-65.26],'LA PAZ':[-16.50,-68.15],'ORURO':[-17.97,-67.11],'PANDO':[-11.02,-68.80],'POTOSI':[-19.58,-65.75],'SANTA CRUZ':[-17.80,-63.17],'TARIJA':[-21.53,-64.74]};
+                    function _loadAlerts(url,layer,depts,sourceLabel,linkColor){
+                        fetch(url).then(function(r){return r.ok?r.json():null;}).then(function(data){
+                            if(!data||!data.alerts)return;
+                            data.alerts.forEach(function(a){
+                                var dk=(a.departamento||'').toUpperCase().replace(/REGI.N /,'').replace(/DEPARTAMENTO /,'').trim();
+                                var coord=depts[dk]||null;
+                                if(!coord){for(var k in depts){if(dk.indexOf(k)>=0){coord=depts[k];break;}}}
+                                if(!coord)return;
+                                var color=a.nivel==='ROJO'?'#d32f2f':a.nivel==='NARANJA'?'#e65100':'#f9a825';
+                                var mk=L.circleMarker([coord[0],coord[1]],{radius:11,color:color,fillColor:color,fillOpacity:0.75,weight:2});
+                                mk.bindPopup('<div style="min-width:220px;font-family:Consolas,monospace">'
+                                    +'<b style="color:'+color+'">&#9888; '+sourceLabel+' &middot; '+(a.nivel||'AVISO')+'</b><br>'
+                                    +'<b>'+(a.titulo||'')+'</b><br>'
+                                    +(a.departamento?'<small>'+(a.departamento)+'</small><br>':'')
+                                    +(a.inicio?'<small>Desde: '+a.inicio+'</small><br>':'')
+                                    +(a.fin?'<small>Hasta: '+a.fin+'</small><br>':'')
+                                    +(a.link?'<a href="'+a.link+'" target="_blank" style="font-size:10px;color:'+linkColor+'">&#128279; Ver alerta oficial</a>':'')
+                                    +'</div>');
+                                layer.addLayer(mk);
+                            });
+                        }).catch(function(){});
+                    }
+                    _loadAlerts('https://meteo-proxy.kcautivof.workers.dev/senamhi-pealerts',__uav.layerPeAlerts,PE_DEPTS,'SENAMHI PERÚ','#ef5350');
+                    _loadAlerts('https://meteo-proxy.kcautivof.workers.dev/senamhi-boalerts',__uav.layerBoAlerts,BO_DEPTS,'SENAMHI BOLIVIA','#ff6f00');
+                }
                 __dmc._alertsAdded = true;
             }
         }catch(_e){}
@@ -16960,7 +16958,6 @@ async function __alertsLoadSenamhiBo(){
         const alerts = data.alerts || [];
         const now = new Date().toLocaleTimeString('es-CL',{hour12:false,hour:'2-digit',minute:'2-digit'});
         if(meta) meta.textContent = `FUENTE: SENAMHI BOLIVIA | ${alerts.length} ALERTAS ACTIVAS | ${now}`;
-        try{ window.__loadSenamhiBoAlertLayer && window.__loadSenamhiBoAlertLayer(true); }catch(_e){}
         if(list) list.innerHTML = !alerts.length
             ? '<div class="alert-item" style="padding:10px;color:var(--muted);font-size:11px">SIN ALERTAS ACTIVAS EN BOLIVIA</div>'
             : alerts.map(a => {
@@ -16987,7 +16984,6 @@ async function __alertsLoadSenamhiPe(){
         const alerts = data.alerts || [];
         const now = new Date().toLocaleTimeString('es-CL',{hour12:false,hour:'2-digit',minute:'2-digit'});
         if(meta) meta.textContent = `FUENTE: SENAMHI PERÚ | ${alerts.length} AVISOS VIGENTES | ${now}`;
-        try{ window.__loadSenamhiPeAlertLayer && window.__loadSenamhiPeAlertLayer(true); }catch(_e){}
         if(list) list.innerHTML = !alerts.length
             ? '<div class="alert-item" style="padding:10px;color:var(--muted);font-size:11px">SIN ALERTAS ACTIVAS EN PERÚ</div>'
             : alerts.map(a => {
