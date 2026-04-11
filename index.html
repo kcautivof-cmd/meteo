@@ -5693,14 +5693,6 @@ try {
 
     // Add overlays (solo una vez)
     if (!__uav._added) {
-        __uav.layerPRD.addTo(__pickMap);
-        __uav.layerAirports.addTo(__pickMap);
-        __uav.layerBolivia.addTo(__pickMap);
-        __uav.layerPeru.addTo(__pickMap);
-        __uav.layerPeruAlerts.addTo(__pickMap);
-        __uav.layerBoliviaAlerts.addTo(__pickMap);
-        __uav.layerBuffers.addTo(__pickMap);
-        __uav.layerDraw.addTo(__pickMap);
 
         // Control de capas
         __uav.layersCtl = L.control.layers(null, {
@@ -5717,9 +5709,27 @@ try {
         __uav._added = true;
 
         // Inicializar capas meteorológicas ahora que layersCtl existe
-        setTimeout(function(){ if(typeof window.__initMeteoLayers === 'function') window.__initMeteoLayers(); }, 300);
+        setTimeout(function(){ if(typeof window.__initMeteoLayers === 'function') window.__initMeteoLayers(); if (typeof window.__deactivateAllOperatorLayers === 'function') setTimeout(window.__deactivateAllOperatorLayers, 500); }, 300);
     }
 
+
+    window.__deactivateAllOperatorLayers = window.__deactivateAllOperatorLayers || function(){
+        if (!window.__pickMap) return;
+        [
+            __uav && __uav.layerPRD,
+            __uav && __uav.layerAirports,
+            __uav && __uav.layerBolivia,
+            __uav && __uav.layerPeru,
+            __uav && __uav.layerPeruAlerts,
+            __uav && __uav.layerBoliviaAlerts,
+            __uav && __uav.layerBuffers,
+            __uav && __uav.layerDraw,
+            window.__dmc && __dmc.stationLayer,
+            window.__dmc && __dmc.alertLayerAviso,
+            window.__dmc && __dmc.alertLayerAlerta,
+            window.__dmc && __dmc.alertLayerAlarma
+        ].forEach(function(lyr){ try{ if(lyr && window.__pickMap.hasLayer(lyr)) window.__pickMap.removeLayer(lyr); }catch(_e){} });
+    };
     // Cargar GeoJSON desde repo (misma carpeta que index.html)
     if (!__uav._loaded) {
         Promise.allSettled([
@@ -5800,55 +5810,8 @@ try {
         lat -= (idx || 0) * 0.28;
         return [lat, lon];
     };
-    window.__renderRegionalLegend = window.__renderRegionalLegend || function(){
-        if (!window.__pickMap || window.__uavLegendCtl) return;
-        window.__uavLegendCtl = L.control({ position: 'bottomleft' });
-        window.__uavLegendCtl.onAdd = function(){
-            var div = L.DomUtil.create('div', 'leaflet-control uav-legend');
-            div.innerHTML = '<div class="ttl">LEYENDA</div>'
-              + '<div class="itm"><span class="dot" style="border-color:#0f766e;background:#14b8a6"></span> Chile / DMC</div>'
-              + '<div class="itm"><span class="dot" style="border-color:#ff6f00;background:#ffb300"></span> Bolivia / SENAMHI</div>'
-              + '<div class="itm"><span class="dot" style="border-color:#c62828;background:#ef5350"></span> Perú meteorológica</div>'
-              + '<div class="itm"><span class="dot" style="border-color:#2e7d32;background:#66bb6a"></span> Perú agrometeorológica</div>'
-              + '<div class="itm"><span class="dot" style="border-color:#1565c0;background:#42a5f5"></span> Perú hidrológica</div>'
-              + '<div class="itm"><span class="dot" style="border-color:#6a1b9a;background:#ab47bc"></span> Perú hidrometeorológica</div>'
-              + '<div class="itm"><span class="line" style="border-top-color:#facc15"></span> Alerta amarilla</div>'
-              + '<div class="itm"><span class="line" style="border-top-color:#fb8c00"></span> Alerta naranja</div>'
-              + '<div class="itm"><span class="line" style="border-top-color:#d32f2f"></span> Alerta roja</div>';
-            L.DomEvent.disableClickPropagation(div); L.DomEvent.disableScrollPropagation(div); return div;
-        };
-        window.__uavLegendCtl.addTo(window.__pickMap);
-    };
-    window.__renderRegionalAlertPanel = window.__renderRegionalAlertPanel || function(alerts, boAlerts){
-        if (!window.__pickMap) return;
-        if (window.__uavAlertCtl) return;
-        window.__uavAlertCtl = L.control({ position:'bottomright' });
-        window.__uavAlertCtl.onAdd = function(){
-            var div = L.DomUtil.create('div','leaflet-control uav-alert-panel');
-            var html = '<div class="ttl">ALERTAS OFICIALES</div>';
-            if (alerts && alerts.length) {
-                alerts.forEach(function(a, i){
-                    html += '<a href="#" class="uav-alert-chip" data-idx="'+ i +'" data-lvl="'+ String(a.nivel || '').toUpperCase() +'"><b>PERÚ · '+ String(a.nivel || '').toUpperCase() +' · Aviso '+ String(a.aviso || '') +'</b><small>'+ String(a.titulo || '') +'</small></a>';
-                });
-            }
-            if (boAlerts && boAlerts.length) {
-                boAlerts.forEach(function(a, i){
-                    html += '<a href="#" class="uav-alert-chip" data-boidx="'+ i +'" data-lvl="'+ String(a.nivel || '').toUpperCase() +'"><b>BOLIVIA · '+ String(a.nivel || '').toUpperCase() +' · '+ String(a.codigo || a.aviso || '') +'</b><small>'+ String(a.titulo || '') +'</small></a>';
-                });
-            }
-            if ((!alerts || !alerts.length) && (!boAlerts || !boAlerts.length)) {
-                html += '<div style="font:12px system-ui,Arial,sans-serif;color:#555">Sin alertas oficiales cargadas.</div>';
-            }
-            div.innerHTML = html;
-            L.DomEvent.disableClickPropagation(div); L.DomEvent.disableScrollPropagation(div);
-            setTimeout(function(){
-              div.querySelectorAll('.uav-alert-chip[data-idx]').forEach(function(el){ el.onclick=function(ev){ ev.preventDefault(); var a=(window.__peruOfficialAlertsData||[])[Number(el.dataset.idx)]; if (a && a._leafletLayer && a._leafletLayer.getBounds) { window.__pickMap.fitBounds(a._leafletLayer.getBounds(), { padding:[20,20] }); a._leafletLayer.openPopup(); } else if (a) window.__openRegionalAlertMap('PERÚ · Aviso '+a.aviso+' · '+a.titulo, (a.map_urls && a.map_urls[0]) || (a.days && a.days[0] && a.days[0].map_preview_url) || ''); }; });
-              div.querySelectorAll('.uav-alert-chip[data-boidx]').forEach(function(el){ el.onclick=function(ev){ ev.preventDefault(); var a=(window.__boliviaOfficialAlertsData||[])[Number(el.dataset.boidx)]; if (a && a._leafletLayer && a._leafletLayer.getBounds) { window.__pickMap.fitBounds(a._leafletLayer.getBounds(), { padding:[20,20] }); a._leafletLayer.openPopup(); } else if (a && a.source_url) window.open(a.source_url, '_blank', 'noopener'); }; });
-            }, 0);
-            return div;
-        };
-        window.__uavAlertCtl.addTo(window.__pickMap);
-    };
+    window.__renderRegionalLegend = window.__renderRegionalLegend || function(){ return; };
+    window.__renderRegionalAlertPanel = window.__renderRegionalAlertPanel || function(){ return; };
 
     window.__regionalAlertStyle = window.__regionalAlertStyle || function(level){
         var col = window.__alertColorByLevel(level);
@@ -5901,11 +5864,8 @@ try {
                 }).join('');
                 var popup = '<div style="min-width:260px;max-width:420px"><b style="color:'+col+'">⚠ PERÚ · ' + String(a.nivel || '').toUpperCase() + '</b><br><b>Aviso ' + String(a.aviso || '') + ' — ' + String(a.titulo || '') + '</b><br><small>' + String(a.inicio || '') + ' · ' + String(a.fin || '') + '</small><hr style="margin:5px 0"><div style="font-size:12px;color:#333">' + String(a.descripcion || '') + '</div>' + days + '<div><a href="https://www.senamhi.gob.pe/?p=aviso-meteorologico" target="_blank" rel="noopener">Abrir listado oficial</a></div></div>';
                 var tip = 'PERÚ · ALERTA OFICIAL · ' + String(a.nivel || '').toUpperCase() + ' · AVISO ' + String(a.aviso || '');
-                var layer = window.__drawRegionalAlertGeometry(a, 'PERÚ');
-                if (!layer) {
-                    var ll = window.__guessPeruAlertCenter(a, idx);
-                    layer = L.circleMarker(ll, { radius:8, color:col, weight:3, fillColor:col, fillOpacity:0.25 });
-                }
+                var ll = window.__guessPeruAlertCenter(a, idx);
+                var layer = L.circleMarker(ll, { radius:8, color:'#c62828', weight:3, fillColor:'#e53935', fillOpacity:0.30 });
                 window.__bindRegionalAlertLayer(layer, tip, popup);
                 layer.addTo(__uav.layerPeruAlerts);
                 a._leafletLayer = layer;
@@ -5933,6 +5893,7 @@ try {
                 boMet.addTo(__uav.layerBoliviaAlerts); boHid.addTo(__uav.layerBoliviaAlerts);
             }
             window.__renderRegionalAlertPanel(alerts, boAlerts);
+            setTimeout(function(){ if (typeof window.__deactivateAllOperatorLayers === 'function') window.__deactivateAllOperatorLayers(); }, 120);
         }).catch(function(){ window.__renderRegionalAlertPanel([], []); });
     };
 
@@ -6372,13 +6333,13 @@ try {
     function __dmcEnsureAlertsOverlay(){
         try{
             if(!__dmc.alertLayerAviso){
-                __dmc.alertLayerAviso = L.layerGroup().addTo(__pickMap);
+                __dmc.alertLayerAviso = L.layerGroup();
             }
             if(!__dmc.alertLayerAlerta){
-                __dmc.alertLayerAlerta = L.layerGroup().addTo(__pickMap);
+                __dmc.alertLayerAlerta = L.layerGroup();
             }
             if(!__dmc.alertLayerAlarma){
-                __dmc.alertLayerAlarma = L.layerGroup().addTo(__pickMap);
+                __dmc.alertLayerAlarma = L.layerGroup();
             }
             __dmc.alertLayer = __dmc.alertLayer || L.layerGroup([
                 __dmc.alertLayerAviso,
@@ -6600,7 +6561,6 @@ try {
         }
     }
     if (!__dmc._added) {
-        __dmc.stationLayer.addTo(__pickMap);
         if (__uav?.layersCtl) {
             __uav.layersCtl.addOverlay(__dmc.stationLayer, 'DMC · ESTACIONES OFICIALES');
         }
