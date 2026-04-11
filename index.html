@@ -5715,6 +5715,7 @@ try {
 
             console.log('[SENAMHI] Bolivia:', bo?.features?.length || 0, 'estaciones');
             console.log('[SENAMHI] Perú:',   pe?.features?.length || 0, 'estaciones');
+            if(typeof __senamhiEnsureAlertLayers === 'function') __senamhiEnsureAlertLayers();
             __uav._loaded = true;
         }).catch(err => { console.warn('[GeoJSON] Error:', err); });
     }
@@ -17062,6 +17063,270 @@ async function __alertsLoadSenamhiPe(){
         }
         return res;
     };
+})();
+</script>
+<script>
+// ════════════════════════════════════════════════════════════════════════════
+// SENAMHI — Capas de alertas en el mapa con polígonos reales
+// ════════════════════════════════════════════════════════════════════════════
+const __senamhi = window.__senamhi || {};
+window.__senamhi = __senamhi;
+
+// Coordenadas reales de departamentos Bolivia
+const __BOLIVIA_DEP_COORDS = {
+  'La Paz':     [[-14.08,-70.00],[-14.08,-67.50],[-17.57,-67.50],[-17.57,-70.00]],
+  'Cochabamba': [[-16.27,-67.00],[-16.27,-64.50],[-18.47,-64.50],[-18.47,-67.00]],
+  'Oruro':      [[-17.00,-68.50],[-17.00,-65.80],[-20.00,-65.80],[-20.00,-68.50]],
+  'Potosí':     [[-18.50,-68.50],[-18.50,-63.20],[-23.00,-63.20],[-23.00,-68.50]],
+  'Chuquisaca': [[-18.50,-65.70],[-18.50,-61.80],[-21.50,-61.80],[-21.50,-65.70]],
+  'Tarija':     [[-21.00,-65.50],[-21.00,-62.30],[-23.00,-62.30],[-23.00,-65.50]],
+  'Santa Cruz': [[-14.00,-64.50],[-14.00,-57.50],[-22.00,-57.50],[-22.00,-64.50]],
+  'Beni':       [[-9.50,-69.50], [-9.50,-63.00], [-15.50,-63.00],[-15.50,-69.50]],
+  'Pando':      [[-9.50,-70.00], [-9.50,-65.50], [-11.50,-65.50],[-11.50,-70.00]],
+};
+
+// Coordenadas reales de departamentos Perú
+const __PERU_DEP_COORDS = {
+  'Lima':        [[-10.50,-78.50],[-10.50,-75.00],[-13.50,-75.00],[-13.50,-78.50]],
+  'Cusco':       [[-11.50,-74.00],[-11.50,-69.00],[-15.50,-69.00],[-15.50,-74.00]],
+  'Arequipa':    [[-14.50,-73.50],[-14.50,-70.00],[-17.00,-70.00],[-17.00,-73.50]],
+  'Puno':        [[-13.50,-70.50],[-13.50,-68.50],[-17.00,-68.50],[-17.00,-70.50]],
+  'Junin':       [[-10.50,-76.50],[-10.50,-73.50],[-13.00,-73.50],[-13.00,-76.50]],
+  'Cajamarca':   [[-5.00,-80.00], [-5.00,-77.00], [-8.00,-77.00], [-8.00,-80.00]],
+  'Piura':       [[-4.00,-81.50], [-4.00,-79.00], [-6.50,-79.00], [-6.50,-81.50]],
+  'Loreto':      [[-1.00,-76.50], [-1.00,-70.00], [-8.00,-70.00], [-8.00,-76.50]],
+  'Tacna':       [[-16.50,-71.00],[-16.50,-69.50],[-18.50,-69.50],[-18.50,-71.00]],
+  'Ayacucho':    [[-12.00,-75.50],[-12.00,-72.50],[-15.50,-72.50],[-15.50,-75.50]],
+  'San Martin':  [[-5.50,-78.00], [-5.50,-75.50], [-8.50,-75.50], [-8.50,-78.00]],
+  'SanMartin':   [[-5.50,-78.00], [-5.50,-75.50], [-8.50,-75.50], [-8.50,-78.00]],
+  'Lambayeque':  [[-5.50,-80.50], [-5.50,-79.00], [-7.00,-79.00], [-7.00,-80.50]],
+  'Ica':         [[-13.00,-76.50],[-13.00,-74.00],[-15.50,-74.00],[-15.50,-76.50]],
+  'Moquegua':    [[-15.50,-71.50],[-15.50,-69.50],[-17.50,-69.50],[-17.50,-71.50]],
+  'La Libertad': [[-7.00,-80.00], [-7.00,-77.50], [-9.00,-77.50], [-9.00,-80.00]],
+  'Ancash':      [[-8.00,-78.50], [-8.00,-76.50], [-10.50,-76.50],[-10.50,-78.50]],
+  'Huanuco':     [[-8.50,-77.50], [-8.50,-74.50], [-11.00,-74.50],[-11.00,-77.50]],
+  'Ucayali':     [[-8.00,-76.00], [-8.00,-70.50], [-12.00,-70.50],[-12.00,-76.00]],
+  'Amazonas':    [[-3.50,-79.00], [-3.50,-77.00], [-6.50,-77.00], [-6.50,-79.00]],
+  'Pasco':       [[-9.50,-77.00], [-9.50,-74.00], [-11.50,-74.00],[-11.50,-77.00]],
+  'Apurimac':    [[-13.00,-74.00],[-13.00,-72.00],[-15.00,-72.00],[-15.00,-74.00]],
+  'Huancavelica':[[-11.50,-75.50],[-11.50,-73.50],[-14.00,-73.50],[-14.00,-75.50]],
+  'Tumbes':      [[-3.00,-81.50], [-3.00,-80.00], [-4.50,-80.00], [-4.50,-81.50]],
+  'Moho':        [[-14.50,-70.00],[-14.50,-69.00],[-15.50,-69.00],[-15.50,-70.00]],
+};
+
+function __senamhiEnsureAlertLayers(){
+    const map = window.__pickMap;
+    const ctl = window.__uav && window.__uav.layersCtl;
+    if(!map || !ctl) return;
+    if(!__senamhi.layersReady){
+        __senamhi.alertLayerBo      = L.layerGroup().addTo(map);
+        __senamhi.alertLayerPeRojo  = L.layerGroup().addTo(map);
+        __senamhi.alertLayerPeNaranja = L.layerGroup().addTo(map);
+        __senamhi.alertLayerPeAmarillo = L.layerGroup().addTo(map);
+        ctl.addOverlay(__senamhi.alertLayerBo,          'SENAMHI · ALERTAS BOLIVIA 🇧🇴');
+        ctl.addOverlay(__senamhi.alertLayerPeRojo,      'SENAMHI · AVISOS PERÚ 🔴');
+        ctl.addOverlay(__senamhi.alertLayerPeNaranja,   'SENAMHI · AVISOS PERÚ 🟠');
+        ctl.addOverlay(__senamhi.alertLayerPeAmarillo,  'SENAMHI · AVISOS PERÚ 🟡');
+        __senamhi.layersReady = true;
+    }
+    __senamhiLoadAlertLayers();
+}
+
+function __senamhiMakePopup(flag, nivel, titulo, inicio, fin){
+    const col = nivel==='ROJO'?'#d32f2f':nivel==='NARANJA'?'#e65100':'#a16207';
+    return '<div style="min-width:200px;font-family:Consolas,monospace">'
+        + '<b style="color:'+col+'">'+flag+' '+nivel+'</b><br>'
+        + '<div style="font-weight:600;margin:4px 0">'+titulo+'</div>'
+        + (inicio?'<small style="color:#888">'+inicio+' → '+fin+'</small>':'')
+        + '</div>';
+}
+
+function __senamhiPaintDep(coords, nivel, popup, layer){
+    const col  = nivel==='ROJO'?'#b91c1c':nivel==='NARANJA'?'#c2410c':'#a16207';
+    const fill = nivel==='ROJO'?'#ef4444':nivel==='NARANJA'?'#fb923c':'#facc15';
+    const dash = nivel==='ROJO'?null:'6,4';
+    const opts = {color:col,fillColor:fill,fillOpacity:0.35,weight:2};
+    if(dash) opts.dashArray = dash;
+    L.polygon(coords, opts).bindPopup(popup).addTo(layer);
+}
+
+async function __senamhiLoadAlertLayers(){
+    if(!__senamhi.layersReady) return;
+
+    // ── Bolivia ──────────────────────────────────────────────────────────────
+    try {
+        const r = await fetch('https://meteo-proxy.kcautivof.workers.dev/senamhi-bo/alerts');
+        const data = r.ok ? await r.json() : {alerts:[]};
+        __senamhi.alertLayerBo.clearLayers();
+        (data.alerts||[]).forEach(a => {
+            const nivel = (a.nivel||'AMARILLO').toUpperCase();
+            const popup = __senamhiMakePopup('🇧🇴', nivel, a.titulo||'', '', '');
+            Object.keys(__BOLIVIA_DEP_COORDS).forEach(dep => {
+                if((a.titulo||'').toUpperCase().includes(dep.toUpperCase())){
+                    __senamhiPaintDep(__BOLIVIA_DEP_COORDS[dep], nivel, popup, __senamhi.alertLayerBo);
+                }
+            });
+        });
+    } catch(e){ console.warn('alertas Bolivia mapa:', e); }
+
+    // ── Perú ─────────────────────────────────────────────────────────────────
+    try {
+        const r = await fetch('https://meteo-proxy.kcautivof.workers.dev/senamhi-pe/alerts');
+        const data = r.ok ? await r.json() : {alerts:[]};
+        __senamhi.alertLayerPeRojo.clearLayers();
+        __senamhi.alertLayerPeNaranja.clearLayers();
+        __senamhi.alertLayerPeAmarillo.clearLayers();
+        (data.alerts||[]).forEach(a => {
+            const nivel = (a.nivel||'AMARILLO').toUpperCase();
+            const layer = nivel==='ROJO' ? __senamhi.alertLayerPeRojo
+                        : nivel==='NARANJA' ? __senamhi.alertLayerPeNaranja
+                        : __senamhi.alertLayerPeAmarillo;
+            const popup = __senamhiMakePopup('🇵🇪', nivel, a.titulo||'', a.inicio||'', a.fin||'');
+            const titulo = (a.titulo||'').toUpperCase();
+            let painted = false;
+            // Intentar por nombre de departamento
+            Object.keys(__PERU_DEP_COORDS).forEach(dep => {
+                if(titulo.includes(dep.toUpperCase())){
+                    __senamhiPaintDep(__PERU_DEP_COORDS[dep], nivel, popup, layer);
+                    painted = true;
+                }
+            });
+            // Por zona geográfica general
+            if(!painted){
+                const regionMap = {
+                    'SIERRA':    ['Cajamarca','Cusco','Arequipa','Puno','Junin','Ayacucho','Huancavelica','Apurimac','Ancash','Huanuco','Pasco'],
+                    'COSTA':     ['Piura','Lambayeque','La Libertad','Lima','Ica','Arequipa','Tacna','Moquegua','Tumbes'],
+                    'SELVA':     ['Loreto','San Martin','Ucayali','Amazonas'],
+                    'NORTE':     ['Piura','Tumbes','Lambayeque','La Libertad','Cajamarca','Amazonas'],
+                    'SUR':       ['Cusco','Puno','Arequipa','Moquegua','Tacna'],
+                    'CENTRO':    ['Lima','Junin','Huancavelica','Ayacucho','Ica','Huanuco','Pasco','Apurimac'],
+                };
+                Object.keys(regionMap).forEach(zona => {
+                    if(titulo.includes(zona)){
+                        regionMap[zona].forEach(dep => {
+                            if(__PERU_DEP_COORDS[dep])
+                                __senamhiPaintDep(__PERU_DEP_COORDS[dep], nivel, popup, layer);
+                        });
+                        painted = true;
+                    }
+                });
+            }
+        });
+    } catch(e){ console.warn('alertas Perú mapa:', e); }
+}
+
+// ── Panel alertas Bolivia ─────────────────────────────────────────────────────
+async function __alertsLoadSenamhiBo(){
+    const meta = document.getElementById('alertsMeta');
+    const list = document.getElementById('alertsList');
+    if(meta) meta.textContent = 'CARGANDO ALERTAS SENAMHI BOLIVIA...';
+    ['alertsFilterRegion','alertsFilterType','alertsFilterNivel','alertsFilterDmcRegion']
+        .forEach(id=>{ const e=document.getElementById(id); if(e) e.style.display='none'; });
+    try {
+        const r = await fetch('https://meteo-proxy.kcautivof.workers.dev/senamhi-bo/alerts');
+        const data = r.ok ? await r.json() : {alerts:[]};
+        const alerts = data.alerts || [];
+        const now = new Date().toLocaleTimeString('es-CL',{hour12:false,hour:'2-digit',minute:'2-digit'});
+        if(meta) meta.textContent = 'FUENTE: SENAMHI BOLIVIA | '+alerts.length+' ALERTAS | '+now;
+        if(list) list.innerHTML = !alerts.length
+            ? '<div class="alert-item" style="padding:10px;color:var(--muted);font-size:11px">SIN ALERTAS ACTIVAS EN BOLIVIA</div>'
+            : alerts.map(function(a){
+                const col = a.nivel==='ROJO'?'#d32f2f':a.nivel==='NARANJA'?'#e65100':'#f9a825';
+                return '<div class="alert-item" style="padding:8px 10px;border-left:3px solid '+col+';margin-bottom:3px;">'
+                    + '<span style="color:'+col+';font-weight:800;font-size:9px;letter-spacing:1px">🇧🇴 '+(a.nivel||'AVISO')+'</span>'
+                    + '<div style="font-size:11px;margin-top:3px;font-weight:600">'+(a.titulo||'')+'</div>'
+                    + '</div>';
+            }).join('');
+        __senamhiEnsureAlertLayers();
+    } catch(e){ if(meta) meta.textContent='ERROR ALERTAS BOLIVIA'; }
+}
+
+// ── Panel alertas Perú ────────────────────────────────────────────────────────
+async function __alertsLoadSenamhiPe(){
+    const meta = document.getElementById('alertsMeta');
+    const list = document.getElementById('alertsList');
+    if(meta) meta.textContent = 'CARGANDO ALERTAS SENAMHI PERÚ...';
+    ['alertsFilterRegion','alertsFilterType','alertsFilterNivel','alertsFilterDmcRegion']
+        .forEach(id=>{ const e=document.getElementById(id); if(e) e.style.display='none'; });
+    try {
+        const r = await fetch('https://meteo-proxy.kcautivof.workers.dev/senamhi-pe/alerts');
+        const data = r.ok ? await r.json() : {alerts:[]};
+        const alerts = data.alerts || [];
+        const now = new Date().toLocaleTimeString('es-CL',{hour12:false,hour:'2-digit',minute:'2-digit'});
+        if(meta) meta.textContent = 'FUENTE: SENAMHI PERÚ | '+alerts.length+' AVISOS VIGENTES | '+now;
+        if(list) list.innerHTML = !alerts.length
+            ? '<div class="alert-item" style="padding:10px;color:var(--muted);font-size:11px">SIN ALERTAS ACTIVAS EN PERÚ</div>'
+            : alerts.map(function(a){
+                const col = a.nivel==='ROJO'?'#d32f2f':a.nivel==='NARANJA'?'#e65100':'#f9a825';
+                return '<div class="alert-item" style="padding:8px 10px;border-left:3px solid '+col+';margin-bottom:3px;">'
+                    + '<div style="display:flex;justify-content:space-between">'
+                    + '<span style="color:'+col+';font-weight:800;font-size:9px">🇵🇪 '+(a.nivel||'AVISO')+'</span>'
+                    + '<span style="font-size:9px;color:var(--muted)">'+(a.inicio||'')+' → '+(a.fin||'')+'</span>'
+                    + '</div>'
+                    + '<div style="font-size:11px;margin-top:3px;font-weight:600">'+(a.titulo||'')+'</div>'
+                    + '</div>';
+            }).join('');
+        __senamhiEnsureAlertLayers();
+    } catch(e){ if(meta) meta.textContent='ERROR ALERTAS PERÚ'; }
+}
+
+// ── Detectar SENAMHI en respuesta /forecast ───────────────────────────────────
+(function patchForecastResponse(){
+    if(window.__senamhiForecastPatched) return;
+    window.__senamhiForecastPatched = true;
+    const _orig = window.fetch;
+    window.fetch = async function(){
+        const args = Array.prototype.slice.call(arguments);
+        const res = await _orig.apply(this, args);
+        const url = typeof args[0]==='string' ? args[0] : (args[0] && args[0].url)||'';
+        if(url.indexOf('/forecast')>=0 && url.indexOf('open-meteo')<0 && url.indexOf('archive')<0){
+            res.clone().json().then(function(data){
+                if(!data) return;
+                const stLbl = function(){ return document.querySelector('#dmcRefBlock span[style*="0.62em"]'); };
+                if(data.__source==='senamhi_bo'){
+                    window.__senamhiBoData=data; window.__senamhiPeData=null;
+                    window.__lastSourceLabel='🇧🇴 SENAMHI BOLIVIA · '+(data.__station||'');
+                    requestAnimationFrame(function(){
+                        const lbl=document.getElementById('valDmcStation');
+                        if(lbl) lbl.textContent=(data.__station||'--')+' · '+(data.__departamento||'');
+                        if(stLbl()) stLbl().textContent='🇧🇴 ESTACIÓN SENAMHI BOLIVIA';
+                        const tmax=data.daily&&data.daily.temperature_2m_max&&data.daily.temperature_2m_max[0];
+                        const tmin=data.daily&&data.daily.temperature_2m_min&&data.daily.temperature_2m_min[0];
+                        const elObs=document.getElementById('valDmcObs');
+                        if(elObs) elObs.textContent=tmax!=null?tmax+'°/'+tmin+'°':'--';
+                        const elH=document.getElementById('valDmcHora'); if(elH) elH.textContent='HOY';
+                        const elP=document.getElementById('valDmcProno');
+                        if(elP) elP.textContent=(data.daily&&data.daily.__summary_text&&data.daily.__summary_text[0]&&data.daily.__summary_text[0][0])||'--';
+                        const elD=document.getElementById('valDmcDiff');
+                        if(elD){elD.textContent=(data.__station_dist_km||'--')+'km';elD.style.color='var(--accent)';}
+                    });
+                } else if(data.__source==='senamhi_pe'){
+                    window.__senamhiPeData=data; window.__senamhiBoData=null;
+                    window.__lastSourceLabel='🇵🇪 SENAMHI PERÚ · '+(data.__station||'');
+                    requestAnimationFrame(function(){
+                        const lbl=document.getElementById('valDmcStation');
+                        if(lbl) lbl.textContent=data.__station||'--';
+                        if(stLbl()) stLbl().textContent='🇵🇪 ESTACIÓN SENAMHI PERÚ';
+                        const elD=document.getElementById('valDmcDiff');
+                        if(elD){elD.textContent=(data.__station_dist_km||'--')+'km';elD.style.color='var(--accent)';}
+                    });
+                } else {
+                    window.__senamhiBoData=null; window.__senamhiPeData=null;
+                    if(stLbl()) stLbl().textContent='ESTACIÓN OFICIAL DMC';
+                }
+            }).catch(function(){});
+        }
+        return res;
+    };
+})();
+
+// Esperar mapa listo y cargar capas de alertas automáticamente
+(function waitForMap(){
+    if(window.__pickMap && window.__uav && window.__uav.layersCtl){
+        __senamhiEnsureAlertLayers();
+    } else {
+        setTimeout(waitForMap, 700);
+    }
 })();
 </script>
 </body>
