@@ -5627,29 +5627,53 @@ try {
 
     // SENAMHI Perú — estaciones meteorológicas
     __uav.layerPeru = __uav.layerPeru || L.geoJSON(null, {
-        pointToLayer: (f, latlng) => L.circleMarker(latlng, {
-            radius: 5, color: '#c62828', weight: 2, fillColor: '#ef5350', fillOpacity: 0.85
-        }),
+        pointToLayer: (f, latlng) => {
+            const p = (f && f.properties) || {};
+            const estado = String(p.estado || '').toUpperCase();
+            let style = { radius: 5, color: '#c62828', weight: 2, fillColor: '#ef5350', fillOpacity: 0.85 };
+            if (estado === 'AUTOMATICA') style = { radius: 5, color: '#1565c0', weight: 2, fillColor: '#42a5f5', fillOpacity: 0.9 };
+            else if (estado === 'DIFERIDO') style = { radius: 5, color: '#ef6c00', weight: 2, fillColor: '#ffb74d', fillOpacity: 0.9 };
+            return L.circleMarker(latlng, style);
+        },
         onEachFeature: (f, layer) => {
-            const p = f.properties;
+            const p = (f && f.properties) || {};
             layer.bindPopup(function() {
-                var div = L.DomUtil.create('div', '');
-                var cod = String(p.codigo || '');
-                var est = String(p.estado || 'REAL');
-                var tipo = String(p.tipo_est || 'M');
-                var cate = String(p.categoria || 'CONVENCIONAL').toUpperCase();
-                var codOld = String(p.codigo_ant || '');
+                const div = L.DomUtil.create('div', '');
+                const cod = String(p.codigo || p.cod || '').trim();
+                const est = String(p.estado || '').trim().toUpperCase();
+                const tipo = String(p.tipo_est || p.ico || '').trim().toUpperCase();
+                const cate = String(p.categoria || p.cate || '').trim().toUpperCase();
+                const codOld = String(p.codigo_ant || p.cod_old || '').trim();
+                const nombre = String(p.nombre || p.nom || 'ESTACIÓN SENAMHI PERÚ').trim();
+                const altitud = (p.altitud !== null && p.altitud !== undefined && p.altitud !== '') ? (p.altitud + ' m') : '';
+                const meta = [p.departamento, p.provincia, altitud, est ? ('Estado: ' + est) : '', cate ? ('Clase: ' + cate) : ''].filter(Boolean).join(' · ');
                 div.style.minWidth = '860px';
+                if (!cod || !est || !tipo || !cate) {
+                    div.innerHTML =
+                        '<div style="padding-bottom:6px"><b style="color:#ef5350">&#x1F1F5;&#x1F1EA; SENAMHI Per&uacute; Oficial</b>'
+                        + ' &middot; <b>' + nombre + '</b></div>'
+                        + '<div style="font-size:12px;color:#666;line-height:1.45">'
+                        + 'No se puede abrir la ficha oficial porque esta estación no tiene metadatos completos en el GeoJSON.'
+                        + '<br><b>Código:</b> ' + (cod || 'N/D')
+                        + ' <b>Estado:</b> ' + (est || 'N/D')
+                        + ' <b>Tipo:</b> ' + (tipo || 'N/D')
+                        + ' <b>Categoría:</b> ' + (cate || 'N/D')
+                        + '</div>';
+                    return div;
+                }
+                const url = 'https://www.senamhi.gob.pe/mapas/mapa-estaciones-2/map_red_graf.php'
+                    + '?cod=' + encodeURIComponent(cod)
+                    + '&estado=' + encodeURIComponent(est)
+                    + '&tipo_esta=' + encodeURIComponent(tipo)
+                    + '&cate=' + encodeURIComponent(cate)
+                    + '&cod_old=' + encodeURIComponent(codOld);
                 div.innerHTML =
                     '<div style="padding-bottom:4px"><b style="color:#ef5350">&#x1F1F5;&#x1F1EA; SENAMHI Per&uacute; Oficial</b>'
-                    + ' &middot; <b>' + p.nombre + '</b>'
-                    + ' <small style="color:#888">' + p.departamento + ' &middot; ' + p.altitud + 'm &middot; C&oacute;d:' + cod + '</small></div>'
-                    + '<iframe src="https://www.senamhi.gob.pe/mapas/mapa-estaciones-2/map_red_graf.php'
-                    + '?cod=' + cod + '&estado=' + est + '&tipo_esta=' + tipo
-                    + '&cate=' + encodeURIComponent(cate) + '&cod_old=' + codOld
-                    + '" width="850" height="430" frameborder="0" style="border:none;display:block"></iframe>';
+                    + ' &middot; <b>' + nombre + '</b>'
+                    + ' <small style="color:#888">' + (meta || ('Cód: ' + cod)) + ' · Cód: ' + cod + '</small></div>'
+                    + '<iframe src="' + url + '" width="850" height="430" frameborder="0" style="border:none;display:block"></iframe>';
                 return div;
-            }, { maxWidth: 'auto', minWidth: 860 })
+            }, { maxWidth: 'auto', minWidth: 860 });
         }
     });
 
