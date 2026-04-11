@@ -5647,6 +5647,12 @@ try {
         },
         onEachFeature: (f, layer) => {
             const p = f.properties || {};
+            var styTip = window.__peruStationStyle(p);
+            var peruType = styTip.group === 'agro' ? 'PERÚ · AGROMETEOROLÓGICA'
+                         : styTip.group === 'hidro' ? 'PERÚ · HIDROLÓGICA'
+                         : styTip.group === 'hidrometeo' ? 'PERÚ · HIDROMETEOROLÓGICA'
+                         : 'PERÚ · METEOROLÓGICA';
+            layer.bindTooltip(peruType + (p.nombre ? ' · ' + String(p.nombre).toUpperCase() : ''), { sticky:true, direction:'top', opacity:0.96, offset:[0,-6] });
             layer.bindPopup(function() {
                 var div = L.DomUtil.create('div', '');
                 var sty = window.__peruStationStyle(p);
@@ -5799,17 +5805,16 @@ try {
         window.__uavLegendCtl = L.control({ position: 'bottomleft' });
         window.__uavLegendCtl.onAdd = function(){
             var div = L.DomUtil.create('div', 'leaflet-control uav-legend');
-            div.innerHTML = '<div class="ttl">LEYENDA · ESTACIONES Y ALERTAS</div>'
+            div.innerHTML = '<div class="ttl">LEYENDA</div>'
               + '<div class="itm"><span class="dot" style="border-color:#0f766e;background:#14b8a6"></span> Chile / DMC</div>'
               + '<div class="itm"><span class="dot" style="border-color:#ff6f00;background:#ffb300"></span> Bolivia / SENAMHI</div>'
-              + '<div class="itm"><span class="dot" style="border-color:#c62828;background:#ef5350"></span> Perú meteorológica / pluviométrica</div>'
+              + '<div class="itm"><span class="dot" style="border-color:#c62828;background:#ef5350"></span> Perú meteorológica</div>'
               + '<div class="itm"><span class="dot" style="border-color:#2e7d32;background:#66bb6a"></span> Perú agrometeorológica</div>'
               + '<div class="itm"><span class="dot" style="border-color:#1565c0;background:#42a5f5"></span> Perú hidrológica</div>'
               + '<div class="itm"><span class="dot" style="border-color:#6a1b9a;background:#ab47bc"></span> Perú hidrometeorológica</div>'
-              + '<div class="itm"><span class="line" style="border-top-color:#facc15"></span> Alerta oficial Perú / Bolivia · nivel amarillo</div>'
-              + '<div class="itm"><span class="line" style="border-top-color:#fb8c00"></span> Alerta oficial Perú / Bolivia · nivel naranja</div>'
-              + '<div class="itm"><span class="line" style="border-top-color:#d32f2f"></span> Alerta oficial Perú / Bolivia · nivel rojo</div>'
-              + '<div class="itm" style="font-size:10px;color:#555">Pasa el cursor sobre cada punto para identificar país y tipo.</div>';
+              + '<div class="itm"><span class="line" style="border-top-color:#facc15"></span> Alerta amarilla</div>'
+              + '<div class="itm"><span class="line" style="border-top-color:#fb8c00"></span> Alerta naranja</div>'
+              + '<div class="itm"><span class="line" style="border-top-color:#d32f2f"></span> Alerta roja</div>';
             L.DomEvent.disableClickPropagation(div); L.DomEvent.disableScrollPropagation(div); return div;
         };
         window.__uavLegendCtl.addTo(window.__pickMap);
@@ -5837,12 +5842,40 @@ try {
             div.innerHTML = html;
             L.DomEvent.disableClickPropagation(div); L.DomEvent.disableScrollPropagation(div);
             setTimeout(function(){
-              div.querySelectorAll('.uav-alert-chip[data-idx]').forEach(function(el){ el.onclick=function(ev){ ev.preventDefault(); var a=(window.__peruOfficialAlertsData||[])[Number(el.dataset.idx)]; if (a) window.__openRegionalAlertMap('PERÚ · Aviso '+a.aviso+' · '+a.titulo, (a.map_urls && a.map_urls[0]) || (a.days && a.days[0] && a.days[0].map_preview_url) || ''); }; });
-              div.querySelectorAll('.uav-alert-chip[data-boidx]').forEach(function(el){ el.onclick=function(ev){ ev.preventDefault(); var a=(window.__boliviaOfficialAlertsData||[])[Number(el.dataset.boidx)]; if (a && a.source_url) window.open(a.source_url, '_blank', 'noopener'); }; });
+              div.querySelectorAll('.uav-alert-chip[data-idx]').forEach(function(el){ el.onclick=function(ev){ ev.preventDefault(); var a=(window.__peruOfficialAlertsData||[])[Number(el.dataset.idx)]; if (a && a._leafletLayer && a._leafletLayer.getBounds) { window.__pickMap.fitBounds(a._leafletLayer.getBounds(), { padding:[20,20] }); a._leafletLayer.openPopup(); } else if (a) window.__openRegionalAlertMap('PERÚ · Aviso '+a.aviso+' · '+a.titulo, (a.map_urls && a.map_urls[0]) || (a.days && a.days[0] && a.days[0].map_preview_url) || ''); }; });
+              div.querySelectorAll('.uav-alert-chip[data-boidx]').forEach(function(el){ el.onclick=function(ev){ ev.preventDefault(); var a=(window.__boliviaOfficialAlertsData||[])[Number(el.dataset.boidx)]; if (a && a._leafletLayer && a._leafletLayer.getBounds) { window.__pickMap.fitBounds(a._leafletLayer.getBounds(), { padding:[20,20] }); a._leafletLayer.openPopup(); } else if (a && a.source_url) window.open(a.source_url, '_blank', 'noopener'); }; });
             }, 0);
             return div;
         };
         window.__uavAlertCtl.addTo(window.__pickMap);
+    };
+
+    window.__regionalAlertStyle = window.__regionalAlertStyle || function(level){
+        var col = window.__alertColorByLevel(level);
+        return { color: col, weight: 3, fillColor: col, fillOpacity: 0.16, opacity: 0.95 };
+    };
+    window.__alertLayerCenter = window.__alertLayerCenter || function(layer){
+        try {
+            if (layer.getBounds) return layer.getBounds().getCenter();
+            if (layer.getLatLng) return layer.getLatLng();
+        } catch(e) {}
+        return null;
+    };
+    window.__bindRegionalAlertLayer = window.__bindRegionalAlertLayer || function(layer, tip, body){
+        layer.bindTooltip(tip, { sticky:true, direction:'top', opacity:0.96, offset:[0,-6] });
+        layer.bindPopup(body, { maxWidth: 460 });
+        return layer;
+    };
+    window.__drawRegionalAlertGeometry = window.__drawRegionalAlertGeometry || function(alert, country){
+        var geom = alert && alert.geometry;
+        if (!geom || !window.L) return null;
+        var style = window.__regionalAlertStyle(alert.nivel || alert.priority || 'NARANJA');
+        try {
+            if (geom.type === 'Polygon') return L.polygon(geom.coordinates, style);
+            if (geom.type === 'MultiPolygon') return L.polygon(geom.coordinates, style);
+            if (geom.type === 'Polyline' || geom.type === 'LineString') return L.polyline(geom.coordinates, { color: style.color, weight: 4, opacity: 0.95 });
+        } catch(e) {}
+        return null;
     };
     window.__loadRegionalOfficialAlerts = window.__loadRegionalOfficialAlerts || function(){
         if (window.__regionalAlertsLoaded) return;
@@ -5860,30 +5893,39 @@ try {
             window.__boliviaOfficialAlertsData = boAlerts;
             __uav.layerPeruAlerts.clearLayers();
             alerts.forEach(function(a, idx){
-                var ll = window.__guessPeruAlertCenter(a, idx);
                 var col = window.__alertColorByLevel(a.nivel);
-                var marker = L.circleMarker(ll, { radius:8, color:col, weight:3, fillColor:col, fillOpacity:0.25 });
                 var days = (a.days || []).map(function(d, i){
                     var u = d.map_preview_url || (a.map_urls && a.map_urls[i]) || '';
                     var abs = /^https?:/i.test(u) ? u : ('https://www.senamhi.gob.pe/' + String(u).replace(/^\/+/, ''));
                     return '<div style="margin:5px 0"><a href="' + abs + '" target="_blank" rel="noopener" style="display:inline-block;border:1px solid #777;background:#fff;padding:4px 7px;cursor:pointer;font:700 11px Consolas,monospace;color:#111;text-decoration:none">VER MAPA OFICIAL ' + (d.date_label || ('Día ' + (i+1))) + '</a></div>';
                 }).join('');
                 var popup = '<div style="min-width:260px;max-width:420px"><b style="color:'+col+'">⚠ PERÚ · ' + String(a.nivel || '').toUpperCase() + '</b><br><b>Aviso ' + String(a.aviso || '') + ' — ' + String(a.titulo || '') + '</b><br><small>' + String(a.inicio || '') + ' · ' + String(a.fin || '') + '</small><hr style="margin:5px 0"><div style="font-size:12px;color:#333">' + String(a.descripcion || '') + '</div>' + days + '<div><a href="https://www.senamhi.gob.pe/?p=aviso-meteorologico" target="_blank" rel="noopener">Abrir listado oficial</a></div></div>';
-                marker.bindPopup(popup, { maxWidth: 460 });
-                marker.addTo(__uav.layerPeruAlerts);
+                var tip = 'PERÚ · ALERTA OFICIAL · ' + String(a.nivel || '').toUpperCase() + ' · AVISO ' + String(a.aviso || '');
+                var layer = window.__drawRegionalAlertGeometry(a, 'PERÚ');
+                if (!layer) {
+                    var ll = window.__guessPeruAlertCenter(a, idx);
+                    layer = L.circleMarker(ll, { radius:8, color:col, weight:3, fillColor:col, fillOpacity:0.25 });
+                }
+                window.__bindRegionalAlertLayer(layer, tip, popup);
+                layer.addTo(__uav.layerPeruAlerts);
+                a._leafletLayer = layer;
             });
             __uav.layerBoliviaAlerts.clearLayers();
             boAlerts.forEach(function(a, idx){
-                var ll = Array.isArray(a.latlng) ? a.latlng : [-16.5, -64.5];
                 var col = window.__alertColorByLevel(a.nivel || a.priority || 'NARANJA');
-                var marker = L.circleMarker(ll, { radius:8, color:col, weight:3, fillColor:col, fillOpacity:0.22 });
-                marker.bindTooltip('BOLIVIA · ALERTA OFICIAL · ' + String(a.tipo || '').toUpperCase() + ' · ' + String(a.codigo || a.aviso || ''), { sticky:true, direction:'top', opacity:0.96, offset:[0,-6] });
+                var tip = 'BOLIVIA · ALERTA OFICIAL · ' + String(a.tipo || '').toUpperCase() + ' · ' + String(a.codigo || a.aviso || '');
                 var body = '<div style="min-width:270px;max-width:420px"><b style="color:'+col+'">🇧🇴 SENAMHI Bolivia · ' + String(a.tipo || '').toUpperCase() + '</b><br><b>' + String(a.codigo || a.aviso || '') + ' · ' + String(a.titulo || '') + '</b><br><small>' + String(a.inicio || '') + ' · ' + String(a.fin || '') + '</small><hr style="margin:5px 0"><div style="font-size:12px;color:#333">' + String(a.descripcion || '') + '</div>';
                 if (a.zonas && a.zonas.length) body += '<div style="margin-top:6px;font-size:12px"><b>Zonas oficiales:</b> ' + String(a.zonas.join(', ')) + '</div>';
                 if (a.source_url) body += '<div style="margin-top:6px"><a href="' + String(a.source_url) + '" target="_blank" rel="noopener" style="display:inline-block;border:1px solid #777;background:#fff;padding:4px 7px;cursor:pointer;font:700 11px Consolas,monospace;color:#111;text-decoration:none">ABRIR OFICIAL</a></div>';
                 body += '</div>';
-                marker.bindPopup(body, { maxWidth: 460 });
-                marker.addTo(__uav.layerBoliviaAlerts);
+                var layer = window.__drawRegionalAlertGeometry(a, 'BOLIVIA');
+                if (!layer) {
+                    var ll = Array.isArray(a.latlng) ? a.latlng : [-16.5, -64.5];
+                    layer = L.circleMarker(ll, { radius:8, color:col, weight:3, fillColor:col, fillOpacity:0.22 });
+                }
+                window.__bindRegionalAlertLayer(layer, tip, body);
+                layer.addTo(__uav.layerBoliviaAlerts);
+                a._leafletLayer = layer;
             });
             if (!boAlerts.length) {
                 var boMet = L.circleMarker([-17.3, -63.8], { radius:8, color:'#1d4ed8', weight:3, fillColor:'#60a5fa', fillOpacity:0.22 }).bindPopup('<div style="min-width:240px"><b>🇧🇴 SENAMHI Bolivia · Alerta meteorológica</b><hr style="margin:5px 0"><div style="font-size:12px">Portal oficial de alertas meteorológicas de Bolivia.</div><div style="margin-top:6px"><a href="https://senamhi.gob.bo/index.php/alertasM" target="_blank" rel="noopener" style="display:inline-block;border:1px solid #777;background:#fff;padding:4px 7px;cursor:pointer;font:700 11px Consolas,monospace;color:#111;text-decoration:none">ABRIR OFICIAL</a></div></div>');
