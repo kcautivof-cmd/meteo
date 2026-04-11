@@ -5878,8 +5878,11 @@ try {
                 if (a.zonas && a.zonas.length) body += '<div style="margin-top:6px;font-size:12px"><b>Zonas oficiales:</b> ' + String(a.zonas.join(', ')) + '</div>';
                 if (a.source_url) body += '<div style="margin-top:6px"><a href="' + String(a.source_url) + '" target="_blank" rel="noopener" style="display:inline-block;border:1px solid #777;background:#fff;padding:4px 7px;cursor:pointer;font:700 11px Consolas,monospace;color:#111;text-decoration:none">ABRIR OFICIAL</a></div>';
                 body += '</div>';
-                var ll = Array.isArray(a.latlng) ? a.latlng : (window.__alertLayerCenter(window.__drawRegionalAlertGeometry(a, 'BOLIVIA')) || [-16.5, -64.5]);
-                layer = L.circleMarker(ll, { radius:10, color:'#c62828', weight:3, fillColor:'#e53935', fillOpacity:0.32 });
+                var layer = window.__drawRegionalAlertGeometry(a, 'BOLIVIA');
+                if (!layer) {
+                    var ll = Array.isArray(a.latlng) ? a.latlng : [-16.5, -64.5];
+                    layer = L.circleMarker(ll, { radius:8, color:col, weight:3, fillColor:col, fillOpacity:0.22 });
+                }
                 window.__bindRegionalAlertLayer(layer, tip, body);
                 layer.addTo(__uav.layerBoliviaAlerts);
                 a._leafletLayer = layer;
@@ -15268,7 +15271,6 @@ async function robustGenerate(ev){
         if(!isFinite(ptLat)){ ptLat=window.lastLat||NaN; ptLon=window.lastLon||NaN; }
       }catch(_e){}
 
-      // 3. Decodificador de entidades HTML
       function dec(s){
         return String(s||'').replace(/&([a-zA-Z]+);/g,function(m,e){
           return {eacute:'é',iacute:'í',oacute:'ó',aacute:'á',uacute:'ú',ntilde:'ñ',
@@ -15276,22 +15278,18 @@ async function robustGenerate(ev){
                   amp:'&',lt:'<',gt:'>',nbsp:' '}[e]||m;
         });
       }
-
-      // 4. Quitar tildes para comparación
+      function cleanLine(s){ return dec(String(s||'')).replace(/\s+/g,' ').trim(); }
       function sa(s){
         return String(s||'').toLowerCase()
           .replace(/[áàäâ]/g,'a').replace(/[éèëê]/g,'e').replace(/[íìïî]/g,'i')
           .replace(/[óòöô]/g,'o').replace(/[úùüû]/g,'u').replace(/[ñ]/g,'n');
       }
-
-      // 5. Haversine
       function hav(la1,lo1,la2,lo2){
         var R=6371,dL=(la2-la1)*Math.PI/180,dO=(lo2-lo1)*Math.PI/180;
         var a=Math.sin(dL/2)*Math.sin(dL/2)+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dO/2)*Math.sin(dO/2);
         return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
       }
 
-      // 6. Mapa de regiones chilenas
       var REGS=[
         {n:'arica',lat:-18.5,lon:-70.3},{n:'parinacota',lat:-18.5,lon:-70.3},
         {n:'tarapaca',lat:-20.2,lon:-69.3},{n:'iquique',lat:-20.2,lon:-70.1},
@@ -15305,7 +15303,6 @@ async function robustGenerate(ev){
         {n:'pascua',lat:-27.1,lon:-109.4}
       ];
 
-      // 7. Clasificar alerta según texto y distancia al punto
       function classify(rawText){
         var t=sa(rawText);
         var minD=Infinity, minR=null;
@@ -15318,33 +15315,43 @@ async function robustGenerate(ev){
             } else {minD=0;minR=r;}
           }
         }
-        if(!minR) return {cat:'REGIONAL / REFERENCIAL',km:null};
+        if(!minR) return null;
         if(minD<=80)  return {cat:'DIRECTA',km:Math.round(minD)};
         if(minD<=400) return {cat:'CERCANA',km:Math.round(minD)};
-        if(minD<=800) return {cat:'REGIONAL / REFERENCIAL',km:Math.round(minD)};
-        return null; // muy lejos — omitir
+        return null;
       }
 
-      // 8. Procesar cada alerta
       var out=[];
       for(var i=0;i<pool.length;i++){
         var it=pool[i];
-        var title=dec(it.titulo||it.title||'ALERTA').trim();
-        var body =dec(it.contenido||it.descripcion||'');
+        var title=cleanLine(it.titulo||it.title||'ALERTA');
+        var body =cleanLine(it.contenido||it.descripcion||'');
         var cl=null;
         try{
           if(typeof alertMatchesPoint==='function'&&isFinite(ptLat)&&alertMatchesPoint(it,{lat:ptLat,lon:ptLon}))
             cl={cat:'DIRECTA',km:0};
         }catch(_e){}
         if(!cl) cl=classify(title+' '+body);
-        if(!cl) continue; // omitir alertas muy lejanas
-        var kmStr=cl.km&&cl.km>0?' (~'+cl.km+' km)':'';
-        out.push({cat:cl.cat,km:cl.km||9999,line:'  ['+cl.cat+kmStr+'] '+title});
+        if(!cl) continue;
+
+        var kmStr=(typeof cl.km==='number'&&cl.km>0)?' (~'+cl.km+' km)':'';
+        var lines=['  ['+cl.cat+kmStr+'] '+title];
+
+        var cond=cleanLine(it.condicionSinoptica||it.condicion||'');
+        var desde=cleanLine(it.desde||'');
+        var hasta=cleanLine(it.hasta||'');
+        var emision=cleanLine(it.emision||it.fechaHora||it.fecha_hora||'');
+        if(cond) lines.push('    Condición: '+cond);
+        if(desde) lines.push('    Desde: '+desde);
+        if(hasta) lines.push('    Hasta: '+hasta);
+        if(emision) lines.push('    Emisión: '+emision);
+
+        out.push({cat:cl.cat,km:(typeof cl.km==='number'?cl.km:9999),lines:lines});
       }
-      if(!out.length) return ['  Sin alertas relevantes para la ubicación seleccionada.'];
-      var ord={'DIRECTA':0,'CERCANA':1,'REGIONAL / REFERENCIAL':2};
+      if(!out.length) return ['  Sin alertas cercanas relevantes para la ubicación seleccionada.'];
+      var ord={'DIRECTA':0,'CERCANA':1};
       out.sort(function(a,b){return (ord[a.cat]||3)-(ord[b.cat]||3)||a.km-b.km;});
-      return out.slice(0,5).map(function(x){return x.line;});
+      return out.slice(0,3).flatMap(function(x,i){ return i < out.slice(0,3).length-1 ? x.lines.concat(['']) : x.lines; });
     }
 
     // ══════════════════════════════════════════════════════════
