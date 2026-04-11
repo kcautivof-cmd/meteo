@@ -1,0 +1,84 @@
+{
+  "source": "SENAMHI Bolivia",
+  "updated": "2026-04-11",
+  "alerts": [
+    {
+      "tipo": "meteorológica",
+      "codigo": "14/26",
+      "nivel": "NARANJA",
+      "titulo": "Aviso meteorológico para la emisión de alerta",
+      "inicio": "2026-04-06",
+      "fin": "2026-04-10",
+      "descripcion": "Alerta meteorológica oficial de SENAMHI Bolivia. La búsqueda oficial muestra el aviso 14/26 y el PDF oficial indica la provincia Luis Calvo como zona señalada.",
+      "zonas": [
+        "Provincia Luis Calvo",
+        "Chuquisaca"
+      ],
+      "latlng": [
+        -20.82,
+        -63.47
+      ],
+      "source_url": "https://senamhi.gob.bo/pdf_alertas/alerta_1487.pdf"
+    },
+    {
+      "tipo": "meteorológica",
+      "codigo": "13/26",
+      "nivel": "NARANJA",
+      "titulo": "Aviso meteorológico para la emisión de alerta",
+      "inicio": "2026-03-31",
+      "fin": "2026-04-04",
+      "descripcion": "Alerta meteorológica oficial de SENAMHI Bolivia. El PDF oficial ubica la señal principal en la provincia Gran Chaco.",
+      "zonas": [
+        "Gran Chaco",
+        "Tarija"
+      ],
+      "latlng": [
+        -22.02,
+        -63.68
+      ],
+      "source_url": "https://senamhi.gob.bo/pdf_alertas/alerta_1486.pdf"
+    },
+    {
+      "tipo": "hidrológica",
+      "codigo": "18/26",
+      "nivel": "ROJA",
+      "titulo": "Aviso hidrológico para emisión de alerta",
+      "inicio": "2026-03-27",
+      "fin": "2026-03-30",
+      "descripcion": "Alerta hidrológica oficial de SENAMHI Bolivia por ascensos progresivos y repentinos con riesgo inminente de desbordes en la cuenca baja del río Isiboro.",
+      "zonas": [
+        "Río Isiboro",
+        "Beni",
+        "Gundonovia",
+        "Concepción de Tamo",
+        "Copacabana",
+        "Santa María de la Junta"
+      ],
+      "latlng": [
+        -15.55,
+        -66.25
+      ],
+      "source_url": "https://senamhi.gob.bo/pdf_alertas/alerta_1485.pdf"
+    },
+    {
+      "tipo": "hidrológica",
+      "codigo": "17/26",
+      "nivel": "NARANJA",
+      "titulo": "Aviso hidrológico para emisión de alerta",
+      "inicio": "2026-03-24",
+      "fin": "2026-03-30",
+      "descripcion": "Alerta hidrológica oficial de SENAMHI Bolivia. El PDF oficial menciona ascensos con posibles desbordes en el río Achumani y la zona sur de La Paz.",
+      "zonas": [
+        "Río Achumani",
+        "Achumani",
+        "Zona Sur",
+        "La Paz"
+      ],
+      "latlng": [
+        -16.54,
+        -68.06
+      ],
+      "source_url": "https://senamhi.gob.bo/pdf_alertas/alerta_1483.pdf"
+    }
+  ]
+}
