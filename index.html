@@ -15540,6 +15540,33 @@ async function robustGenerate(ev){
           .replace(/[óòöô]/g,'o').replace(/[úùüû]/g,'u').replace(/[ñ]/g,'n');
       }
 
+      function normText(s){
+        return dec(String(s||'')).replace(/\s+/g,' ').trim();
+      }
+
+      function isGenericCondition(s){
+        var t=sa(normText(s));
+        return !t || t==='aviso' || t==='alerta' || t==='alarma' || t==='informacion' || t==='información';
+      }
+
+      function pickCondition(it, title, body){
+        var cands=[
+          it&&it.condicionSinoptica,
+          it&&it.condicion_sinoptica,
+          it&&it.condicion,
+          it&&it.sinoptica,
+          it&&it.descripcion,
+          it&&it.summary,
+          it&&it.resumen,
+          body
+        ];
+        for(var i=0;i<cands.length;i++){
+          var v=normText(cands[i]);
+          if(!isGenericCondition(v)) return v;
+        }
+        return normText(title);
+      }
+
       // 5. Haversine
       function hav(la1,lo1,la2,lo2){
         var R=6371,dL=(la2-la1)*Math.PI/180,dO=(lo2-lo1)*Math.PI/180;
@@ -15577,58 +15604,42 @@ async function robustGenerate(ev){
         if(!minR) return null;
         if(minD<=80)  return {cat:'DIRECTA',km:Math.round(minD)};
         if(minD<=400) return {cat:'CERCANA',km:Math.round(minD)};
-        return null; // omitir alertas regionales o lejanas
-      }
-
-      function pickField(it, keys){
-        for(var i=0;i<keys.length;i++){
-          var v=it&&it[keys[i]];
-          if(v!==undefined&&v!==null&&String(v).trim()) return dec(String(v).trim());
-        }
-        return 'N/D';
+        return null;
       }
 
       // 8. Procesar cada alerta
       var out=[];
       for(var i=0;i<pool.length;i++){
         var it=pool[i]||{};
-        var title=dec(it.titulo||it.title||'ALERTA').trim();
-        var body =dec(it.contenido||it.descripcion||'');
+        var title=normText(it.titulo||it.title||'ALERTA');
+        var body =normText(it.contenido||it.descripcion||it.summary||'');
         var cl=null;
         try{
           if(typeof alertMatchesPoint==='function'&&isFinite(ptLat)&&alertMatchesPoint(it,{lat:ptLat,lon:ptLon}))
             cl={cat:'DIRECTA',km:0};
         }catch(_e){}
-        if(!cl) cl=classify(title+' '+body);
-        if(!cl || (cl.cat!=='DIRECTA' && cl.cat!=='CERCANA')) continue;
+        if(!cl) cl=classify(title+' '+body+' '+normText(it.zona||it.region||''));
+        if(!cl) continue;
+
         var kmStr=cl.km&&cl.km>0?' (~'+cl.km+' km)':'';
-        var condicion=pickField(it,['condicionSinoptica','condicion_sinoptica','condicion','tipo','descripcion','contenido']);
-        var desde=pickField(it,['desde','inicio','fechaInicio','start']);
-        var hasta=pickField(it,['hasta','fin','termino','término','fechaFinal','end']);
-        var emision=pickField(it,['emision','fechaHora','fecha','fechaPublicacion','issued_at']);
-        var zona=pickField(it,['textoZonaAfecta','zona','region','departamento','regiones']);
-        var detalle=pickField(it,['descripcion','contenido','detalle']);
-        var lines=[
-          '  ['+cl.cat+kmStr+'] '+title,
-          '    Condición: '+condicion,
-          '    Desde: '+desde,
-          '    Hasta: '+hasta,
-          '    Emisión: '+emision
-        ];
-        if(zona!=='N/D') lines.push('    Zona: '+zona);
-        if(it&&it.condicionSinoptica&&String(it.condicionSinoptica).trim()) lines.push('    Condición sinóptica: '+dec(String(it.condicionSinoptica).trim()));
-        else if(it&&it.condicion_sinoptica&&String(it.condicion_sinoptica).trim()) lines.push('    Condición sinóptica: '+dec(String(it.condicion_sinoptica).trim()));
-        if(detalle!=='N/D' && sa(detalle)!==sa(title)) lines.push('    Detalle: '+detalle);
-        out.push({
-          cat:cl.cat,
-          km:cl.km||9999,
-          lines:lines
-        });
+        var cond=pickCondition(it,title,body);
+        var desde=normText(it.desde||it.inicio||it.start||it.fecha_inicio||'');
+        var hasta=normText(it.hasta||it.fin||it.end||it.fecha_fin||'');
+        var emision=normText(it.emision||it.fechaHora||it.fecha_hora||it.fecha||'');
+
+        var lines=['  ['+cl.cat+kmStr+'] '+title];
+        lines.push('    Condición: '+(cond||'N/D'));
+        lines.push('    Desde: '+(desde||'N/D'));
+        lines.push('    Hasta: '+(hasta||'N/D'));
+        lines.push('    Emisión: '+(emision||'N/D'));
+
+        out.push({cat:cl.cat,km:cl.km||9999,lines:lines});
       }
+
       if(!out.length) return ['  Sin alertas cercanas relevantes para la ubicación seleccionada.'];
       var ord={'DIRECTA':0,'CERCANA':1};
       out.sort(function(a,b){return (ord[a.cat]||3)-(ord[b.cat]||3)||a.km-b.km;});
-      return out.slice(0,3).reduce(function(acc,x){ return acc.concat(x.lines); },[]);
+      return out.slice(0,3).reduce(function(acc,x){ return acc.concat(x.lines); }, []);
     }
 
     // ══════════════════════════════════════════════════════════
