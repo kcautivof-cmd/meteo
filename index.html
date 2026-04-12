@@ -15512,7 +15512,7 @@ async function robustGenerate(ev){
               contenido:el.textContent&&el.textContent.trim()||''
             };
           });
-      if(!pool.length) return ['  Sin alertas vigentes identificadas en el sistema.'];
+      if(!pool.length) return ['  Sin alertas cercanas relevantes para la ubicación seleccionada.'];
 
       // 2. Coordenadas del punto seleccionado
       var ptLat=NaN, ptLon=NaN;
@@ -15574,17 +15574,24 @@ async function robustGenerate(ev){
             } else {minD=0;minR=r;}
           }
         }
-        if(!minR) return {cat:'REGIONAL / REFERENCIAL',km:null};
+        if(!minR) return null;
         if(minD<=80)  return {cat:'DIRECTA',km:Math.round(minD)};
         if(minD<=400) return {cat:'CERCANA',km:Math.round(minD)};
-        if(minD<=800) return {cat:'REGIONAL / REFERENCIAL',km:Math.round(minD)};
-        return null; // muy lejos — omitir
+        return null; // omitir alertas regionales o lejanas
+      }
+
+      function pickField(it, keys){
+        for(var i=0;i<keys.length;i++){
+          var v=it&&it[keys[i]];
+          if(v!==undefined&&v!==null&&String(v).trim()) return dec(String(v).trim());
+        }
+        return 'N/D';
       }
 
       // 8. Procesar cada alerta
       var out=[];
       for(var i=0;i<pool.length;i++){
-        var it=pool[i];
+        var it=pool[i]||{};
         var title=dec(it.titulo||it.title||'ALERTA').trim();
         var body =dec(it.contenido||it.descripcion||'');
         var cl=null;
@@ -15593,14 +15600,28 @@ async function robustGenerate(ev){
             cl={cat:'DIRECTA',km:0};
         }catch(_e){}
         if(!cl) cl=classify(title+' '+body);
-        if(!cl) continue; // omitir alertas muy lejanas
+        if(!cl || (cl.cat!=='DIRECTA' && cl.cat!=='CERCANA')) continue;
         var kmStr=cl.km&&cl.km>0?' (~'+cl.km+' km)':'';
-        out.push({cat:cl.cat,km:cl.km||9999,line:'  ['+cl.cat+kmStr+'] '+title});
+        var condicion=pickField(it,['condicion','tipo','descripcion','contenido']);
+        var desde=pickField(it,['desde','inicio','fechaInicio','start']);
+        var hasta=pickField(it,['hasta','fin','termino','término','fechaFinal','end']);
+        var emision=pickField(it,['emision','fechaHora','fecha','fechaPublicacion','issued_at']);
+        out.push({
+          cat:cl.cat,
+          km:cl.km||9999,
+          lines:[
+            '  ['+cl.cat+kmStr+'] '+title,
+            '    Condición: '+condicion,
+            '    Desde: '+desde,
+            '    Hasta: '+hasta,
+            '    Emisión: '+emision
+          ]
+        });
       }
-      if(!out.length) return ['  Sin alertas relevantes para la ubicación seleccionada.'];
-      var ord={'DIRECTA':0,'CERCANA':1,'REGIONAL / REFERENCIAL':2};
+      if(!out.length) return ['  Sin alertas cercanas relevantes para la ubicación seleccionada.'];
+      var ord={'DIRECTA':0,'CERCANA':1};
       out.sort(function(a,b){return (ord[a.cat]||3)-(ord[b.cat]||3)||a.km-b.km;});
-      return out.slice(0,5).map(function(x){return x.line;});
+      return out.slice(0,3).reduce(function(acc,x){ return acc.concat(x.lines); },[]);
     }
 
     // ══════════════════════════════════════════════════════════
