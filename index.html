@@ -5798,76 +5798,25 @@ try {
         modal.classList.add('show');
     };
     window.__alertColorByLevel = window.__alertColorByLevel || function(lvl){ lvl=String(lvl||'').toUpperCase(); if(lvl==='ROJO') return '#d32f2f'; if(lvl==='NARANJA') return '#fb8c00'; return '#facc15'; };
-    window.__normalizeRegionalLabel = window.__normalizeRegionalLabel || function(v){
-        return String(v || '')
-            .toUpperCase()
-            .normalize('NFD')
-            .replace(/[̀-ͯ]/g, '')
-            .replace(/[^A-Z0-9 ]+/g, ' ')
-            .replace(/\s+/g, ' ')
-            .trim();
-    };
     window.__guessPeruAlertCenter = window.__guessPeruAlertCenter || function(alerta, idx){
-        if (alerta && Array.isArray(alerta.latlng) && alerta.latlng.length >= 2) {
-            var baseLat = Number(alerta.latlng[0]);
-            var baseLon = Number(alerta.latlng[1]);
-            if (Number.isFinite(baseLat) && Number.isFinite(baseLon)) {
-                var regionKey0 = String(alerta.region_key || alerta.zona || alerta.titulo || 'PE');
-                window.__peruAlertSpreadCounters = window.__peruAlertSpreadCounters || {};
-                var n0 = window.__peruAlertSpreadCounters[regionKey0] || 0;
-                window.__peruAlertSpreadCounters[regionKey0] = n0 + 1;
-                var spread0 = [
-                    [0.00, 0.00],
-                    [0.16, 0.18],
-                    [-0.16, -0.18],
-                    [0.16, -0.18],
-                    [-0.16, 0.18],
-                    [0.28, 0.00],
-                    [0.00, -0.28],
-                    [-0.28, 0.00]
-                ][n0 % 8];
-                return [baseLat + spread0[0], baseLon + spread0[1]];
-            }
-        }
-        var txt = window.__normalizeRegionalLabel([
-            alerta && (alerta.zona || ''),
-            alerta && (alerta.titulo || alerta.title || ''),
-            alerta && (alerta.descripcion || ''),
-            alerta && (alerta.condicion || '')
-        ].join(' '));
-        var lat=-9.2, lon=-75.0, regionKey='PE_NACIONAL';
-        if(/TUMBES|PIURA|COSTA NORTE/.test(txt)) { lat=-5.7; lon=-80.4; regionKey='PE_COSTA_NORTE'; }
-        else if(/LAMBAYEQUE|CHICLAYO/.test(txt)) { lat=-6.7; lon=-79.9; regionKey='PE_LAMBAYEQUE'; }
-        else if(/LA LIBERTAD|TRUJILLO/.test(txt)) { lat=-8.2; lon=-78.9; regionKey='PE_LIBERTAD'; }
-        else if(/ANCASH|CHIMBOTE/.test(txt)) { lat=-9.3; lon=-77.8; regionKey='PE_ANCASH'; }
-        else if(/LIMA|CALLAO|COSTA CENTRO/.test(txt)) { lat=-12.3; lon=-76.9; regionKey='PE_COSTA_CENTRO'; }
-        else if(/ICA|PISCO/.test(txt)) { lat=-14.2; lon=-75.8; regionKey='PE_ICA'; }
-        else if(/AREQUIPA|MOQUEGUA|TACNA|COSTA SUR/.test(txt)) { lat=-16.3; lon=-72.3; regionKey='PE_COSTA_SUR'; }
-        else if(/SIERRA NORTE|CAJAMARCA|AMAZONAS|CHACHAPOYAS/.test(txt)) { lat=-6.9; lon=-78.8; regionKey='PE_SIERRA_NORTE'; }
-        else if(/SIERRA CENTRO|JUNIN|PASCO|HUANUCO|HUANCAYO|CERRO DE PASCO/.test(txt)) { lat=-10.6; lon=-75.5; regionKey='PE_SIERRA_CENTRO'; }
-        else if(/HUANCAVELICA/.test(txt)) { lat=-12.7; lon=-74.9; regionKey='PE_HUANCAVELICA'; }
-        else if(/SIERRA CENTRO SUR|SIERRA SUR|CUSCO|APURIMAC|AYACUCHO/.test(txt)) { lat=-13.9; lon=-72.7; regionKey='PE_SIERRA_SUR'; }
-        else if(/PUNO|JULIACA|TITICACA/.test(txt)) { lat=-15.5; lon=-70.1; regionKey='PE_PUNO'; }
-        else if(/SELVA NORTE|LORETO|IQUITOS|SAN MARTIN|TARAPOTO/.test(txt)) { lat=-5.5; lon=-75.1; regionKey='PE_SELVA_NORTE'; }
-        else if(/UCAYALI|PUCALLPA|SELVA CENTRAL/.test(txt)) { lat=-8.8; lon=-74.9; regionKey='PE_SELVA_CENTRAL'; }
-        else if(/MADRE DE DIOS|PUERTO MALDONADO|SELVA SUR/.test(txt)) { lat=-12.6; lon=-69.2; regionKey='PE_SELVA_SUR'; }
-        else if(/SELVA/.test(txt)) { lat=-8.4; lon=-73.5; regionKey='PE_SELVA'; }
-        else if(/SIERRA/.test(txt)) { lat=-11.8; lon=-74.4; regionKey='PE_SIERRA'; }
-        else if(/COSTA/.test(txt)) { lat=-11.5; lon=-77.1; regionKey='PE_COSTA'; }
-        window.__peruAlertSpreadCounters = window.__peruAlertSpreadCounters || {};
-        var n = window.__peruAlertSpreadCounters[regionKey] || 0;
-        window.__peruAlertSpreadCounters[regionKey] = n + 1;
-        var spread = [
-            [0.00, 0.00],
-            [0.16, 0.18],
-            [-0.16, -0.18],
-            [0.16, -0.18],
-            [-0.16, 0.18],
-            [0.28, 0.00],
-            [0.00, -0.28],
-            [-0.28, 0.00]
-        ][n % 8];
-        return [lat + spread[0], lon + spread[1]];
+        var t = [
+            alerta && alerta.zona || '',
+            alerta && alerta.titulo || alerta && alerta.title || '',
+            alerta && alerta.descripcion || '',
+            alerta && alerta.condicion || ''
+        ].join(' ').toUpperCase();
+        var lat = -9.8, lon = -75.2;
+        if(/COSTA NORTE|TUMBES|PIURA|LAMBAYEQUE|LA LIBERTAD/.test(t)) { lat=-6.2; lon=-79.6; }
+        else if(/COSTA CENTRO|LIMA|CALLAO|ANCASH|HUACHO|HUARAL|BARRANCA/.test(t)) { lat=-11.2; lon=-77.0; }
+        else if(/COSTA SUR|ICA|AREQUIPA|MOQUEGUA|TACNA/.test(t)) { lat=-15.3; lon=-73.4; }
+        else if(/SIERRA NORTE|CAJAMARCA|AMAZONAS/.test(t)) { lat=-7.3; lon=-78.6; }
+        else if(/SIERRA CENTRO|PASCO|JUNIN|HUANCAVELICA|HUANUCO/.test(t)) { lat=-10.9; lon=-75.3; }
+        else if(/SIERRA CENTRO SUR|AYACUCHO|APURIMAC/.test(t)) { lat=-13.4; lon=-73.3; }
+        else if(/SIERRA SUR|CUSCO|PUNO/.test(t)) { lat=-14.1; lon=-71.8; }
+        else if(/SELVA NORTE|LORETO|SAN MARTIN|UCAYALI/.test(t)) { lat=-7.0; lon=-74.3; }
+        else if(/SELVA SUR|MADRE DE DIOS/.test(t)) { lat=-12.6; lon=-70.3; }
+        else if(/SELVA/.test(t)) { lat=-8.8; lon=-73.4; }
+        return [lat, lon];
     };
     window.__renderRegionalLegend = window.__renderRegionalLegend || function(){ return; };
     window.__renderRegionalAlertPanel = window.__renderRegionalAlertPanel || function(){ return; };
@@ -5887,6 +5836,94 @@ try {
         layer.bindTooltip(tip, { sticky:true, direction:'top', opacity:0.96, offset:[0,-6] });
         layer.bindPopup(body, { maxWidth: 460 });
         return layer;
+    };
+    window.__regionalAlertEscape = window.__regionalAlertEscape || function(v){
+        return String(v == null ? '' : v)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    };
+    window.__regionalAlertParseDate = window.__regionalAlertParseDate || function(raw){
+        if(!raw) return null;
+        var s = String(raw).trim();
+        if(!s) return null;
+        var m = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})(?:\s+(\d{1,2}):(\d{2}))?$/);
+        if(m){
+            var d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]), Number(m[4] || 0), Number(m[5] || 0));
+            return isNaN(d.getTime()) ? null : d;
+        }
+        var ts = Date.parse(s);
+        if(!isNaN(ts)) return new Date(ts);
+        return null;
+    };
+    window.__regionalAlertDurationText = window.__regionalAlertDurationText || function(startRaw, endRaw){
+        var ds = window.__regionalAlertParseDate(startRaw);
+        var de = window.__regionalAlertParseDate(endRaw);
+        if(!ds || !de || de < ds) return '';
+        var ms = de - ds;
+        var hours = Math.round(ms / 36e5);
+        if(hours < 24) return hours + ' h';
+        var days = Math.round(hours / 24);
+        if(days <= 3 && (hours % 24)) return days + ' d ' + (hours % 24) + ' h';
+        return days + ' días';
+    };
+    window.__regionalAlertLevelRank = window.__regionalAlertLevelRank || function(level){
+        var l = String(level || '').toUpperCase();
+        if(l === 'ROJO') return 3;
+        if(l === 'NARANJA') return 2;
+        return 1;
+    };
+    window.__groupPeruOfficialAlerts = window.__groupPeruOfficialAlerts || function(alerts){
+        var map = {};
+        (alerts || []).forEach(function(a){
+            var ll = window.__guessPeruAlertCenter(a, 0);
+            var zone = String(a.zona || a.region || a.departamento || 'PERÚ').trim() || 'PERÚ';
+            var key = zone.toUpperCase() + '|' + Number(ll[0]).toFixed(2) + '|' + Number(ll[1]).toFixed(2);
+            if(!map[key]){
+                map[key] = { key:key, zone:zone, latlng:ll, alerts:[], level:'AMARILLO' };
+            }
+            map[key].alerts.push(a);
+            if(window.__regionalAlertLevelRank(a.nivel) > window.__regionalAlertLevelRank(map[key].level)){
+                map[key].level = String(a.nivel || 'AMARILLO').toUpperCase();
+            }
+        });
+        return Object.keys(map).map(function(k){ return map[k]; });
+    };
+    window.__buildPeruOfficialAlertPopup = window.__buildPeruOfficialAlertPopup || function(group){
+        var esc = window.__regionalAlertEscape;
+        var col = window.__alertColorByLevel(group && group.level);
+        var items = (group && group.alerts || []).map(function(a, i){
+            var titulo = a.titulo || a.title || 'Aviso meteorológico';
+            var tipo = a.tipo || 'Aviso meteorológico';
+            var condicion = a.condicion || a.descripcion || '';
+            var desde = a.desde || a.inicio || '';
+            var hasta = a.hasta || a.fin || '';
+            var emision = a.emision || '';
+            var zona = a.zona || group.zone || 'Perú';
+            var dur = window.__regionalAlertDurationText(desde, hasta);
+            var desc = a.descripcion || '';
+            return '<div style="border:1px solid #d7d7d7;border-radius:6px;padding:8px 9px;margin:7px 0;background:#fff">'
+                + '<div style="font:700 12px Consolas,monospace;color:'+col+'">ALERTA ' + esc(String(a.nivel || '').toUpperCase()) + '</div>'
+                + '<div style="font-weight:700;font-size:13px;margin-top:2px">' + esc(titulo) + '</div>'
+                + '<div style="font-size:12px;color:#333;margin-top:5px"><b>Tipo:</b> ' + esc(tipo) + '</div>'
+                + (condicion ? '<div style="font-size:12px;color:#333;margin-top:3px"><b>Sobre:</b> ' + esc(condicion) + '</div>' : '')
+                + (zona ? '<div style="font-size:12px;color:#333;margin-top:3px"><b>Zona:</b> ' + esc(zona) + '</div>' : '')
+                + (desde ? '<div style="font-size:12px;color:#333;margin-top:3px"><b>Inicio:</b> ' + esc(desde) + '</div>' : '')
+                + (hasta ? '<div style="font-size:12px;color:#333;margin-top:3px"><b>Término:</b> ' + esc(hasta) + '</div>' : '')
+                + (dur ? '<div style="font-size:12px;color:#333;margin-top:3px"><b>Duración estimada:</b> ' + esc(dur) + '</div>' : '')
+                + (emision ? '<div style="font-size:12px;color:#333;margin-top:3px"><b>Emisión:</b> ' + esc(emision) + '</div>' : '')
+                + (desc ? '<div style="font-size:12px;color:#333;margin-top:5px"><b>Resumen:</b> ' + esc(desc) + '</div>' : '')
+                + '</div>';
+        }).join('');
+        return '<div style="min-width:300px;max-width:520px">'
+            + '<div style="font:700 14px Consolas,monospace;color:'+col+'">⚠ PERÚ · ALERTAS OFICIALES</div>'
+            + '<div style="font-size:12px;margin-top:4px"><b>Zona representada:</b> ' + esc(group && group.zone || 'Perú') + '</div>'
+            + '<div style="font-size:12px;margin-top:2px"><b>Total de alertas en este punto:</b> ' + esc((group && group.alerts && group.alerts.length) || 0) + '</div>'
+            + '<hr style="margin:7px 0">'
+            + items
+            + '<div style="margin-top:8px"><a href="https://www.senamhi.gob.pe/?p=aviso-meteorologico" target="_blank" rel="noopener" style="display:inline-block;border:1px solid #777;background:#fff;padding:5px 8px;cursor:pointer;font:700 11px Consolas,monospace;color:#111;text-decoration:none">ABRIR LISTADO OFICIAL</a></div>'
+            + '</div>';
     };
     window.__drawRegionalAlertGeometry = window.__drawRegionalAlertGeometry || function(alert, country){
         var geom = alert && alert.geometry;
@@ -5932,28 +5969,31 @@ try {
         var boAlerts = boData && Array.isArray(boData.alerts) ? boData.alerts : [];
         window.__peruOfficialAlertsData = alerts;
         window.__boliviaOfficialAlertsData = boAlerts;
-        window.__peruAlertSpreadCounters = {};
         __uav.layerPeruAlerts.clearLayers();
-        alerts.forEach(function(a, idx){
-            var col = window.__alertColorByLevel(a.nivel);
-            var days = (a.days || []).map(function(d, i){
-                var u = d.map_preview_url || (a.map_urls && a.map_urls[i]) || '';
-                var abs = /^https?:/i.test(u) ? u : ('https://www.senamhi.gob.pe/' + String(u).replace(/^\/+/, ''));
-                return '<div style="margin:5px 0"><a href="' + abs + '" target="_blank" rel="noopener" style="display:inline-block;border:1px solid #777;background:#fff;padding:4px 7px;cursor:pointer;font:700 11px Consolas,monospace;color:#111;text-decoration:none">VER MAPA OFICIAL ' + (d.date_label || ('Día ' + (i+1))) + '</a></div>';
-            }).join('');
-            var popup = '<div style="min-width:260px;max-width:420px"><b style="color:'+col+'">⚠ PERÚ · ' + String(a.nivel || '').toUpperCase() + '</b><br><b>Aviso ' + String(a.aviso || '') + ' — ' + String(a.titulo || '') + '</b><br><small>' + String(a.inicio || a.desde || '') + ' · ' + String(a.fin || a.hasta || '') + '</small><hr style="margin:5px 0"><div style="font-size:12px;color:#333">' + String(a.descripcion || '') + '</div>' + days + '<div><a href="https://www.senamhi.gob.pe/?p=aviso-meteorologico" target="_blank" rel="noopener">Abrir listado oficial</a></div></div>';
-            var tip = 'PERÚ · ALERTA OFICIAL · ' + String(a.nivel || '').toUpperCase() + (a.aviso ? (' · AVISO ' + String(a.aviso)) : '');
-            var ll = window.__guessPeruAlertCenter(a, idx);
-            var layer = L.circleMarker(ll, { radius:11, color:'#c62828', weight:3, fillColor:'#e53935', fillOpacity:0.30 });
+        var peruGroups = window.__groupPeruOfficialAlerts(alerts);
+        peruGroups.forEach(function(g){
+            var col = window.__alertColorByLevel(g.level);
+            var popup = window.__buildPeruOfficialAlertPopup(g);
+            var tip = 'PERÚ · ALERTAS OFICIALES · ' + String(g.level || '').toUpperCase() + ' · ' + String(g.zone || 'PERÚ');
+            var ll = Array.isArray(g.latlng) ? g.latlng : [-9.8, -75.2];
+            var layer = L.circle(ll, {
+                radius: 95000,
+                color: col,
+                weight: 3,
+                fillColor: col,
+                fillOpacity: 0.12,
+                opacity: 0.95
+            });
             window.__bindRegionalAlertLayer(layer, tip, popup);
             layer.addTo(__uav.layerPeruAlerts);
-            a._leafletLayer = layer;
+            (g.alerts || []).forEach(function(a){ a._leafletLayer = layer; });
+            g._leafletLayer = layer;
         });
         __uav.layerBoliviaAlerts.clearLayers();
         boAlerts.forEach(function(a){
             var col = window.__alertColorByLevel(a.nivel || a.priority || 'NARANJA');
             var tip = 'BOLIVIA · ALERTA OFICIAL · ' + String(a.tipo || '').toUpperCase() + ' · ' + String(a.codigo || a.aviso || '');
-            var body = '<div style="min-width:270px;max-width:420px"><b style="color:'+col+'">🇧🇴 SENAMHI Bolivia · ' + String(a.tipo || '').toUpperCase() + '</b><br><b>' + String(a.codigo || a.aviso || '') + ' · ' + String(a.titulo || '') + '</b><br><small>' + String(a.inicio || a.desde || '') + ' · ' + String(a.fin || a.hasta || '') + '</small><hr style="margin:5px 0"><div style="font-size:12px;color:#333">' + String(a.descripcion || '') + '</div>';
+            var body = '<div style="min-width:270px;max-width:420px"><b style="color:'+col+'">🇧🇴 SENAMHI Bolivia · ' + String(a.tipo || '').toUpperCase() + '</b><br><b>' + String(a.codigo || a.aviso || '') + ' · ' + String(a.titulo || '') + '</b><br><small>' + String(a.inicio || '') + ' · ' + String(a.fin || '') + '</small><hr style="margin:5px 0"><div style="font-size:12px;color:#333">' + String(a.descripcion || '') + '</div>';
             if (a.zonas && a.zonas.length) body += '<div style="margin-top:6px;font-size:12px"><b>Zonas oficiales:</b> ' + String(a.zonas.join(', ')) + '</div>';
             if (a.source_url) body += '<div style="margin-top:6px"><a href="' + String(a.source_url) + '" target="_blank" rel="noopener" style="display:inline-block;border:1px solid #777;background:#fff;padding:4px 7px;cursor:pointer;font:700 11px Consolas,monospace;color:#111;text-decoration:none">ABRIR OFICIAL</a></div>';
             body += '</div>';
