@@ -15256,7 +15256,7 @@ async function robustGenerate(ev){
               contenido:el.textContent&&el.textContent.trim()||''
             };
           });
-      if(!pool.length) return ['  Sin alertas vigentes identificadas en el sistema.'];
+      if(!pool.length) return ['  Sin alertas cercanas relevantes para la ubicación seleccionada.'];
 
       // 2. Coordenadas del punto seleccionado
       var ptLat=NaN, ptLon=NaN;
@@ -15267,6 +15267,14 @@ async function robustGenerate(ev){
         }
         if(!isFinite(ptLat)){ ptLat=window.lastLat||NaN; ptLon=window.lastLon||NaN; }
       }catch(_e){}
+
+      function clean(v){
+        return String(v==null ? '' : v)
+          .replace(/<br\s*\/?>/gi,' ')
+          .replace(/<[^>]+>/g,' ')
+          .replace(/\s+/g,' ')
+          .trim();
+      }
 
       // 3. Decodificador de entidades HTML
       function dec(s){
@@ -15318,33 +15326,49 @@ async function robustGenerate(ev){
             } else {minD=0;minR=r;}
           }
         }
-        if(!minR) return {cat:'REGIONAL / REFERENCIAL',km:null};
+        if(!minR) return null;
         if(minD<=80)  return {cat:'DIRECTA',km:Math.round(minD)};
         if(minD<=400) return {cat:'CERCANA',km:Math.round(minD)};
-        if(minD<=800) return {cat:'REGIONAL / REFERENCIAL',km:Math.round(minD)};
-        return null; // muy lejos — omitir
+        return null; // omitir REGIONAL / REFERENCIAL y muy lejanas
+      }
+
+      function pickField(it, keys){
+        for(var i=0;i<keys.length;i++){
+          var v = it && it[keys[i]];
+          if(v!=null && String(v).trim()!=='') return clean(dec(v));
+        }
+        return '';
       }
 
       // 8. Procesar cada alerta
       var out=[];
       for(var i=0;i<pool.length;i++){
         var it=pool[i];
-        var title=dec(it.titulo||it.title||'ALERTA').trim();
-        var body =dec(it.contenido||it.descripcion||'');
+        var title=clean(dec(it.titulo||it.title||'ALERTA'));
+        var body =clean(dec(it.contenido||it.descripcion||it.summary||''));
         var cl=null;
         try{
           if(typeof alertMatchesPoint==='function'&&isFinite(ptLat)&&alertMatchesPoint(it,{lat:ptLat,lon:ptLon}))
             cl={cat:'DIRECTA',km:0};
         }catch(_e){}
         if(!cl) cl=classify(title+' '+body);
-        if(!cl) continue; // omitir alertas muy lejanas
-        var kmStr=cl.km&&cl.km>0?' (~'+cl.km+' km)':'';
-        out.push({cat:cl.cat,km:cl.km||9999,line:'  ['+cl.cat+kmStr+'] '+title});
+        if(!cl || (cl.cat!=='DIRECTA' && cl.cat!=='CERCANA')) continue;
+        var kmStr=(cl.km!=null&&cl.km>0)?' (~'+cl.km+' km)':'';
+        var lines=['  ['+cl.cat+kmStr+'] '+title];
+        var cond = pickField(it, ['condicionSinoptica','condicion','cond','phenomenon','fenomeno']);
+        var desde = pickField(it, ['desde','inicio','fechaInicio','start','startDate']);
+        var hasta = pickField(it, ['hasta','fin','fechaFin','end','endDate']);
+        var emision = pickField(it, ['emision','fechaHora','fecha_hora','issuedAt','date','fecha']);
+        if(cond) lines.push('  Condición: '+cond);
+        if(desde) lines.push('  Desde: '+desde);
+        if(hasta) lines.push('  Hasta: '+hasta);
+        if(emision) lines.push('  Emisión: '+emision);
+        out.push({cat:cl.cat,km:(cl.km==null?9999:cl.km),lines:lines});
       }
-      if(!out.length) return ['  Sin alertas relevantes para la ubicación seleccionada.'];
-      var ord={'DIRECTA':0,'CERCANA':1,'REGIONAL / REFERENCIAL':2};
+      if(!out.length) return ['  Sin alertas cercanas relevantes para la ubicación seleccionada.'];
+      var ord={'DIRECTA':0,'CERCANA':1};
       out.sort(function(a,b){return (ord[a.cat]||3)-(ord[b.cat]||3)||a.km-b.km;});
-      return out.slice(0,5).map(function(x){return x.line;});
+      return out.slice(0,3).reduce(function(acc,x){ return acc.concat(x.lines); }, []);
     }
 
     // ══════════════════════════════════════════════════════════
