@@ -5844,18 +5844,50 @@ try {
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;');
     };
-    window.__regionalAlertParseDate = window.__regionalAlertParseDate || function(raw){
+    window.__regionalAlertParseDate = window.__regionalAlertParseDate || function(raw, mode){
         if(!raw) return null;
         var s = String(raw).trim();
         if(!s) return null;
+        var mIso = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2}))?$/);
+        if(mIso){
+            var dIso = new Date(Number(mIso[1]), Number(mIso[2]) - 1, Number(mIso[3]), Number(mIso[4] || 0), Number(mIso[5] || 0), 0, 0);
+            if(mode === 'end' && !mIso[4]) dIso.setHours(23,59,59,999);
+            return isNaN(dIso.getTime()) ? null : dIso;
+        }
         var m = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})(?:\s+(\d{1,2}):(\d{2}))?$/);
         if(m){
-            var d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]), Number(m[4] || 0), Number(m[5] || 0));
+            var d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]), Number(m[4] || 0), Number(m[5] || 0), 0, 0);
+            if(mode === 'end' && !m[4]) d.setHours(23,59,59,999);
             return isNaN(d.getTime()) ? null : d;
         }
         var ts = Date.parse(s);
-        if(!isNaN(ts)) return new Date(ts);
+        if(!isNaN(ts)){
+            var dAny = new Date(ts);
+            if(mode === 'end' && /^\d{4}-\d{2}-\d{2}$/.test(s)) dAny.setHours(23,59,59,999);
+            return dAny;
+        }
         return null;
+    };
+    window.__regionalAlertIsActive = window.__regionalAlertIsActive || function(alert){
+        var now = new Date();
+        var start = window.__regionalAlertParseDate(alert && (alert.desde || alert.inicio || alert.start || alert.fecha_inicio), 'start');
+        var end = window.__regionalAlertParseDate(alert && (alert.hasta || alert.fin || alert.end || alert.fecha_fin), 'end');
+        if(end && end < now) return false;
+        if(!end && start){
+            var maxFuture = new Date(now.getTime() + (45 * 24 * 3600 * 1000));
+            return start <= maxFuture;
+        }
+        return true;
+    };
+    window.__filterRegionalActiveAlerts = window.__filterRegionalActiveAlerts || function(alerts){
+        var seen = {};
+        return (alerts || []).filter(function(a){
+            if(!window.__regionalAlertIsActive(a)) return false;
+            var key = [a && (a.country || ''), a && (a.tipo || ''), a && (a.titulo || ''), a && (a.desde || a.inicio || ''), a && (a.hasta || a.fin || ''), a && (a.zona || '')].join('|').toUpperCase();
+            if(seen[key]) return false;
+            seen[key] = true;
+            return true;
+        });
     };
     window.__regionalAlertDurationText = window.__regionalAlertDurationText || function(startRaw, endRaw){
         var ds = window.__regionalAlertParseDate(startRaw);
@@ -5888,7 +5920,88 @@ try {
                 map[key].level = String(a.nivel || 'AMARILLO').toUpperCase();
             }
         });
-        return Object.keys(map).map(function(k){ return map[k]; });
+        return Object.keys(map).map(function(k){
+            var g = map[k];
+            g.alerts.sort(function(a,b){
+                return window.__regionalAlertLevelRank(b.nivel) - window.__regionalAlertLevelRank(a.nivel);
+            });
+            return g;
+        });
+    };
+    window.__guessBoliviaAlertCenter = window.__guessBoliviaAlertCenter || function(alerta){
+        var t = [
+            alerta && alerta.tipo || '',
+            alerta && alerta.titulo || '',
+            alerta && alerta.zona || '',
+            alerta && alerta.descripcion || ''
+        ].join(' ').toUpperCase();
+        if(Array.isArray(alerta && alerta.latlng) && alerta.latlng.length === 2) return alerta.latlng;
+        if(/HIDRO|R[ÍI]O|CUENCA|INUND|DESBORD/.test(t)) return [-16.9, -64.2];
+        if(/SUR|TARIJA|POTOSI|CHUQUISACA/.test(t)) return [-20.4, -64.7];
+        if(/NORTE|PANDO|BENI/.test(t)) return [-12.8, -65.9];
+        if(/ORIENTE|SANTA CRUZ/.test(t)) return [-17.7, -62.9];
+        return [-17.25, -64.65];
+    };
+    window.__groupBoliviaOfficialAlerts = window.__groupBoliviaOfficialAlerts || function(alerts){
+        var map = {};
+        (alerts || []).forEach(function(a){
+            var ll = window.__guessBoliviaAlertCenter(a);
+            var zone = String(a.zona || a.region || a.departamento || a.tipo || 'BOLIVIA').trim() || 'BOLIVIA';
+            var tipo = String(a.tipo || 'ALERTA').trim() || 'ALERTA';
+            var key = tipo.toUpperCase() + '|' + zone.toUpperCase() + '|' + Number(ll[0]).toFixed(2) + '|' + Number(ll[1]).toFixed(2);
+            if(!map[key]){
+                map[key] = { key:key, zone:zone, tipo:tipo, latlng:ll, alerts:[], level:'AMARILLO' };
+            }
+            map[key].alerts.push(a);
+            if(window.__regionalAlertLevelRank(a.nivel) > window.__regionalAlertLevelRank(map[key].level)){
+                map[key].level = String(a.nivel || 'AMARILLO').toUpperCase();
+            }
+        });
+        return Object.keys(map).map(function(k){
+            var g = map[k];
+            g.alerts.sort(function(a,b){
+                return window.__regionalAlertLevelRank(b.nivel) - window.__regionalAlertLevelRank(a.nivel);
+            });
+            return g;
+        });
+    };
+    window.__buildBoliviaOfficialAlertPopup = window.__buildBoliviaOfficialAlertPopup || function(group){
+        var esc = window.__regionalAlertEscape;
+        var col = window.__alertColorByLevel(group && group.level);
+        var items = (group && group.alerts || []).map(function(a){
+            var titulo = a.titulo || a.title || 'Alerta oficial';
+            var tipo = a.tipo || 'Alerta oficial';
+            var condicion = a.condicion || a.descripcion || titulo;
+            var desde = a.desde || a.inicio || '';
+            var hasta = a.hasta || a.fin || '';
+            var emision = a.emision || '';
+            var zona = a.zona || group.zone || 'Bolivia';
+            var codigo = a.codigo || a.aviso || '';
+            var dur = window.__regionalAlertDurationText(desde, hasta);
+            var desc = a.descripcion || '';
+            return '<div style="border:1px solid #d7d7d7;border-radius:6px;padding:8px 9px;margin:7px 0;background:#fff">'
+                + '<div style="font:700 12px Consolas,monospace;color:'+col+'">ALERTA ' + esc(String(a.nivel || '').toUpperCase()) + '</div>'
+                + '<div style="font-weight:700;font-size:13px;margin-top:2px">' + esc(titulo) + '</div>'
+                + (codigo ? '<div style="font-size:12px;color:#333;margin-top:4px"><b>Código:</b> ' + esc(codigo) + '</div>' : '')
+                + '<div style="font-size:12px;color:#333;margin-top:3px"><b>Tipo:</b> ' + esc(tipo) + '</div>'
+                + (condicion ? '<div style="font-size:12px;color:#333;margin-top:3px"><b>Sobre:</b> ' + esc(condicion) + '</div>' : '')
+                + (zona ? '<div style="font-size:12px;color:#333;margin-top:3px"><b>Zona:</b> ' + esc(zona) + '</div>' : '')
+                + (desde ? '<div style="font-size:12px;color:#333;margin-top:3px"><b>Inicio:</b> ' + esc(desde) + '</div>' : '')
+                + (hasta ? '<div style="font-size:12px;color:#333;margin-top:3px"><b>Término:</b> ' + esc(hasta) + '</div>' : '')
+                + (dur ? '<div style="font-size:12px;color:#333;margin-top:3px"><b>Duración estimada:</b> ' + esc(dur) + '</div>' : '')
+                + (emision ? '<div style="font-size:12px;color:#333;margin-top:3px"><b>Emisión:</b> ' + esc(emision) + '</div>' : '')
+                + (desc ? '<div style="font-size:12px;color:#333;margin-top:5px"><b>Resumen:</b> ' + esc(desc) + '</div>' : '')
+                + '</div>';
+        }).join('');
+        var btnUrl = (group && group.alerts && group.alerts[0] && group.alerts[0].official_url) || 'https://senamhi.gob.bo/index.php/alertas';
+        return '<div style="min-width:300px;max-width:520px">'
+            + '<div style="font:700 14px Consolas,monospace;color:'+col+'">🇧🇴 BOLIVIA · ALERTAS OFICIALES</div>'
+            + '<div style="font-size:12px;margin-top:4px"><b>Grupo representado:</b> ' + esc(group && (group.tipo || group.zone) || 'Bolivia') + '</div>'
+            + '<div style="font-size:12px;margin-top:2px"><b>Total de alertas en este punto:</b> ' + esc((group && group.alerts && group.alerts.length) || 0) + '</div>'
+            + '<hr style="margin:7px 0">'
+            + items
+            + '<div style="margin-top:8px"><a href="' + esc(btnUrl) + '" target="_blank" rel="noopener" style="display:inline-block;border:1px solid #777;background:#fff;padding:5px 8px;cursor:pointer;font:700 11px Consolas,monospace;color:#111;text-decoration:none">ABRIR LISTADO OFICIAL</a></div>'
+            + '</div>';
     };
     window.__buildPeruOfficialAlertPopup = window.__buildPeruOfficialAlertPopup || function(group){
         var esc = window.__regionalAlertEscape;
@@ -5965,8 +6078,8 @@ try {
         ]);
     };
     window.__applyRegionalOfficialAlerts = window.__applyRegionalOfficialAlerts || function(data, boData){
-        var alerts = data && Array.isArray(data.alerts) ? data.alerts : [];
-        var boAlerts = boData && Array.isArray(boData.alerts) ? boData.alerts : [];
+        var alerts = window.__filterRegionalActiveAlerts(data && Array.isArray(data.alerts) ? data.alerts : []);
+        var boAlerts = window.__filterRegionalActiveAlerts(boData && Array.isArray(boData.alerts) ? boData.alerts : []);
         window.__peruOfficialAlertsData = alerts;
         window.__boliviaOfficialAlertsData = boAlerts;
         __uav.layerPeruAlerts.clearLayers();
@@ -5990,24 +6103,25 @@ try {
             g._leafletLayer = layer;
         });
         __uav.layerBoliviaAlerts.clearLayers();
-        boAlerts.forEach(function(a){
-            var col = window.__alertColorByLevel(a.nivel || a.priority || 'NARANJA');
-            var tip = 'BOLIVIA · ALERTA OFICIAL · ' + String(a.tipo || '').toUpperCase() + ' · ' + String(a.codigo || a.aviso || '');
-            var body = '<div style="min-width:270px;max-width:420px"><b style="color:'+col+'">🇧🇴 SENAMHI Bolivia · ' + String(a.tipo || '').toUpperCase() + '</b><br><b>' + String(a.codigo || a.aviso || '') + ' · ' + String(a.titulo || '') + '</b><br><small>' + String(a.inicio || '') + ' · ' + String(a.fin || '') + '</small><hr style="margin:5px 0"><div style="font-size:12px;color:#333">' + String(a.descripcion || '') + '</div>';
-            if (a.zonas && a.zonas.length) body += '<div style="margin-top:6px;font-size:12px"><b>Zonas oficiales:</b> ' + String(a.zonas.join(', ')) + '</div>';
-            if (a.source_url) body += '<div style="margin-top:6px"><a href="' + String(a.source_url) + '" target="_blank" rel="noopener" style="display:inline-block;border:1px solid #777;background:#fff;padding:4px 7px;cursor:pointer;font:700 11px Consolas,monospace;color:#111;text-decoration:none">ABRIR OFICIAL</a></div>';
-            body += '</div>';
-            var ll = Array.isArray(a.latlng) ? a.latlng : [-16.5, -64.5];
-            var layer = L.circleMarker(ll, { radius:11, color:'#c62828', weight:3, fillColor:'#e53935', fillOpacity:0.30 });
-            window.__bindRegionalAlertLayer(layer, tip, body);
+        var boGroups = window.__groupBoliviaOfficialAlerts(boAlerts);
+        boGroups.forEach(function(g){
+            var col = window.__alertColorByLevel(g.level);
+            var popup = window.__buildBoliviaOfficialAlertPopup(g);
+            var tip = 'BOLIVIA · ALERTAS OFICIALES · ' + String(g.level || '').toUpperCase() + ' · ' + String(g.tipo || g.zone || 'BOLIVIA');
+            var ll = Array.isArray(g.latlng) ? g.latlng : [-17.25, -64.65];
+            var layer = L.circle(ll, {
+                radius: 95000,
+                color: col,
+                weight: 3,
+                fillColor: col,
+                fillOpacity: 0.12,
+                opacity: 0.95
+            });
+            window.__bindRegionalAlertLayer(layer, tip, popup);
             layer.addTo(__uav.layerBoliviaAlerts);
-            a._leafletLayer = layer;
+            (g.alerts || []).forEach(function(a){ a._leafletLayer = layer; });
+            g._leafletLayer = layer;
         });
-        if (!boAlerts.length) {
-            var boMet = L.circleMarker([-17.3, -63.8], { radius:8, color:'#1d4ed8', weight:3, fillColor:'#60a5fa', fillOpacity:0.22 }).bindPopup('<div style="min-width:240px"><b>🇧🇴 SENAMHI Bolivia · Alerta meteorológica</b><hr style="margin:5px 0"><div style="font-size:12px">Portal oficial de alertas meteorológicas de Bolivia.</div><div style="margin-top:6px"><a href="https://senamhi.gob.bo/index.php/alertasM" target="_blank" rel="noopener" style="display:inline-block;border:1px solid #777;background:#fff;padding:4px 7px;cursor:pointer;font:700 11px Consolas,monospace;color:#111;text-decoration:none">ABRIR OFICIAL</a></div></div>');
-            var boHid = L.circleMarker([-18.1, -64.6], { radius:8, color:'#0f766e', weight:3, fillColor:'#14b8a6', fillOpacity:0.22 }).bindPopup('<div style="min-width:240px"><b>🇧🇴 SENAMHI Bolivia · Alerta hidrológica</b><hr style="margin:5px 0"><div style="font-size:12px">Portal oficial de alertas hidrológicas de Bolivia.</div><div style="margin-top:6px"><a href="https://senamhi.gob.bo/index.php/alertas" target="_blank" rel="noopener" style="display:inline-block;border:1px solid #777;background:#fff;padding:4px 7px;cursor:pointer;font:700 11px Consolas,monospace;color:#111;text-decoration:none">ABRIR OFICIAL</a></div></div>');
-            boMet.addTo(__uav.layerBoliviaAlerts); boHid.addTo(__uav.layerBoliviaAlerts);
-        }
         window.__renderRegionalAlertPanel(alerts, boAlerts);
         window.__regionalAlertsLastOk = new Date().toISOString();
     };
