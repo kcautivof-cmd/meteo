@@ -5907,25 +5907,26 @@ try {
         return 1;
     };
     window.__groupPeruOfficialAlerts = window.__groupPeruOfficialAlerts || function(alerts){
-        var map = {};
-        (alerts || []).forEach(function(a){
-            var ll = window.__guessPeruAlertCenter(a, 0);
-            var zone = String(a.zona || a.region || a.departamento || 'PERÚ').trim() || 'PERÚ';
-            var key = zone.toUpperCase() + '|' + Number(ll[0]).toFixed(2) + '|' + Number(ll[1]).toFixed(2);
-            if(!map[key]){
-                map[key] = { key:key, zone:zone, latlng:ll, alerts:[], level:'AMARILLO' };
+        return (alerts || []).map(function(a){
+            var ll;
+            // Preferir centroide real del polígono si existe
+            var ring = a.geometry && a.geometry.coordinates && a.geometry.coordinates[0];
+            if(ring && ring.length){
+                var sLat = 0, sLon = 0;
+                ring.forEach(function(pt){ sLat += pt[0]; sLon += pt[1]; });
+                ll = [sLat / ring.length, sLon / ring.length];
+            } else {
+                ll = window.__guessPeruAlertCenter(a, 0);
             }
-            map[key].alerts.push(a);
-            if(window.__regionalAlertLevelRank(a.nivel) > window.__regionalAlertLevelRank(map[key].level)){
-                map[key].level = String(a.nivel || 'AMARILLO').toUpperCase();
-            }
-        });
-        return Object.keys(map).map(function(k){
-            var g = map[k];
-            g.alerts.sort(function(a,b){
-                return window.__regionalAlertLevelRank(b.nivel) - window.__regionalAlertLevelRank(a.nivel);
-            });
-            return g;
+            var zone = String(a.titulo || a.zona || a.region || 'PERÚ').trim() || 'PERÚ';
+            return {
+                key: String(a.aviso || a.codigo || zone + '|' + ll[0].toFixed(2)),
+                zone: zone,
+                latlng: ll,
+                alerts: [a],
+                level: String(a.nivel || 'AMARILLO').toUpperCase(),
+                geometry: a.geometry || null
+            };
         });
     };
     window.__guessBoliviaAlertCenter = window.__guessBoliviaAlertCenter || function(alerta){
@@ -5943,26 +5944,28 @@ try {
         return [-17.25, -64.65];
     };
     window.__groupBoliviaOfficialAlerts = window.__groupBoliviaOfficialAlerts || function(alerts){
-        var map = {};
-        (alerts || []).forEach(function(a){
-            var ll = window.__guessBoliviaAlertCenter(a);
-            var zone = String(a.zona || a.region || a.departamento || a.tipo || 'BOLIVIA').trim() || 'BOLIVIA';
+        return (alerts || []).map(function(a){
+            var ll;
+            // Preferir centroide real del polígono si existe
+            var ring = a.geometry && a.geometry.coordinates && a.geometry.coordinates[0];
+            if(ring && ring.length){
+                var sLat = 0, sLon = 0;
+                ring.forEach(function(pt){ sLat += pt[0]; sLon += pt[1]; });
+                ll = [sLat / ring.length, sLon / ring.length];
+            } else {
+                ll = window.__guessBoliviaAlertCenter(a);
+            }
+            var zone = String(Array.isArray(a.zonas) ? a.zonas.join(', ') : (a.zona || a.region || a.departamento || a.tipo || 'BOLIVIA')).trim() || 'BOLIVIA';
             var tipo = String(a.tipo || 'ALERTA').trim() || 'ALERTA';
-            var key = tipo.toUpperCase() + '|' + zone.toUpperCase() + '|' + Number(ll[0]).toFixed(2) + '|' + Number(ll[1]).toFixed(2);
-            if(!map[key]){
-                map[key] = { key:key, zone:zone, tipo:tipo, latlng:ll, alerts:[], level:'AMARILLO' };
-            }
-            map[key].alerts.push(a);
-            if(window.__regionalAlertLevelRank(a.nivel) > window.__regionalAlertLevelRank(map[key].level)){
-                map[key].level = String(a.nivel || 'AMARILLO').toUpperCase();
-            }
-        });
-        return Object.keys(map).map(function(k){
-            var g = map[k];
-            g.alerts.sort(function(a,b){
-                return window.__regionalAlertLevelRank(b.nivel) - window.__regionalAlertLevelRank(a.nivel);
-            });
-            return g;
+            return {
+                key: String(a.codigo || a.aviso || tipo + '|' + zone + '|' + ll[0].toFixed(2)),
+                zone: zone,
+                tipo: tipo,
+                latlng: ll,
+                alerts: [a],
+                level: String(a.nivel || 'AMARILLO').toUpperCase(),
+                geometry: a.geometry || null
+            };
         });
     };
     window.__buildBoliviaOfficialAlertPopup = window.__buildBoliviaOfficialAlertPopup || function(group){
@@ -6082,46 +6085,53 @@ try {
         var boAlerts = window.__filterRegionalActiveAlerts(boData && Array.isArray(boData.alerts) ? boData.alerts : []);
         window.__peruOfficialAlertsData = alerts;
         window.__boliviaOfficialAlertsData = boAlerts;
+
+        // ── PERÚ ──────────────────────────────────────────────────
         __uav.layerPeruAlerts.clearLayers();
         var peruGroups = window.__groupPeruOfficialAlerts(alerts);
         peruGroups.forEach(function(g){
             var col = window.__alertColorByLevel(g.level);
             var popup = window.__buildPeruOfficialAlertPopup(g);
             var tip = 'PERÚ · ALERTAS OFICIALES · ' + String(g.level || '').toUpperCase() + ' · ' + String(g.zone || 'PERÚ');
-            var ll = Array.isArray(g.latlng) ? g.latlng : [-9.8, -75.2];
-            var layer = L.circle(ll, {
-                radius: 95000,
-                color: col,
-                weight: 3,
-                fillColor: col,
-                fillOpacity: 0.12,
-                opacity: 0.95
-            });
+            var layer = null;
+            // Polígono real si existe
+            if(g.geometry){
+                try { layer = window.__drawRegionalAlertGeometry({ geometry: g.geometry, nivel: g.level }, 'PE'); } catch(e){ layer = null; }
+            }
+            // Fallback: círculo centrado en el centroide calculado
+            if(!layer){
+                var ll = Array.isArray(g.latlng) ? g.latlng : [-9.8, -75.2];
+                layer = L.circle(ll, { radius: 95000, color: col, weight: 3, fillColor: col, fillOpacity: 0.12, opacity: 0.95 });
+            }
             window.__bindRegionalAlertLayer(layer, tip, popup);
             layer.addTo(__uav.layerPeruAlerts);
             (g.alerts || []).forEach(function(a){ a._leafletLayer = layer; });
             g._leafletLayer = layer;
         });
+
+        // ── BOLIVIA ───────────────────────────────────────────────
         __uav.layerBoliviaAlerts.clearLayers();
         var boGroups = window.__groupBoliviaOfficialAlerts(boAlerts);
         boGroups.forEach(function(g){
             var col = window.__alertColorByLevel(g.level);
             var popup = window.__buildBoliviaOfficialAlertPopup(g);
             var tip = 'BOLIVIA · ALERTAS OFICIALES · ' + String(g.level || '').toUpperCase() + ' · ' + String(g.tipo || g.zone || 'BOLIVIA');
-            var ll = Array.isArray(g.latlng) ? g.latlng : [-17.25, -64.65];
-            var layer = L.circle(ll, {
-                radius: 95000,
-                color: col,
-                weight: 3,
-                fillColor: col,
-                fillOpacity: 0.12,
-                opacity: 0.95
-            });
+            var layer = null;
+            // Polígono real si existe
+            if(g.geometry){
+                try { layer = window.__drawRegionalAlertGeometry({ geometry: g.geometry, nivel: g.level }, 'BO'); } catch(e){ layer = null; }
+            }
+            // Fallback: círculo centrado en el centroide calculado
+            if(!layer){
+                var ll = Array.isArray(g.latlng) ? g.latlng : [-17.25, -64.65];
+                layer = L.circle(ll, { radius: 95000, color: col, weight: 3, fillColor: col, fillOpacity: 0.12, opacity: 0.95 });
+            }
             window.__bindRegionalAlertLayer(layer, tip, popup);
             layer.addTo(__uav.layerBoliviaAlerts);
             (g.alerts || []).forEach(function(a){ a._leafletLayer = layer; });
             g._leafletLayer = layer;
         });
+
         window.__renderRegionalAlertPanel(alerts, boAlerts);
         window.__regionalAlertsLastOk = new Date().toISOString();
     };
