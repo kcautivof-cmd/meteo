@@ -15602,20 +15602,27 @@ async function robustGenerate(ev){
         if(!cl) cl=classify(title+' '+body);
         if(!cl || (cl.cat!=='DIRECTA' && cl.cat!=='CERCANA')) continue;
         var kmStr=cl.km&&cl.km>0?' (~'+cl.km+' km)':'';
-        var condicion=pickField(it,['condicion','tipo','descripcion','contenido']);
+        var condicion=pickField(it,['condicionSinoptica','condicion_sinoptica','condicion','tipo','descripcion','contenido']);
         var desde=pickField(it,['desde','inicio','fechaInicio','start']);
         var hasta=pickField(it,['hasta','fin','termino','término','fechaFinal','end']);
         var emision=pickField(it,['emision','fechaHora','fecha','fechaPublicacion','issued_at']);
+        var zona=pickField(it,['textoZonaAfecta','zona','region','departamento','regiones']);
+        var detalle=pickField(it,['descripcion','contenido','detalle']);
+        var lines=[
+          '  ['+cl.cat+kmStr+'] '+title,
+          '    Condición: '+condicion,
+          '    Desde: '+desde,
+          '    Hasta: '+hasta,
+          '    Emisión: '+emision
+        ];
+        if(zona!=='N/D') lines.push('    Zona: '+zona);
+        if(it&&it.condicionSinoptica&&String(it.condicionSinoptica).trim()) lines.push('    Condición sinóptica: '+dec(String(it.condicionSinoptica).trim()));
+        else if(it&&it.condicion_sinoptica&&String(it.condicion_sinoptica).trim()) lines.push('    Condición sinóptica: '+dec(String(it.condicion_sinoptica).trim()));
+        if(detalle!=='N/D' && sa(detalle)!==sa(title)) lines.push('    Detalle: '+detalle);
         out.push({
           cat:cl.cat,
           km:cl.km||9999,
-          lines:[
-            '  ['+cl.cat+kmStr+'] '+title,
-            '    Condición: '+condicion,
-            '    Desde: '+desde,
-            '    Hasta: '+hasta,
-            '    Emisión: '+emision
-          ]
+          lines:lines
         });
       }
       if(!out.length) return ['  Sin alertas cercanas relevantes para la ubicación seleccionada.'];
