@@ -6065,12 +6065,12 @@ try {
         async function take(url, fallback){
             try{
                 var r = await fetch(url, { cache:'no-store' });
-                if(r.ok) return await r.json();
+                if(r.ok){ var d = await r.json(); d._fromFallback = false; return d; }
             }catch(_e){}
             if(fallback && fallback !== url){
                 try{
                     var rf = await fetch(fallback, { cache:'no-store' });
-                    if(rf.ok) return await rf.json();
+                    if(rf.ok){ var df = await rf.json(); df._fromFallback = true; return df; }
                 }catch(_e2){}
             }
             return null;
@@ -6139,7 +6139,12 @@ try {
         opts = opts || {};
         try{
             var payloads = await window.__fetchRegionalAlertsPayloads();
-            window.__applyRegionalOfficialAlerts(payloads[0] || null, payloads[1] || null);
+            var peruData = payloads[0] || null;
+            var boData   = payloads[1] || null;
+            window.__applyRegionalOfficialAlerts(peruData, boData);
+            // Avisar si alguno viene del JSON de fallback local
+            var usingFallback = (peruData && peruData._fromFallback) || (boData && boData._fromFallback);
+            if(usingFallback) window.__showRegionalFallbackToast();
             if (!window.__regionalAlertsLoaded) {
                 window.__regionalAlertsLoaded = true;
                 if (!opts.skipDeactivate) setTimeout(function(){ if (typeof window.__deactivateAllOperatorLayers === 'function') window.__deactivateAllOperatorLayers(); }, 120);
@@ -6149,6 +6154,16 @@ try {
             window.__renderRegionalAlertPanel([], []);
             return false;
         }
+    };
+    window.__showRegionalFallbackToast = window.__showRegionalFallbackToast || function(){
+        var existing = document.getElementById('__regionalFallbackToast');
+        if(existing){ existing.style.opacity='1'; return; }
+        var t = document.createElement('div');
+        t.id = '__regionalFallbackToast';
+        t.textContent = '⚠ ALERTAS REGIONALES: datos de referencia (sin conexión al worker)';
+        t.style.cssText = 'position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#b45309;color:#fff;padding:7px 14px;border-radius:4px;font:700 11px Consolas,monospace;z-index:99999;opacity:1;transition:opacity 1s;pointer-events:none;white-space:nowrap;';
+        document.body.appendChild(t);
+        setTimeout(function(){ t.style.opacity='0'; setTimeout(function(){ t.remove(); },1100); }, 7000);
     };
     window.__loadRegionalOfficialAlerts = window.__loadRegionalOfficialAlerts || function(){
         window.__renderRegionalLegend();
