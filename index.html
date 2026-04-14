@@ -5983,6 +5983,7 @@ try {
             var descCompleta = a.descripcion_completa || a.descripcion || '';
             var zonas = a.zonas_texto || a.zona || '';
             var detailUrl = a.detail_url || a.official_url || 'https://senamhi.gob.bo/index.php/alertas';
+            var pdfUrl = a.pdf_url || '';
             return '<div style="border:1px solid #d7d7d7;border-radius:6px;padding:8px 9px;margin:7px 0;background:#fff">'
                 + '<div style="font:700 12px Consolas,monospace;color:'+col+'">ALERTA ' + esc(String(a.nivel || '').toUpperCase()) + '</div>'
                 + (codigo ? '<div style="font-size:11px;color:#666;margin-top:2px">N° ' + esc(codigo) + ' · ' + esc(tipo) + '</div>' : '')
@@ -5995,7 +5996,10 @@ try {
                 + (dur    ? '<span style="font-size:11px;background:#f3f4f6;padding:2px 6px;border-radius:3px">' + esc(dur) + '</span>' : '')
                 + '</div>'
                 + (emision ? '<div style="font-size:10px;color:#888;margin-top:4px">Publicado: ' + esc(emision) + '</div>' : '')
-                + '<div style="margin-top:7px"><a href="' + esc(detailUrl) + '" target="_blank" rel="noopener" style="display:inline-block;border:1px solid #777;background:#fff;padding:4px 8px;cursor:pointer;font:700 10px Consolas,monospace;color:#111;text-decoration:none">VER AVISO COMPLETO ↗</a></div>'
+                + '<div style="margin-top:7px;display:flex;gap:6px;flex-wrap:wrap">'
+                + '<a href="' + esc(detailUrl) + '" target="_blank" rel="noopener" style="display:inline-block;border:1px solid #777;background:#fff;padding:4px 8px;cursor:pointer;font:700 10px Consolas,monospace;color:#111;text-decoration:none">VER AVISO ↗</a>'
+                + (pdfUrl ? '<a href="' + esc(pdfUrl) + '" target="_blank" rel="noopener" style="display:inline-block;border:1px solid #c00;background:#c00;padding:4px 8px;cursor:pointer;font:700 10px Consolas,monospace;color:#fff;text-decoration:none">PDF ↓</a>' : '')
+                + '</div>'
                 + '</div>';
         }).join('');
         var btnUrl = (group && group.alerts && group.alerts[0] && group.alerts[0].official_url) || 'https://senamhi.gob.bo/index.php/alertas';
