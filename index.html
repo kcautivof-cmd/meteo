@@ -11806,9 +11806,9 @@ function excelDetectarZona() {
 
   const zonas = [
     { key: 'PARAJALLA', celda: 'C8'  },
-    { key: 'COLCHANE',  celda: 'C23' },
-    { key: 'CANCOSA',   celda: 'C38' },
-    { key: 'UJINA',     celda: 'C53' }
+    { key: 'COLCHANE',  celda: 'C26' },
+    { key: 'CANCOSA',   celda: 'C44' },
+    { key: 'UJINA',     celda: 'C62' }
   ];
 
   for (const z of zonas) {
@@ -11863,6 +11863,7 @@ function _rangeDateList(fromIso, toIso, maxDays = 31) {
 /* Estadísticas horarias del día ISO dado */
 function _hStats(hourly, iso) {
   let wMin = 9999, wMax = 0, gMin = 9999, gMax = -1, hSum = 0, hCnt = 0;
+  let cbSum = 0, cbCnt = 0, visMin = 9999999, pSum = 0, pCnt = 0;
 
   (hourly.time || []).forEach((ht, k) => {
     if (String(ht).slice(0, 10) !== iso) return;
@@ -11880,10 +11881,16 @@ function _hStats(hourly, iso) {
     }
 
     const h = Number(hourly.relative_humidity_2m?.[k]);
-    if (Number.isFinite(h)) {
-      hSum += h;
-      hCnt++;
-    }
+    if (Number.isFinite(h)) { hSum += h; hCnt++; }
+
+    const cb = Number(hourly.cloud_base?.[k]);
+    if (Number.isFinite(cb) && cb > 0) { cbSum += cb; cbCnt++; }
+
+    const vis = Number(hourly.visibility?.[k]);
+    if (Number.isFinite(vis) && vis >= 0) { if (vis < visMin) visMin = vis; }
+
+    const p = Number(hourly.pressure_msl?.[k]);
+    if (Number.isFinite(p) && p > 0) { pSum += p; pCnt++; }
   });
 
   return {
@@ -11891,7 +11898,10 @@ function _hStats(hourly, iso) {
     wMax: Math.round(wMax),
     gMin: gMin === 9999 ? 0 : Math.round(gMin),
     gMax: gMax === -1 ? 0 : Math.round(gMax),
-    humMedia: hCnt > 0 ? Math.round(hSum / hCnt) : '-'
+    humMedia: hCnt > 0 ? Math.round(hSum / hCnt) : '-',
+    cloudBaseMedia: cbCnt > 0 ? Math.round(cbSum / cbCnt) : '-',
+    visMinM: visMin === 9999999 ? '-' : Math.round(visMin),
+    presionMedia: pCnt > 0 ? (pSum / pCnt).toFixed(1) : '-'
   };
 }
 
@@ -12133,7 +12143,7 @@ async function excelCopiarPronostico(btn) {
   const requestedDays = _rangeDateList(rango.from, rango.to, 31);
   const indexByIso = Object.fromEntries((times || []).map((t, idx) => [String(t).slice(0,10), idx]));
   const previewByIso = Object.fromEntries(officialPreview.map((it) => [String(it?.date || '').slice(0,10), it || {}]));
-  const R = Array.from({ length: 14 }, () => []);
+  const R = Array.from({ length: 17 }, () => []);
 
   function pickRaw(officialArr, baseArr, i) {
     const vo = Array.isArray(officialArr) ? officialArr[i] : undefined;
@@ -12221,10 +12231,13 @@ async function excelCopiarPronostico(btn) {
     R[7].push((humOfficial !== undefined && humOfficial !== null && humOfficial !== '') ? _rnd(humOfficial) : st.humMedia);
     R[8].push(`${windMin} - ${windMax}`);
     R[9].push(`${gustMin} - ${gustMax}`);
-    R[10].push(moon.illum);
-    R[11].push(moon.phase);
-    R[12].push(astro.iccm);
-    R[13].push(astro.tccv);
+    R[10].push(st.cloudBaseMedia);
+    R[11].push(st.visMinM);
+    R[12].push(st.presionMedia);
+    R[13].push(moon.illum);
+    R[14].push(moon.phase);
+    R[15].push(astro.iccm);
+    R[16].push(astro.tccv);
   }
 
   const tsv = R.map(row => row.join('\t')).join('\n');
