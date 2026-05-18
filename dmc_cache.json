@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-18T20:59:31.952222Z",
+  "generated_at": "2026-05-18T22:01:03.281132Z",
   "localities": {
     "visviri": {
       "indice": "visviri",
@@ -17,17 +17,17 @@
         ],
         "temperature_2m_max": [
           15.0,
-          15.0,
           17.0,
           16.0,
-          16.0
+          15.0,
+          14.0
         ],
         "temperature_2m_min": [
-          null,
+          -11.0,
+          -12.0,
+          -11.0,
           -10.0,
-          -11.0,
-          -11.0,
-          -10.0
+          -8.0
         ],
         "precipitation_sum": [
           0.0,
@@ -38,17 +38,17 @@
         ],
         "wind_speed_10m_max": [
           60.0,
-          60.0,
+          40.0,
           40.0,
           40.0,
           40.0
         ],
         "weather_code": [
           0,
-          0,
           2,
           2,
-          2
+          3,
+          3
         ],
         "__summary_text": [
           [
@@ -58,11 +58,6 @@
           ],
           [
             "DESPEJADO",
-            "DESPEJADO CON VIENTO ENTRE 40 Y 60 KM/H",
-            "DESPEJADO CON VIENTO ENTRE 25 Y 40 KM/H"
-          ],
-          [
-            "DESPEJADO",
             "NUBOSIDAD PARCIAL CON VIENTO ENTRE 25 Y 40 KM/H"
           ],
           [
@@ -71,7 +66,11 @@
           ],
           [
             "NUBOSIDAD PARCIAL",
-            "NUBOSIDAD PARCIAL CON VIENTO ENTRE 25 Y 40 KM/H"
+            "NUBLADO CON VIENTO ENTRE 25 Y 40 KM/H"
+          ],
+          [
+            "NUBOSIDAD PARCIAL",
+            "NUBLADO CON VIENTO ENTRE 25 Y 40 KM/H"
           ]
         ]
       },
@@ -92,17 +91,17 @@
           "2026-05-22"
         ],
         "temperature_2m_max": [
-          24.0,
-          23.0,
           22.0,
-          23.0,
+          22.0,
+          22.0,
+          22.0,
           23.0
         ],
         "temperature_2m_min": [
-          null,
-          18.0,
           19.0,
-          18.0,
+          19.0,
+          19.0,
+          19.0,
           18.0
         ],
         "precipitation_sum": [
@@ -129,19 +128,13 @@
         "__summary_text": [
           [
             "CUBIERTO",
-            "DESPEJADO",
-            "DESPEJADO VARIANDO A NUBLADO"
-          ],
-          [
-            "CUBIERTO",
             "CUBIERTO VARIANDO A DESPEJADO",
             "DESPEJADO",
             "DESPEJADO VARIANDO A NUBLADO"
           ],
           [
             "CUBIERTO",
-            "NUBLADO VARIANDO A DESPEJADO",
-            "DESPEJADO VARIANDO A NUBLADO"
+            "NUBLADO"
           ],
           [
             "CUBIERTO",
@@ -151,7 +144,13 @@
           ],
           [
             "CUBIERTO",
-            "NUBLADO VARIANDO A DESPEJADO",
+            "CUBIERTO VARIANDO A DESPEJADO",
+            "DESPEJADO",
+            "DESPEJADO VARIANDO A NUBLADO"
+          ],
+          [
+            "CUBIERTO",
+            "CUBIERTO VARIANDO A DESPEJADO",
             "DESPEJADO",
             "DESPEJADO VARIANDO A NUBLADO"
           ]
@@ -174,18 +173,18 @@
           "2026-05-22"
         ],
         "temperature_2m_max": [
-          15.0,
-          15.0,
           16.0,
+          17.0,
+          17.0,
           16.0,
           16.0
         ],
         "temperature_2m_min": [
-          null,
+          3.0,
+          5.0,
+          6.0,
           4.0,
-          5.0,
-          5.0,
-          5.0
+          4.0
         ],
         "precipitation_sum": [
           0.0,
@@ -203,15 +202,12 @@
         ],
         "weather_code": [
           0,
-          0,
           2,
           2,
-          2
+          3,
+          3
         ],
         "__summary_text": [
-          [
-            "DESPEJADO"
-          ],
           [
             "DESPEJADO"
           ],
@@ -223,6 +219,11 @@
             "NUBOSIDAD PARCIAL"
           ],
           [
+            "NUBOSIDAD PARCIAL",
+            "NUBLADO"
+          ],
+          [
+            "NUBLADO",
             "NUBOSIDAD PARCIAL"
           ]
         ]
@@ -245,17 +246,17 @@
         ],
         "temperature_2m_max": [
           17.0,
-          17.0,
           18.0,
+          17.0,
           17.0,
           17.0
         ],
         "temperature_2m_min": [
-          null,
           -5.0,
           -5.0,
           -4.0,
-          -4.0
+          -7.0,
+          -8.0
         ],
         "precipitation_sum": [
           0.0,
@@ -273,10 +274,10 @@
         ],
         "weather_code": [
           0,
-          0,
           2,
           2,
-          2
+          2,
+          3
         ],
         "__summary_text": [
           [
@@ -285,12 +286,12 @@
           ],
           [
             "DESPEJADO",
-            "DESPEJADO CON VIENTO ENTRE 40 Y 60 KM/H"
-          ],
-          [
-            "DESPEJADO",
             "NUBOSIDAD PARCIAL CON VIENTO ENTRE 40 Y 60 KM/H",
             "NUBOSIDAD PARCIAL CON VIENTO ENTRE 25 Y 40 KM/H"
+          ],
+          [
+            "NUBOSIDAD PARCIAL",
+            "NUBOSIDAD PARCIAL CON VIENTO ENTRE 40 Y 60 KM/H"
           ],
           [
             "NUBOSIDAD PARCIAL",
@@ -299,8 +300,8 @@
           ],
           [
             "NUBOSIDAD PARCIAL",
-            "NUBOSIDAD PARCIAL CON VIENTO ENTRE 40 Y 60 KM/H",
-            "NUBOSIDAD PARCIAL CON VIENTO ENTRE 25 Y 40 KM/H"
+            "NUBLADO CON VIENTO ENTRE 40 Y 60 KM/H",
+            "NUBLADO CON VIENTO ENTRE 25 Y 40 KM/H"
           ]
         ]
       },
@@ -322,16 +323,16 @@
         ],
         "temperature_2m_max": [
           21.0,
-          20.0,
+          21.0,
           20.0,
           20.0,
           20.0
         ],
         "temperature_2m_min": [
-          null,
           17.0,
           17.0,
           17.0,
+          16.0,
           16.0
         ],
         "precipitation_sum": [
@@ -357,6 +358,22 @@
         ],
         "__summary_text": [
           [
+            "CUBIERTO",
+            "NUBLADO VARIANDO A DESPEJADO",
+            "DESPEJADO",
+            "NUBLADO"
+          ],
+          [
+            "CUBIERTO",
+            "NUBLADO"
+          ],
+          [
+            "CUBIERTO",
+            "CUBIERTO VARIANDO A DESPEJADO",
+            "NUBLADO"
+          ],
+          [
+            "CUBIERTO",
             "NUBLADO VARIANDO A DESPEJADO",
             "DESPEJADO",
             "DESPEJADO VARIANDO A NUBLADO"
@@ -365,21 +382,7 @@
             "CUBIERTO",
             "NUBLADO VARIANDO A DESPEJADO",
             "DESPEJADO",
-            "NUBLADO"
-          ],
-          [
-            "CUBIERTO",
-            "NUBLADO"
-          ],
-          [
-            "CUBIERTO",
-            "NUBLADO"
-          ],
-          [
-            "NUBLADO VARIANDO A DESPEJADO",
-            "DESPEJADO",
-            "DESPEJADO VARIANDO A NUBLADO",
-            "NUBLADO"
+            "DESPEJADO VARIANDO A NUBLADO"
           ]
         ]
       },
@@ -402,16 +405,16 @@
         "temperature_2m_max": [
           32.0,
           32.0,
-          31.0,
-          31.0,
-          32.0
+          30.0,
+          32.0,
+          31.0
         ],
         "temperature_2m_min": [
-          null,
-          7.0,
-          7.0,
+          8.0,
+          8.0,
           6.0,
-          6.0
+          6.0,
+          7.0
         ],
         "precipitation_sum": [
           0.0,
@@ -429,15 +432,12 @@
         ],
         "weather_code": [
           0,
+          2,
+          2,
           0,
-          2,
-          2,
-          2
+          0
         ],
         "__summary_text": [
-          [
-            "DESPEJADO"
-          ],
           [
             "DESPEJADO"
           ],
@@ -446,10 +446,13 @@
             "NUBOSIDAD PARCIAL"
           ],
           [
-            "NUBOSIDAD PARCIAL"
+            "NUBOSIDAD PARCIAL",
+            "DESPEJADO"
           ],
           [
-            "NUBOSIDAD PARCIAL",
+            "DESPEJADO"
+          ],
+          [
             "DESPEJADO"
           ]
         ]
@@ -471,18 +474,18 @@
           "2026-05-22"
         ],
         "temperature_2m_max": [
-          16.0,
-          16.0,
+          18.0,
           17.0,
-          16.0,
-          18.0
+          17.0,
+          17.0,
+          16.0
         ],
         "temperature_2m_min": [
-          null,
+          -8.0,
+          -9.0,
           -9.0,
           -11.0,
-          -11.0,
-          -13.0
+          -11.0
         ],
         "precipitation_sum": [
           0.0,
@@ -492,25 +495,20 @@
           0.0
         ],
         "wind_speed_10m_max": [
+          60.0,
           70.0,
-          60.0,
-          60.0,
+          70.0,
           60.0,
           60.0
         ],
         "weather_code": [
           0,
+          2,
+          2,
           0,
-          2,
-          2,
           0
         ],
         "__summary_text": [
-          [
-            "DESPEJADO",
-            "DESPEJADO CON VIENTO ENTRE 40 Y 60 KM/H Y R&AACUTE;FAGAS DE VIENTO HASTA 70 KM/H",
-            "DESPEJADO CON VIENTO ENTRE 40 Y 60 KM/H"
-          ],
           [
             "DESPEJADO",
             "DESPEJADO CON VIENTO ENTRE 40 Y 60 KM/H",
@@ -518,11 +516,15 @@
           ],
           [
             "DESPEJADO",
-            "NUBOSIDAD PARCIAL CON VIENTO ENTRE 40 Y 60 KM/H",
-            "NUBOSIDAD PARCIAL CON VIENTO ENTRE 25 Y 40 KM/H"
+            "NUBOSIDAD PARCIAL CON VIENTO ENTRE 40 Y 60 KM/H Y R&AACUTE;FAGAS DE VIENTO HASTA 70 KM/H",
+            "NUBOSIDAD PARCIAL CON VIENTO ENTRE 40 Y 60 KM/H"
           ],
           [
             "NUBOSIDAD PARCIAL",
+            "DESPEJADO CON VIENTO ENTRE 40 Y 60 KM/H Y R&AACUTE;FAGAS DE VIENTO HASTA 70 KM/H"
+          ],
+          [
+            "DESPEJADO",
             "DESPEJADO CON VIENTO ENTRE 40 Y 60 KM/H",
             "DESPEJADO CON VIENTO ENTRE 25 Y 40 KM/H"
           ],
@@ -551,16 +553,16 @@
         ],
         "temperature_2m_max": [
           19.0,
-          19.0,
           18.0,
           18.0,
-          19.0
+          18.0,
+          18.0
         ],
         "temperature_2m_min": [
-          null,
-          17.0,
           16.0,
-          16.0,
+          15.0,
+          15.0,
+          15.0,
           15.0
         ],
         "precipitation_sum": [
@@ -586,17 +588,6 @@
         ],
         "__summary_text": [
           [
-            "NUBLADO VARIANDO A DESPEJADO",
-            "DESPEJADO VARIANDO A NUBLADO",
-            "NUBLADO"
-          ],
-          [
-            "CUBIERTO",
-            "NUBLADO VARIANDO A DESPEJADO",
-            "DESPEJADO VARIANDO A NUBLADO",
-            "NUBLADO"
-          ],
-          [
             "CUBIERTO",
             "NUBLADO VARIANDO A DESPEJADO",
             "DESPEJADO VARIANDO A NUBLADO"
@@ -606,10 +597,21 @@
             "NUBLADO"
           ],
           [
+            "CUBIERTO",
+            "CUBIERTO VARIANDO A DESPEJADO",
+            "NUBLADO"
+          ],
+          [
+            "CUBIERTO",
             "NUBLADO VARIANDO A DESPEJADO",
             "DESPEJADO",
-            "DESPEJADO VARIANDO A NUBLADO",
-            "NUBLADO"
+            "DESPEJADO VARIANDO A NUBLADO"
+          ],
+          [
+            "CUBIERTO",
+            "NUBLADO VARIANDO A DESPEJADO",
+            "DESPEJADO",
+            "DESPEJADO VARIANDO A NUBLADO"
           ]
         ]
       },
@@ -630,17 +632,17 @@
           "2026-05-22"
         ],
         "temperature_2m_max": [
-          22.0,
-          22.0,
           23.0,
-          21.0,
+          24.0,
+          22.0,
+          22.0,
           23.0
         ],
         "temperature_2m_min": [
-          null,
-          1.0,
+          0.0,
           0.0,
           1.0,
+          -1.0,
           1.0
         ],
         "precipitation_sum": [
@@ -653,22 +655,18 @@
         "wind_speed_10m_max": [
           60.0,
           60.0,
-          60.0,
+          70.0,
           60.0,
           60.0
         ],
         "weather_code": [
           0,
-          0,
           2,
           0,
-          0
+          0,
+          2
         ],
         "__summary_text": [
-          [
-            "DESPEJADO CON VIENTO ENTRE 25 Y 40 KM/H",
-            "DESPEJADO CON VIENTO ENTRE 40 Y 60 KM/H"
-          ],
           [
             "DESPEJADO CON VIENTO ENTRE 25 Y 40 KM/H",
             "DESPEJADO CON VIENTO ENTRE 40 Y 60 KM/H"
@@ -680,11 +678,18 @@
           ],
           [
             "DESPEJADO CON VIENTO ENTRE 25 Y 40 KM/H",
+            "DESPEJADO CON VIENTO ENTRE 40 Y 60 KM/H Y R&AACUTE;FAGAS DE VIENTO HASTA 70 KM/H",
             "DESPEJADO CON VIENTO ENTRE 40 Y 60 KM/H"
           ],
           [
+            "DESPEJADO",
             "DESPEJADO CON VIENTO ENTRE 25 Y 40 KM/H",
             "DESPEJADO CON VIENTO ENTRE 40 Y 60 KM/H"
+          ],
+          [
+            "DESPEJADO",
+            "DESPEJADO CON VIENTO ENTRE 40 Y 60 KM/H",
+            "NUBOSIDAD PARCIAL CON VIENTO ENTRE 25 Y 40 KM/H"
           ]
         ]
       },
@@ -705,18 +710,18 @@
           "2026-05-22"
         ],
         "temperature_2m_max": [
-          23.0,
-          23.0,
+          22.0,
           24.0,
           23.0,
-          24.0
+          23.0,
+          22.0
         ],
         "temperature_2m_min": [
-          null,
-          3.0,
-          4.0,
-          3.0,
-          2.0
+          0.0,
+          0.0,
+          2.0,
+          1.0,
+          1.0
         ],
         "precipitation_sum": [
           0.0,
@@ -726,37 +731,41 @@
           0.0
         ],
         "wind_speed_10m_max": [
-          null,
           40.0,
           null,
-          40.0,
+          60.0,
+          null,
           null
         ],
         "weather_code": [
           2,
+          2,
+          2,
           0,
-          2,
-          2,
-          0
+          2
         ],
         "__summary_text": [
           [
-            "NUBOSIDAD PARCIAL"
-          ],
-          [
-            "DESPEJADO",
-            "DESPEJADO CON VIENTO ENTRE 25 Y 40 KM/H"
-          ],
-          [
-            "DESPEJADO",
-            "NUBOSIDAD PARCIAL"
-          ],
-          [
             "NUBOSIDAD PARCIAL",
+            "DESPEJADO",
             "DESPEJADO CON VIENTO ENTRE 25 Y 40 KM/H"
+          ],
+          [
+            "DESPEJADO",
+            "NUBOSIDAD PARCIAL"
+          ],
+          [
+            "DESPEJADO",
+            "DESPEJADO VARIANDO A NUBOSIDAD PARCIAL",
+            "NUBOSIDAD PARCIAL CON VIENTO ENTRE 40 Y 60 KM/H",
+            "NUBOSIDAD PARCIAL CON VIENTO ENTRE 25 Y 40 KM/H"
           ],
           [
             "DESPEJADO"
+          ],
+          [
+            "DESPEJADO",
+            "NUBOSIDAD PARCIAL"
           ]
         ]
       },
@@ -777,18 +786,18 @@
           "2026-05-22"
         ],
         "temperature_2m_max": [
-          20.0,
-          20.0,
           19.0,
           19.0,
-          19.0
+          19.0,
+          18.0,
+          18.0
         ],
         "temperature_2m_min": [
-          null,
-          16.0,
           15.0,
-          14.0,
-          13.0
+          15.0,
+          15.0,
+          15.0,
+          15.0
         ],
         "precipitation_sum": [
           0.0,
@@ -813,11 +822,6 @@
         ],
         "__summary_text": [
           [
-            "NUBLADO",
-            "DESPEJADO"
-          ],
-          [
-            "DESPEJADO VARIANDO A CUBIERTO",
             "CUBIERTO",
             "NUBLADO VARIANDO A DESPEJADO",
             "DESPEJADO VARIANDO A NUBLADO"
@@ -828,15 +832,21 @@
           ],
           [
             "CUBIERTO",
-            "NUBLADO",
-            "NUBLADO VARIANDO A DESPEJADO",
-            "DESPEJADO"
+            "CUBIERTO VARIANDO A DESPEJADO",
+            "DESPEJADO",
+            "DESPEJADO VARIANDO A NUBLADO"
           ],
           [
-            "DESPEJADO VARIANDO A CUBIERTO",
-            "NUBLADO",
+            "CUBIERTO",
             "NUBLADO VARIANDO A DESPEJADO",
+            "DESPEJADO",
             "DESPEJADO VARIANDO A NUBLADO"
+          ],
+          [
+            "CUBIERTO",
+            "NUBLADO VARIANDO A DESPEJADO",
+            "DESPEJADO",
+            "NUBLADO"
           ]
         ]
       },
@@ -857,16 +867,16 @@
           "2026-05-22"
         ],
         "temperature_2m_max": [
-          18.0,
           17.0,
           17.0,
-          18.0,
+          17.0,
+          17.0,
           18.0
         ],
         "temperature_2m_min": [
-          null,
-          15.0,
-          15.0,
+          14.0,
+          14.0,
+          14.0,
           14.0,
           14.0
         ],
@@ -893,14 +903,9 @@
         ],
         "__summary_text": [
           [
-            "NUBLADO VARIANDO A DESPEJADO",
-            "DESPEJADO",
-            "DESPEJADO VARIANDO A NUBLADO"
-          ],
-          [
             "CUBIERTO",
             "NUBLADO",
-            "NUBLADO VARIANDO A DESPEJADO"
+            "NUBLADO VARIANDO A NUBOSIDAD PARCIAL"
           ],
           [
             "CUBIERTO",
@@ -909,13 +914,19 @@
           [
             "CUBIERTO",
             "NUBLADO",
-            "NUBLADO VARIANDO A DESPEJADO"
+            "NUBLADO VARIANDO A NUBOSIDAD PARCIAL"
           ],
           [
-            "NUBLADO",
+            "CUBIERTO",
             "NUBLADO VARIANDO A DESPEJADO",
             "DESPEJADO",
             "DESPEJADO VARIANDO A NUBLADO"
+          ],
+          [
+            "CUBIERTO",
+            "NUBLADO VARIANDO A DESPEJADO",
+            "DESPEJADO",
+            "NUBLADO"
           ]
         ]
       },
@@ -937,17 +948,17 @@
         ],
         "temperature_2m_max": [
           17.0,
-          17.0,
           16.0,
           17.0,
-          18.0
+          18.0,
+          17.0
         ],
         "temperature_2m_min": [
-          null,
           14.0,
           14.0,
           15.0,
-          15.0
+          13.0,
+          14.0
         ],
         "precipitation_sum": [
           0.0,
@@ -972,11 +983,6 @@
         ],
         "__summary_text": [
           [
-            "NUBLADO VARIANDO A DESPEJADO",
-            "NUBOSIDAD PARCIAL"
-          ],
-          [
-            "NUBOSIDAD PARCIAL VARIANDO A CUBIERTO",
             "CUBIERTO",
             "NUBLADO VARIANDO A DESPEJADO",
             "DESPEJADO VARIANDO A NUBLADO"
@@ -994,6 +1000,11 @@
             "CUBIERTO",
             "NUBLADO VARIANDO A DESPEJADO",
             "DESPEJADO"
+          ],
+          [
+            "CUBIERTO",
+            "NUBLADO VARIANDO A NUBOSIDAD PARCIAL",
+            "NUBOSIDAD PARCIAL VARIANDO A NUBLADO"
           ]
         ]
       },
@@ -1016,16 +1027,16 @@
         "temperature_2m_max": [
           23.0,
           23.0,
-          23.0,
           21.0,
-          24.0
+          23.0,
+          22.0
         ],
         "temperature_2m_min": [
-          null,
-          9.0,
+          7.0,
           8.0,
-          9.0,
-          6.0
+          6.0,
+          7.0,
+          8.0
         ],
         "precipitation_sum": [
           0.0,
@@ -1042,28 +1053,28 @@
           null
         ],
         "weather_code": [
-          2,
           0,
           2,
           0,
-          0
+          2,
+          2
         ],
         "__summary_text": [
+          [
+            "DESPEJADO"
+          ],
+          [
+            "NUBOSIDAD PARCIAL"
+          ],
+          [
+            "DESPEJADO"
+          ],
           [
             "DESPEJADO",
             "NUBOSIDAD PARCIAL"
           ],
           [
-            "DESPEJADO"
-          ],
-          [
             "NUBOSIDAD PARCIAL"
-          ],
-          [
-            "DESPEJADO"
-          ],
-          [
-            "DESPEJADO"
           ]
         ]
       },
@@ -1084,17 +1095,252 @@
           "2026-05-22"
         ],
         "temperature_2m_max": [
-          16.0,
           15.0,
           15.0,
           16.0,
-          17.0
+          16.0,
+          15.0
         ],
         "temperature_2m_min": [
+          13.0,
+          13.0,
+          13.0,
+          12.0,
+          13.0
+        ],
+        "precipitation_sum": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "wind_speed_10m_max": [
           null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "weather_code": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "__summary_text": [
+          [
+            "CUBIERTO",
+            "NUBLADO VARIANDO A DESPEJADO"
+          ],
+          [
+            "CUBIERTO",
+            "NUBLADO"
+          ],
+          [
+            "CUBIERTO",
+            "NUBLADO VARIANDO A DESPEJADO",
+            "DESPEJADO VARIANDO A NUBLADO"
+          ],
+          [
+            "CUBIERTO",
+            "NUBLADO VARIANDO A DESPEJADO",
+            "NUBOSIDAD PARCIAL",
+            "NUBOSIDAD PARCIAL VARIANDO A CUBIERTO"
+          ],
+          [
+            "CUBIERTO",
+            "NUBLADO"
+          ]
+        ]
+      },
+      "horizon_days": 5
+    },
+    "caldera": {
+      "indice": "caldera",
+      "ciudad": "Caldera",
+      "reg": "03",
+      "lat": -27.067,
+      "lon": -70.825,
+      "daily": {
+        "time": [
+          "2026-05-18",
+          "2026-05-19",
+          "2026-05-20",
+          "2026-05-21",
+          "2026-05-22"
+        ],
+        "temperature_2m_max": [
+          16.0,
+          15.0,
+          17.0,
+          17.0,
+          16.0
+        ],
+        "temperature_2m_min": [
           13.0,
           13.0,
+          13.0,
+          12.0,
+          13.0
+        ],
+        "precipitation_sum": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "wind_speed_10m_max": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "weather_code": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "__summary_text": [
+          [
+            "CUBIERTO",
+            "NUBLADO VARIANDO A DESPEJADO"
+          ],
+          [
+            "CUBIERTO",
+            "NUBLADO"
+          ],
+          [
+            "CUBIERTO",
+            "NUBLADO VARIANDO A DESPEJADO",
+            "DESPEJADO"
+          ],
+          [
+            "CUBIERTO",
+            "CUBIERTO VARIANDO A DESPEJADO",
+            "NUBOSIDAD PARCIAL",
+            "NUBOSIDAD PARCIAL VARIANDO A NUBLADO"
+          ],
+          [
+            "CUBIERTO",
+            "NUBLADO VARIANDO A NUBOSIDAD PARCIAL",
+            "NUBOSIDAD PARCIAL VARIANDO A CUBIERTO"
+          ]
+        ]
+      },
+      "horizon_days": 5
+    },
+    "copiapo": {
+      "indice": "copiapo",
+      "ciudad": "Copiapo",
+      "reg": "03",
+      "lat": -27.366,
+      "lon": -70.332,
+      "daily": {
+        "time": [
+          "2026-05-18",
+          "2026-05-19",
+          "2026-05-20",
+          "2026-05-21",
+          "2026-05-22"
+        ],
+        "temperature_2m_max": [
+          20.0,
+          18.0,
+          17.0,
+          20.0,
+          19.0
+        ],
+        "temperature_2m_min": [
+          7.0,
+          9.0,
+          10.0,
+          7.0,
+          8.0
+        ],
+        "precipitation_sum": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "wind_speed_10m_max": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "weather_code": [
+          45,
+          3,
+          3,
+          3,
+          3
+        ],
+        "__summary_text": [
+          [
+            "DESPEJADO VARIANDO A CUBIERTO Y NIEBLA",
+            "CUBIERTO Y NEBLINA VARIANDO A DESPEJADO",
+            "DESPEJADO"
+          ],
+          [
+            "NUBOSIDAD PARCIAL VARIANDO A CUBIERTO",
+            "CUBIERTO VARIANDO A NUBOSIDAD PARCIAL",
+            "NUBOSIDAD PARCIAL",
+            "NUBOSIDAD PARCIAL VARIANDO A NUBLADO"
+          ],
+          [
+            "CUBIERTO",
+            "CUBIERTO VARIANDO A DESPEJADO",
+            "DESPEJADO"
+          ],
+          [
+            "DESPEJADO",
+            "NUBLADO VARIANDO A DESPEJADO",
+            "NUBOSIDAD PARCIAL"
+          ],
+          [
+            "NUBOSIDAD PARCIAL VARIANDO A CUBIERTO",
+            "CUBIERTO VARIANDO A NUBOSIDAD PARCIAL",
+            "NUBOSIDAD PARCIAL"
+          ]
+        ]
+      },
+      "horizon_days": 5
+    },
+    "huasco": {
+      "indice": "huasco",
+      "ciudad": "Huasco",
+      "reg": "03",
+      "lat": -28.464,
+      "lon": -71.218,
+      "daily": {
+        "time": [
+          "2026-05-18",
+          "2026-05-19",
+          "2026-05-20",
+          "2026-05-21",
+          "2026-05-22"
+        ],
+        "temperature_2m_max": [
+          15.0,
           14.0,
+          14.0,
+          16.0,
+          14.0
+        ],
+        "temperature_2m_min": [
+          12.0,
+          12.0,
+          12.0,
+          10.0,
           12.0
         ],
         "precipitation_sum": [
@@ -1120,13 +1366,9 @@
         ],
         "__summary_text": [
           [
-            "NUBLADO VARIANDO A DESPEJADO",
-            "NUBOSIDAD PARCIAL VARIANDO A NUBLADO",
-            "CUBIERTO"
-          ],
-          [
             "CUBIERTO",
-            "NUBLADO VARIANDO A DESPEJADO"
+            "NUBLADO VARIANDO A NUBOSIDAD PARCIAL",
+            "NUBOSIDAD PARCIAL VARIANDO A NUBLADO"
           ],
           [
             "CUBIERTO",
@@ -1134,178 +1376,29 @@
           ],
           [
             "CUBIERTO",
-            "NUBLADO VARIANDO A DESPEJADO",
-            "DESPEJADO VARIANDO A NUBLADO"
-          ],
-          [
-            "CUBIERTO",
-            "NUBLADO VARIANDO A DESPEJADO",
-            "DESPEJADO",
-            "DESPEJADO VARIANDO A CUBIERTO"
-          ]
-        ]
-      },
-      "horizon_days": 5
-    },
-    "caldera": {
-      "indice": "caldera",
-      "ciudad": "Caldera",
-      "reg": "03",
-      "lat": -27.067,
-      "lon": -70.825,
-      "daily": {
-        "time": [
-          "2026-05-18",
-          "2026-05-19",
-          "2026-05-20",
-          "2026-05-21",
-          "2026-05-22"
-        ],
-        "temperature_2m_max": [
-          17.0,
-          16.0,
-          16.0,
-          17.0,
-          18.0
-        ],
-        "temperature_2m_min": [
-          null,
-          14.0,
-          14.0,
-          14.0,
-          11.0
-        ],
-        "precipitation_sum": [
-          0.0,
-          0.0,
-          0.0,
-          0.0,
-          0.0
-        ],
-        "wind_speed_10m_max": [
-          null,
-          null,
-          null,
-          null,
-          null
-        ],
-        "weather_code": [
-          3,
-          3,
-          3,
-          3,
-          3
-        ],
-        "__summary_text": [
-          [
-            "CUBIERTO VARIANDO A DESPEJADO",
-            "DESPEJADO",
-            "NUBLADO VARIANDO A CUBIERTO"
-          ],
-          [
-            "CUBIERTO",
+            "NUBLADO",
             "NUBLADO VARIANDO A DESPEJADO"
           ],
           [
-            "CUBIERTO",
-            "NUBLADO"
-          ],
-          [
-            "CUBIERTO",
-            "NUBLADO VARIANDO A DESPEJADO",
-            "DESPEJADO"
-          ],
-          [
-            "CUBIERTO",
+            "DESPEJADO VARIANDO A NUBLADO",
             "CUBIERTO VARIANDO A DESPEJADO",
-            "DESPEJADO",
-            "DESPEJADO VARIANDO A NUBLADO"
-          ]
-        ]
-      },
-      "horizon_days": 5
-    },
-    "copiapo": {
-      "indice": "copiapo",
-      "ciudad": "Copiapo",
-      "reg": "03",
-      "lat": -27.366,
-      "lon": -70.332,
-      "daily": {
-        "time": [
-          "2026-05-18",
-          "2026-05-19",
-          "2026-05-20",
-          "2026-05-21",
-          "2026-05-22"
-        ],
-        "temperature_2m_max": [
-          22.0,
-          21.0,
-          18.0,
-          19.0,
-          23.0
-        ],
-        "temperature_2m_min": [
-          null,
-          7.0,
-          10.0,
-          10.0,
-          8.0
-        ],
-        "precipitation_sum": [
-          0.0,
-          0.0,
-          0.0,
-          0.0,
-          0.0
-        ],
-        "wind_speed_10m_max": [
-          null,
-          null,
-          null,
-          null,
-          null
-        ],
-        "weather_code": [
-          0,
-          45,
-          3,
-          3,
-          0
-        ],
-        "__summary_text": [
-          [
-            "DESPEJADO"
-          ],
-          [
-            "DESPEJADO VARIANDO A CUBIERTO Y NIEBLA",
-            "CUBIERTO Y NEBLINA VARIANDO A DESPEJADO",
-            "DESPEJADO"
-          ],
-          [
-            "NUBOSIDAD PARCIAL VARIANDO A CUBIERTO",
-            "CUBIERTO VARIANDO A NUBOSIDAD PARCIAL",
             "NUBOSIDAD PARCIAL"
           ],
           [
             "CUBIERTO",
-            "CUBIERTO VARIANDO A DESPEJADO",
-            "DESPEJADO"
-          ],
-          [
-            "DESPEJADO"
+            "NUBLADO VARIANDO A NUBOSIDAD PARCIAL",
+            "NUBOSIDAD PARCIAL VARIANDO A CUBIERTO"
           ]
         ]
       },
       "horizon_days": 5
     },
-    "huasco": {
-      "indice": "huasco",
-      "ciudad": "Huasco",
+    "vallenar": {
+      "indice": "vallenar",
+      "ciudad": "Vallenar",
       "reg": "03",
-      "lat": -28.464,
-      "lon": -71.218,
+      "lat": -28.576,
+      "lon": -70.759,
       "daily": {
         "time": [
           "2026-05-18",
@@ -1315,17 +1408,96 @@
           "2026-05-22"
         ],
         "temperature_2m_max": [
-          16.0,
+          18.0,
           15.0,
-          14.0,
-          14.0,
+          17.0,
+          18.0,
           16.0
         ],
         "temperature_2m_min": [
+          6.0,
+          7.0,
+          8.0,
+          5.0,
+          7.0
+        ],
+        "precipitation_sum": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "wind_speed_10m_max": [
           null,
-          12.0,
-          12.0,
-          12.0,
+          null,
+          null,
+          null,
+          null
+        ],
+        "weather_code": [
+          45,
+          45,
+          3,
+          2,
+          3
+        ],
+        "__summary_text": [
+          [
+            "DESPEJADO",
+            "CUBIERTO Y NIEBLA VARIANDO A NUBOSIDAD PARCIAL",
+            "NUBOSIDAD PARCIAL"
+          ],
+          [
+            "NUBOSIDAD PARCIAL VARIANDO A CUBIERTO Y NIEBLA",
+            "CUBIERTO Y NEBLINA VARIANDO A NUBOSIDAD PARCIAL",
+            "NUBOSIDAD PARCIAL VARIANDO A NUBLADO",
+            "NUBLADO"
+          ],
+          [
+            "CUBIERTO",
+            "CUBIERTO VARIANDO A DESPEJADO",
+            "DESPEJADO"
+          ],
+          [
+            "DESPEJADO",
+            "NUBOSIDAD PARCIAL"
+          ],
+          [
+            "NUBOSIDAD PARCIAL VARIANDO A NUBLADO",
+            "CUBIERTO VARIANDO A NUBOSIDAD PARCIAL",
+            "NUBOSIDAD PARCIAL"
+          ]
+        ]
+      },
+      "horizon_days": 5
+    },
+    "serena": {
+      "indice": "serena",
+      "ciudad": "La Serena",
+      "reg": "04",
+      "lat": -29.902,
+      "lon": -71.251,
+      "daily": {
+        "time": [
+          "2026-05-18",
+          "2026-05-19",
+          "2026-05-20",
+          "2026-05-21",
+          "2026-05-22"
+        ],
+        "temperature_2m_max": [
+          13.0,
+          13.0,
+          14.0,
+          14.0,
+          13.0
+        ],
+        "temperature_2m_min": [
+          10.0,
+          10.0,
+          10.0,
+          9.0,
           10.0
         ],
         "precipitation_sum": [
@@ -1351,177 +1523,25 @@
         ],
         "__summary_text": [
           [
-            "CUBIERTO",
-            "DESPEJADO",
-            "DESPEJADO VARIANDO A NUBLADO"
+            "CUBIERTO"
+          ],
+          [
+            "CUBIERTO"
           ],
           [
             "CUBIERTO",
-            "NUBLADO VARIANDO A NUBOSIDAD PARCIAL",
-            "NUBOSIDAD PARCIAL VARIANDO A NUBLADO"
-          ],
-          [
-            "CUBIERTO",
-            "NUBLADO"
-          ],
-          [
-            "CUBIERTO",
-            "NUBLADO",
-            "NUBLADO VARIANDO A DESPEJADO"
-          ],
-          [
-            "DESPEJADO",
-            "NUBLADO VARIANDO A DESPEJADO"
-          ]
-        ]
-      },
-      "horizon_days": 5
-    },
-    "vallenar": {
-      "indice": "vallenar",
-      "ciudad": "Vallenar",
-      "reg": "03",
-      "lat": -28.576,
-      "lon": -70.759,
-      "daily": {
-        "time": [
-          "2026-05-18",
-          "2026-05-19",
-          "2026-05-20",
-          "2026-05-21",
-          "2026-05-22"
-        ],
-        "temperature_2m_max": [
-          20.0,
-          19.0,
-          16.0,
-          17.0,
-          20.0
-        ],
-        "temperature_2m_min": [
-          null,
-          7.0,
-          8.0,
-          7.0,
-          7.0
-        ],
-        "precipitation_sum": [
-          0.0,
-          0.0,
-          0.0,
-          0.0,
-          0.0
-        ],
-        "wind_speed_10m_max": [
-          null,
-          null,
-          null,
-          null,
-          null
-        ],
-        "weather_code": [
-          0,
-          2,
-          45,
-          3,
-          0
-        ],
-        "__summary_text": [
-          [
-            "DESPEJADO"
-          ],
-          [
             "DESPEJADO",
             "NUBOSIDAD PARCIAL"
           ],
           [
-            "NUBOSIDAD PARCIAL VARIANDO A CUBIERTO Y NIEBLA",
-            "CUBIERTO Y NIEBLA VARIANDO A NUBOSIDAD PARCIAL",
-            "NUBOSIDAD PARCIAL VARIANDO A NUBLADO",
-            "NUBLADO"
+            "NUBOSIDAD PARCIAL",
+            "NUBLADO",
+            "DESPEJADO"
           ],
           [
             "CUBIERTO",
-            "CUBIERTO VARIANDO A DESPEJADO",
-            "DESPEJADO"
-          ],
-          [
-            "DESPEJADO"
-          ]
-        ]
-      },
-      "horizon_days": 5
-    },
-    "serena": {
-      "indice": "serena",
-      "ciudad": "La Serena",
-      "reg": "04",
-      "lat": -29.902,
-      "lon": -71.251,
-      "daily": {
-        "time": [
-          "2026-05-18",
-          "2026-05-19",
-          "2026-05-20",
-          "2026-05-21",
-          "2026-05-22"
-        ],
-        "temperature_2m_max": [
-          15.0,
-          14.0,
-          13.0,
-          14.0,
-          14.0
-        ],
-        "temperature_2m_min": [
-          null,
-          11.0,
-          10.0,
-          10.0,
-          9.0
-        ],
-        "precipitation_sum": [
-          0.0,
-          0.0,
-          0.0,
-          0.0,
-          0.0
-        ],
-        "wind_speed_10m_max": [
-          null,
-          null,
-          null,
-          null,
-          null
-        ],
-        "weather_code": [
-          45,
-          3,
-          3,
-          3,
-          3
-        ],
-        "__summary_text": [
-          [
-            "CUBIERTO Y NEBLINA",
             "NUBLADO",
-            "CUBIERTO"
-          ],
-          [
-            "CUBIERTO"
-          ],
-          [
-            "CUBIERTO"
-          ],
-          [
-            "CUBIERTO",
-            "NUBOSIDAD PARCIAL",
-            "DESPEJADO"
-          ],
-          [
-            "NUBLADO",
-            "NUBOSIDAD PARCIAL",
-            "DESPEJADO"
+            "NUBOSIDAD PARCIAL"
           ]
         ]
       },
@@ -1543,17 +1563,17 @@
         ],
         "temperature_2m_max": [
           28.0,
-          26.0,
-          24.0,
+          25.0,
           23.0,
-          26.0
+          25.0,
+          24.0
         ],
         "temperature_2m_min": [
-          null,
           4.0,
           7.0,
           6.0,
-          5.0
+          5.0,
+          6.0
         ],
         "precipitation_sum": [
           0.0,
@@ -1570,14 +1590,25 @@
           null
         ],
         "weather_code": [
-          0,
           2,
           3,
           3,
+          2,
           2
         ],
         "__summary_text": [
           [
+            "DESPEJADO",
+            "NUBOSIDAD PARCIAL"
+          ],
+          [
+            "DESPEJADO",
+            "NUBLADO",
+            "NUBOSIDAD PARCIAL"
+          ],
+          [
+            "NUBLADO",
+            "NUBOSIDAD PARCIAL",
             "DESPEJADO"
           ],
           [
@@ -1586,15 +1617,7 @@
           ],
           [
             "NUBOSIDAD PARCIAL",
-            "NUBLADO"
-          ],
-          [
-            "NUBLADO",
             "DESPEJADO"
-          ],
-          [
-            "DESPEJADO",
-            "NUBOSIDAD PARCIAL"
           ]
         ]
       },
@@ -1615,165 +1638,17 @@
           "2026-05-22"
         ],
         "temperature_2m_max": [
-          23.0,
           22.0,
           18.0,
           19.0,
-          20.0
-        ],
-        "temperature_2m_min": [
-          null,
-          6.0,
-          9.0,
-          8.0,
-          7.0
-        ],
-        "precipitation_sum": [
-          0.0,
-          0.0,
-          0.0,
-          0.0,
-          0.0
-        ],
-        "wind_speed_10m_max": [
-          null,
-          null,
-          null,
-          null,
-          null
-        ],
-        "weather_code": [
-          0,
-          2,
-          3,
-          3,
-          2
-        ],
-        "__summary_text": [
-          [
-            "DESPEJADO"
-          ],
-          [
-            "DESPEJADO",
-            "NUBOSIDAD PARCIAL"
-          ],
-          [
-            "NUBOSIDAD PARCIAL",
-            "NUBLADO"
-          ],
-          [
-            "NUBLADO",
-            "CUBIERTO",
-            "DESPEJADO"
-          ],
-          [
-            "DESPEJADO",
-            "NUBOSIDAD PARCIAL"
-          ]
-        ]
-      },
-      "horizon_days": 5
-    },
-    "illapel": {
-      "indice": "illapel",
-      "ciudad": "Illapel",
-      "reg": "04",
-      "lat": -31.633,
-      "lon": -71.17,
-      "daily": {
-        "time": [
-          "2026-05-18",
-          "2026-05-19",
-          "2026-05-20",
-          "2026-05-21",
-          "2026-05-22"
-        ],
-        "temperature_2m_max": [
-          27.0,
-          24.0,
-          19.0,
           20.0,
-          22.0
+          18.0
         ],
         "temperature_2m_min": [
-          null,
           5.0,
+          9.0,
           8.0,
           7.0,
-          6.0
-        ],
-        "precipitation_sum": [
-          0.0,
-          0.0,
-          0.0,
-          0.0,
-          0.0
-        ],
-        "wind_speed_10m_max": [
-          null,
-          null,
-          null,
-          null,
-          null
-        ],
-        "weather_code": [
-          0,
-          2,
-          3,
-          3,
-          2
-        ],
-        "__summary_text": [
-          [
-            "DESPEJADO"
-          ],
-          [
-            "DESPEJADO",
-            "NUBOSIDAD PARCIAL"
-          ],
-          [
-            "NUBOSIDAD PARCIAL",
-            "NUBLADO"
-          ],
-          [
-            "NUBLADO",
-            "CUBIERTO",
-            "DESPEJADO"
-          ],
-          [
-            "DESPEJADO",
-            "NUBOSIDAD PARCIAL"
-          ]
-        ]
-      },
-      "horizon_days": 5
-    },
-    "vilos": {
-      "indice": "vilos",
-      "ciudad": "Los Vilos",
-      "reg": "04",
-      "lat": -31.908,
-      "lon": -71.507,
-      "daily": {
-        "time": [
-          "2026-05-18",
-          "2026-05-19",
-          "2026-05-20",
-          "2026-05-21",
-          "2026-05-22"
-        ],
-        "temperature_2m_max": [
-          15.0,
-          13.0,
-          12.0,
-          13.0,
-          13.0
-        ],
-        "temperature_2m_min": [
-          null,
-          11.0,
-          10.0,
-          9.0,
           8.0
         ],
         "precipitation_sum": [
@@ -1794,19 +1669,168 @@
           45,
           3,
           3,
+          2,
+          3
+        ],
+        "__summary_text": [
+          [
+            "NUBOSIDAD PARCIAL Y NEBLINA",
+            "NUBOSIDAD PARCIAL Y NEBLINA VARIANDO A DESPEJADO",
+            "NUBOSIDAD PARCIAL"
+          ],
+          [
+            "NUBOSIDAD PARCIAL",
+            "NUBLADO"
+          ],
+          [
+            "NUBLADO",
+            "CUBIERTO",
+            "DESPEJADO"
+          ],
+          [
+            "DESPEJADO",
+            "NUBOSIDAD PARCIAL"
+          ],
+          [
+            "NUBOSIDAD PARCIAL",
+            "NUBLADO",
+            "DESPEJADO"
+          ]
+        ]
+      },
+      "horizon_days": 5
+    },
+    "illapel": {
+      "indice": "illapel",
+      "ciudad": "Illapel",
+      "reg": "04",
+      "lat": -31.633,
+      "lon": -71.17,
+      "daily": {
+        "time": [
+          "2026-05-18",
+          "2026-05-19",
+          "2026-05-20",
+          "2026-05-21",
+          "2026-05-22"
+        ],
+        "temperature_2m_max": [
+          24.0,
+          19.0,
+          20.0,
+          22.0,
+          19.0
+        ],
+        "temperature_2m_min": [
+          2.0,
+          8.0,
+          7.0,
+          6.0,
+          7.0
+        ],
+        "precipitation_sum": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "wind_speed_10m_max": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "weather_code": [
+          2,
+          3,
+          3,
+          2,
+          3
+        ],
+        "__summary_text": [
+          [
+            "DESPEJADO",
+            "NUBOSIDAD PARCIAL"
+          ],
+          [
+            "NUBOSIDAD PARCIAL",
+            "NUBLADO"
+          ],
+          [
+            "NUBLADO",
+            "CUBIERTO",
+            "DESPEJADO"
+          ],
+          [
+            "DESPEJADO",
+            "NUBOSIDAD PARCIAL"
+          ],
+          [
+            "NUBOSIDAD PARCIAL",
+            "NUBLADO",
+            "DESPEJADO"
+          ]
+        ]
+      },
+      "horizon_days": 5
+    },
+    "vilos": {
+      "indice": "vilos",
+      "ciudad": "Los Vilos",
+      "reg": "04",
+      "lat": -31.908,
+      "lon": -71.507,
+      "daily": {
+        "time": [
+          "2026-05-18",
+          "2026-05-19",
+          "2026-05-20",
+          "2026-05-21",
+          "2026-05-22"
+        ],
+        "temperature_2m_max": [
+          13.0,
+          12.0,
+          13.0,
+          13.0,
+          12.0
+        ],
+        "temperature_2m_min": [
+          10.0,
+          10.0,
+          9.0,
+          8.0,
+          9.0
+        ],
+        "precipitation_sum": [
+          0.0,
+          0.5,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "wind_speed_10m_max": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "weather_code": [
+          3,
+          3,
+          3,
           3,
           3
         ],
         "__summary_text": [
           [
-            "NUBLADO VARIANDO A CUBIERTO Y NEBLINA",
-            "CUBIERTO VARIANDO A NUBLADO",
             "CUBIERTO"
           ],
           [
-            "CUBIERTO"
-          ],
-          [
+            "CUBIERTO Y LLOVIZNA",
             "CUBIERTO"
           ],
           [
@@ -1815,9 +1839,14 @@
             "DESPEJADO"
           ],
           [
-            "NUBLADO",
             "NUBOSIDAD PARCIAL",
-            "DESPEJADO"
+            "NUBLADO",
+            "CUBIERTO"
+          ],
+          [
+            "CUBIERTO",
+            "NUBLADO",
+            "NUBOSIDAD PARCIAL"
           ]
         ]
       },
@@ -1838,22 +1867,22 @@
           "2026-05-22"
         ],
         "temperature_2m_max": [
-          15.0,
           13.0,
-          12.0,
           13.0,
-          14.0
+          14.0,
+          13.0,
+          13.0
         ],
         "temperature_2m_min": [
-          null,
-          10.0,
-          10.0,
+          7.0,
           11.0,
-          6.0
+          12.0,
+          9.0,
+          11.0
         ],
         "precipitation_sum": [
           0.0,
-          0.0,
+          0.5,
           0.0,
           0.0,
           0.0
@@ -1870,25 +1899,27 @@
           3,
           3,
           3,
-          2
+          3
         ],
         "__summary_text": [
           [
-            "NUBLADO Y NEBLINA",
-            "NUBLADO",
+            "CUBIERTO Y NEBLINA",
             "CUBIERTO"
           ],
           [
+            "CUBIERTO Y LLOVIZNA",
             "CUBIERTO"
+          ],
+          [
+            "CUBIERTO",
+            "NUBLADO"
           ],
           [
             "CUBIERTO"
           ],
           [
             "CUBIERTO",
-            "NUBOSIDAD PARCIAL"
-          ],
-          [
+            "NUBLADO",
             "NUBOSIDAD PARCIAL"
           ]
         ]
@@ -1910,22 +1941,22 @@
           "2026-05-22"
         ],
         "temperature_2m_max": [
-          17.0,
-          15.0,
+          13.0,
           14.0,
           15.0,
-          16.0
+          15.0,
+          14.0
         ],
         "temperature_2m_min": [
-          null,
-          8.0,
-          8.0,
           9.0,
-          7.0
+          9.0,
+          10.0,
+          7.0,
+          9.0
         ],
         "precipitation_sum": [
           0.0,
-          0.0,
+          0.5,
           0.0,
           0.0,
           0.0
@@ -1946,14 +1977,11 @@
         ],
         "__summary_text": [
           [
-            "DESPEJADO VARIANDO A NUBLADO Y NEBLINA",
-            "NUBLADO",
+            "CUBIERTO Y NEBLINA",
             "CUBIERTO"
           ],
           [
-            "CUBIERTO"
-          ],
-          [
+            "CUBIERTO Y LLOVIZNA",
             "CUBIERTO"
           ],
           [
@@ -1962,7 +1990,11 @@
             "NUBLADO"
           ],
           [
+            "CUBIERTO"
+          ],
+          [
             "CUBIERTO",
+            "NUBLADO",
             "NUBOSIDAD PARCIAL"
           ]
         ]
@@ -1986,26 +2018,26 @@
           "2026-05-24"
         ],
         "temperature_2m_max": [
-          16.0,
-          14.0,
+          12.0,
           13.0,
           14.0,
-          15.0,
+          14.0,
+          13.0,
           null,
           null
         ],
         "temperature_2m_min": [
-          null,
-          9.0,
           9.0,
           10.0,
+          11.0,
           8.0,
+          10.0,
           null,
           null
         ],
         "precipitation_sum": [
           0.0,
-          0.0,
+          0.5,
           0.0,
           0.0,
           0.0,
@@ -2032,13 +2064,11 @@
         ],
         "__summary_text": [
           [
-            "DESPEJADO VARIANDO A NUBLADO Y NEBLINA",
-            "NUBLADO"
-          ],
-          [
+            "CUBIERTO Y NEBLINA",
             "CUBIERTO"
           ],
           [
+            "CUBIERTO Y LLOVIZNA",
             "CUBIERTO"
           ],
           [
@@ -2047,7 +2077,11 @@
             "NUBLADO"
           ],
           [
+            "CUBIERTO"
+          ],
+          [
             "CUBIERTO",
+            "NUBLADO",
             "NUBOSIDAD PARCIAL"
           ],
           [
@@ -2075,22 +2109,22 @@
           "2026-05-22"
         ],
         "temperature_2m_max": [
-          16.0,
           13.0,
           12.0,
           13.0,
-          14.0
+          13.0,
+          12.0
         ],
         "temperature_2m_min": [
-          null,
-          8.0,
-          8.0,
+          6.0,
           9.0,
-          7.0
+          10.0,
+          7.0,
+          9.0
         ],
         "precipitation_sum": [
           0.0,
-          0.0,
+          0.5,
           0.0,
           0.0,
           0.0
@@ -2103,7 +2137,7 @@
           null
         ],
         "weather_code": [
-          3,
+          45,
           3,
           3,
           3,
@@ -2111,14 +2145,11 @@
         ],
         "__summary_text": [
           [
-            "DESPEJADO",
-            "NUBOSIDAD PARCIAL VARIANDO A CUBIERTO"
-          ],
-          [
-            "NUBLADO",
+            "CUBIERTO Y NEBLINA",
             "CUBIERTO"
           ],
           [
+            "CUBIERTO Y LLOVIZNA",
             "CUBIERTO"
           ],
           [
@@ -2127,8 +2158,12 @@
             "NUBLADO"
           ],
           [
+            "CUBIERTO"
+          ],
+          [
             "CUBIERTO",
-            "NUBLADO"
+            "NUBLADO",
+            "NUBOSIDAD PARCIAL"
           ]
         ]
       },
@@ -2152,19 +2187,19 @@
         ],
         "temperature_2m_max": [
           25.0,
-          25.0,
           22.0,
-          18.0,
+          17.0,
           21.0,
+          15.0,
           null,
           null
         ],
         "temperature_2m_min": [
-          null,
-          5.0,
+          3.0,
           6.0,
           8.0,
-          6.0,
+          7.0,
+          9.0,
           null,
           null
         ],
@@ -2188,17 +2223,14 @@
         ],
         "weather_code": [
           0,
-          0,
           2,
           3,
-          2,
+          3,
+          3,
           0,
           0
         ],
         "__summary_text": [
-          [
-            "DESPEJADO"
-          ],
           [
             "DESPEJADO"
           ],
@@ -2208,17 +2240,24 @@
           ],
           [
             "NUBLADO",
+            "CUBIERTO",
             "DESPEJADO"
           ],
           [
-            "DESPEJADO",
-            "NUBOSIDAD PARCIAL"
+            "NUBOSIDAD PARCIAL",
+            "NUBLADO",
+            "DESPEJADO"
+          ],
+          [
+            "CUBIERTO",
+            "NUBOSIDAD PARCIAL",
+            "DESPEJADO"
           ],
           [
             "M&IACUTE;NIMA 4,1 HASTA 8 (LIGERAMENTE FR&IACUTE;O)<BR>M&AACUTE;XIMA 12,1 HASTA 16 (LIGERAMENTE TEMPLADO)"
           ],
           [
-            "M&IACUTE;NIMA 4,1 HASTA 8 (LIGERAMENTE FR&IACUTE;O)<BR>M&AACUTE;XIMA 16,1 HASTA 20 (MODERADAMENTE TEMPLADO)"
+            "M&IACUTE;NIMA 8,1 HASTA 12 (FRESCO)<BR>M&AACUTE;XIMA 16,1 HASTA 20 (MODERADAMENTE TEMPLADO)"
           ]
         ]
       },
@@ -2240,17 +2279,17 @@
         ],
         "temperature_2m_max": [
           26.0,
-          26.0,
           23.0,
-          19.0,
-          22.0
+          18.0,
+          22.0,
+          16.0
         ],
         "temperature_2m_min": [
-          null,
-          4.0,
+          2.0,
           5.0,
           7.0,
-          5.0
+          6.0,
+          8.0
         ],
         "precipitation_sum": [
           0.0,
@@ -2268,16 +2307,12 @@
         ],
         "weather_code": [
           0,
-          0,
           2,
           2,
-          2
+          2,
+          3
         ],
         "__summary_text": [
-          [
-            "DESPEJADO Y HELADA",
-            "DESPEJADO"
-          ],
           [
             "DESPEJADO"
           ],
@@ -2292,6 +2327,11 @@
           [
             "DESPEJADO",
             "NUBOSIDAD PARCIAL"
+          ],
+          [
+            "NUBOSIDAD PARCIAL",
+            "NUBLADO",
+            "DESPEJADO"
           ]
         ]
       },
@@ -2313,17 +2353,17 @@
         ],
         "temperature_2m_max": [
           25.0,
-          25.0,
           22.0,
-          18.0,
-          21.0
+          17.0,
+          21.0,
+          14.0
         ],
         "temperature_2m_min": [
-          null,
           5.0,
           7.0,
           9.0,
-          7.0
+          8.0,
+          9.0
         ],
         "precipitation_sum": [
           0.0,
@@ -2341,15 +2381,12 @@
         ],
         "weather_code": [
           0,
-          0,
           2,
+          3,
           2,
-          2
+          3
         ],
         "__summary_text": [
-          [
-            "DESPEJADO"
-          ],
           [
             "DESPEJADO"
           ],
@@ -2359,11 +2396,17 @@
           ],
           [
             "NUBOSIDAD PARCIAL",
+            "CUBIERTO",
             "DESPEJADO"
           ],
           [
             "DESPEJADO",
             "NUBOSIDAD PARCIAL"
+          ],
+          [
+            "NUBOSIDAD PARCIAL",
+            "CUBIERTO",
+            "DESPEJADO"
           ]
         ]
       },
@@ -2385,17 +2428,17 @@
         ],
         "temperature_2m_max": [
           25.0,
-          24.0,
           21.0,
-          17.0,
-          20.0
+          16.0,
+          20.0,
+          14.0
         ],
         "temperature_2m_min": [
-          null,
-          4.0,
+          2.0,
           5.0,
           7.0,
-          5.0
+          6.0,
+          8.0
         ],
         "precipitation_sum": [
           0.0,
@@ -2413,30 +2456,33 @@
         ],
         "weather_code": [
           0,
-          0,
-          2,
-          2,
-          2
+          3,
+          3,
+          3,
+          3
         ],
         "__summary_text": [
           [
-            "DESPEJADO Y HELADA",
-            "DESPEJADO"
-          ],
-          [
             "DESPEJADO"
           ],
           [
             "DESPEJADO",
-            "NUBOSIDAD PARCIAL"
+            "NUBOSIDAD PARCIAL",
+            "NUBLADO"
+          ],
+          [
+            "CUBIERTO",
+            "DESPEJADO"
           ],
           [
             "NUBOSIDAD PARCIAL",
+            "NUBLADO",
             "DESPEJADO"
           ],
           [
-            "DESPEJADO",
-            "NUBOSIDAD PARCIAL"
+            "CUBIERTO",
+            "NUBOSIDAD PARCIAL",
+            "DESPEJADO"
           ]
         ]
       },
@@ -2458,165 +2504,16 @@
         ],
         "temperature_2m_max": [
           25.0,
-          25.0,
           22.0,
-          18.0,
-          21.0
+          17.0,
+          21.0,
+          15.0
         ],
         "temperature_2m_min": [
-          null,
-          4.0,
+          3.0,
           6.0,
           8.0,
-          6.0
-        ],
-        "precipitation_sum": [
-          0.0,
-          0.0,
-          0.0,
-          0.0,
-          0.0
-        ],
-        "wind_speed_10m_max": [
-          null,
-          null,
-          null,
-          null,
-          null
-        ],
-        "weather_code": [
-          0,
-          0,
-          3,
-          3,
-          2
-        ],
-        "__summary_text": [
-          [
-            "DESPEJADO"
-          ],
-          [
-            "DESPEJADO"
-          ],
-          [
-            "DESPEJADO",
-            "NUBOSIDAD PARCIAL",
-            "NUBLADO"
-          ],
-          [
-            "CUBIERTO",
-            "DESPEJADO"
-          ],
-          [
-            "DESPEJADO",
-            "NUBOSIDAD PARCIAL"
-          ]
-        ]
-      },
-      "horizon_days": 5
-    },
-    "melipilla": {
-      "indice": "melipilla",
-      "ciudad": "Melipilla",
-      "reg": "05m",
-      "lat": -33.69,
-      "lon": -71.215,
-      "daily": {
-        "time": [
-          "2026-05-18",
-          "2026-05-19",
-          "2026-05-20",
-          "2026-05-21",
-          "2026-05-22"
-        ],
-        "temperature_2m_max": [
-          22.0,
-          22.0,
-          20.0,
-          16.0,
-          19.0
-        ],
-        "temperature_2m_min": [
-          null,
-          5.0,
           7.0,
-          9.0,
-          7.0
-        ],
-        "precipitation_sum": [
-          0.0,
-          0.0,
-          0.0,
-          0.0,
-          0.0
-        ],
-        "wind_speed_10m_max": [
-          null,
-          null,
-          null,
-          null,
-          null
-        ],
-        "weather_code": [
-          45,
-          2,
-          3,
-          3,
-          3
-        ],
-        "__summary_text": [
-          [
-            "DESPEJADO Y NEBLINA",
-            "DESPEJADO"
-          ],
-          [
-            "DESPEJADO",
-            "NUBOSIDAD PARCIAL"
-          ],
-          [
-            "CUBIERTO",
-            "NUBOSIDAD PARCIAL",
-            "NUBLADO"
-          ],
-          [
-            "CUBIERTO",
-            "NUBOSIDAD PARCIAL",
-            "DESPEJADO"
-          ],
-          [
-            "NUBOSIDAD PARCIAL",
-            "NUBLADO"
-          ]
-        ]
-      },
-      "horizon_days": 5
-    },
-    "pichilemu": {
-      "indice": "pichilemu",
-      "ciudad": "Pichilemu",
-      "reg": "06",
-      "lat": -34.392,
-      "lon": -72.006,
-      "daily": {
-        "time": [
-          "2026-05-18",
-          "2026-05-19",
-          "2026-05-20",
-          "2026-05-21",
-          "2026-05-22"
-        ],
-        "temperature_2m_max": [
-          15.0,
-          16.0,
-          12.0,
-          14.0,
-          12.0
-        ],
-        "temperature_2m_min": [
-          null,
-          8.0,
-          9.0,
-          10.0,
           9.0
         ],
         "precipitation_sum": [
@@ -2648,6 +2545,162 @@
             "DESPEJADO",
             "NUBOSIDAD PARCIAL",
             "NUBLADO"
+          ],
+          [
+            "CUBIERTO",
+            "DESPEJADO"
+          ],
+          [
+            "NUBOSIDAD PARCIAL",
+            "NUBLADO",
+            "DESPEJADO"
+          ],
+          [
+            "CUBIERTO",
+            "NUBOSIDAD PARCIAL",
+            "DESPEJADO"
+          ]
+        ]
+      },
+      "horizon_days": 5
+    },
+    "melipilla": {
+      "indice": "melipilla",
+      "ciudad": "Melipilla",
+      "reg": "05m",
+      "lat": -33.69,
+      "lon": -71.215,
+      "daily": {
+        "time": [
+          "2026-05-18",
+          "2026-05-19",
+          "2026-05-20",
+          "2026-05-21",
+          "2026-05-22"
+        ],
+        "temperature_2m_max": [
+          21.0,
+          20.0,
+          15.0,
+          19.0,
+          13.0
+        ],
+        "temperature_2m_min": [
+          4.0,
+          7.0,
+          9.0,
+          8.0,
+          10.0
+        ],
+        "precipitation_sum": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "wind_speed_10m_max": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "weather_code": [
+          45,
+          3,
+          3,
+          3,
+          3
+        ],
+        "__summary_text": [
+          [
+            "CUBIERTO Y NEBLINA",
+            "NUBLADO Y NEBLINA VARIANDO A DESPEJADO",
+            "DESPEJADO",
+            "NUBLADO Y NEBLINA"
+          ],
+          [
+            "CUBIERTO",
+            "NUBOSIDAD PARCIAL",
+            "NUBLADO"
+          ],
+          [
+            "CUBIERTO",
+            "NUBOSIDAD PARCIAL"
+          ],
+          [
+            "CUBIERTO",
+            "NUBOSIDAD PARCIAL",
+            "NUBLADO"
+          ],
+          [
+            "CUBIERTO",
+            "NUBOSIDAD PARCIAL",
+            "DESPEJADO"
+          ]
+        ]
+      },
+      "horizon_days": 5
+    },
+    "pichilemu": {
+      "indice": "pichilemu",
+      "ciudad": "Pichilemu",
+      "reg": "06",
+      "lat": -34.392,
+      "lon": -72.006,
+      "daily": {
+        "time": [
+          "2026-05-18",
+          "2026-05-19",
+          "2026-05-20",
+          "2026-05-21",
+          "2026-05-22"
+        ],
+        "temperature_2m_max": [
+          13.0,
+          12.0,
+          14.0,
+          13.0,
+          13.0
+        ],
+        "temperature_2m_min": [
+          7.0,
+          9.0,
+          10.0,
+          9.0,
+          11.0
+        ],
+        "precipitation_sum": [
+          0.0,
+          0.5,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "wind_speed_10m_max": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "weather_code": [
+          45,
+          3,
+          3,
+          3,
+          3
+        ],
+        "__summary_text": [
+          [
+            "NUBOSIDAD PARCIAL",
+            "NUBLADO Y NEBLINA",
+            "DESPEJADO VARIANDO A NUBOSIDAD PARCIAL"
+          ],
+          [
+            "CUBIERTO Y LLOVIZNA",
+            "CUBIERTO"
           ],
           [
             "CUBIERTO"
@@ -2679,18 +2732,18 @@
           "2026-05-22"
         ],
         "temperature_2m_max": [
-          23.0,
-          23.0,
+          24.0,
           20.0,
-          16.0,
-          19.0
+          15.0,
+          19.0,
+          13.0
         ],
         "temperature_2m_min": [
-          null,
-          4.0,
+          2.0,
           5.0,
           7.0,
-          5.0
+          6.0,
+          8.0
         ],
         "precipitation_sum": [
           0.0,
@@ -2708,15 +2761,12 @@
         ],
         "weather_code": [
           0,
-          0,
           2,
           3,
-          2
+          2,
+          3
         ],
         "__summary_text": [
-          [
-            "DESPEJADO"
-          ],
           [
             "DESPEJADO"
           ],
@@ -2726,11 +2776,17 @@
           ],
           [
             "NUBLADO",
+            "CUBIERTO",
             "DESPEJADO"
           ],
           [
             "DESPEJADO",
             "NUBOSIDAD PARCIAL"
+          ],
+          [
+            "CUBIERTO",
+            "NUBOSIDAD PARCIAL",
+            "DESPEJADO"
           ]
         ]
       },
@@ -2751,18 +2807,18 @@
           "2026-05-22"
         ],
         "temperature_2m_max": [
-          22.0,
-          22.0,
+          20.0,
           19.0,
-          15.0,
-          18.0
+          14.0,
+          18.0,
+          12.0
         ],
         "temperature_2m_min": [
-          null,
-          3.0,
+          1.0,
           4.0,
           6.0,
-          4.0
+          5.0,
+          7.0
         ],
         "precipitation_sum": [
           0.0,
@@ -2780,16 +2836,12 @@
         ],
         "weather_code": [
           0,
-          0,
+          3,
           3,
           3,
           3
         ],
         "__summary_text": [
-          [
-            "DESPEJADO Y HELADA",
-            "DESPEJADO"
-          ],
           [
             "DESPEJADO"
           ],
@@ -2805,7 +2857,13 @@
           ],
           [
             "NUBOSIDAD PARCIAL",
-            "CUBIERTO"
+            "CUBIERTO",
+            "DESPEJADO"
+          ],
+          [
+            "CUBIERTO",
+            "NUBOSIDAD PARCIAL",
+            "DESPEJADO"
           ]
         ]
       },
@@ -2826,18 +2884,18 @@
           "2026-05-22"
         ],
         "temperature_2m_max": [
-          24.0,
           22.0,
           19.0,
-          17.0,
-          18.0
+          15.0,
+          19.0,
+          13.0
         ],
         "temperature_2m_min": [
-          null,
-          4.0,
+          3.0,
           6.0,
           8.0,
-          7.0
+          7.0,
+          9.0
         ],
         "precipitation_sum": [
           0.0,
@@ -2862,27 +2920,29 @@
         ],
         "__summary_text": [
           [
-            "DESPEJADO, NEBLINA Y HELADA",
-            "DESPEJADO"
+            "CUBIERTO Y NEBLINA",
+            "DESPEJADO",
+            "DESPEJADO VARIANDO A NUBLADO Y NEBLINA"
           ],
           [
-            "NUBOSIDAD PARCIAL",
             "NUBLADO",
-            "DESPEJADO"
-          ],
-          [
-            "NUBOSIDAD PARCIAL",
-            "CUBIERTO",
-            "NUBLADO"
-          ],
-          [
-            "CUBIERTO",
-            "NUBOSIDAD PARCIAL",
-            "NUBLADO"
-          ],
-          [
             "CUBIERTO",
             "NUBOSIDAD PARCIAL"
+          ],
+          [
+            "CUBIERTO",
+            "NUBOSIDAD PARCIAL",
+            "NUBLADO"
+          ],
+          [
+            "CUBIERTO",
+            "NUBOSIDAD PARCIAL",
+            "NUBLADO"
+          ],
+          [
+            "CUBIERTO",
+            "NUBOSIDAD PARCIAL",
+            "DESPEJADO"
           ]
         ]
       },
@@ -2906,19 +2966,19 @@
         ],
         "temperature_2m_max": [
           18.0,
-          16.0,
-          15.0,
+          17.0,
           14.0,
           15.0,
+          14.0,
           null,
           null
         ],
         "temperature_2m_min": [
-          null,
-          4.0,
-          6.0,
+          1.0,
+          2.0,
           8.0,
           7.0,
+          8.0,
           null,
           null
         ],
@@ -2941,7 +3001,7 @@
           null
         ],
         "weather_code": [
-          0,
+          45,
           3,
           3,
           3,
@@ -2951,13 +3011,9 @@
         ],
         "__summary_text": [
           [
-            "DESPEJADO Y HELADA",
-            "DESPEJADO"
-          ],
-          [
-            "NUBOSIDAD PARCIAL",
-            "CUBIERTO",
-            "DESPEJADO"
+            "CUBIERTO Y NEBLINA",
+            "DESPEJADO",
+            "DESPEJADO VARIANDO A NUBOSIDAD PARCIAL"
           ],
           [
             "CUBIERTO",
@@ -2971,6 +3027,10 @@
           [
             "CUBIERTO",
             "NUBOSIDAD PARCIAL"
+          ],
+          [
+            "CUBIERTO",
+            "NUBLADO"
           ],
           [
             "M&IACUTE;NIMA 4,1 HASTA 8 (LIGERAMENTE FR&IACUTE;O)<BR>M&AACUTE;XIMA 12,1 HASTA 16 (LIGERAMENTE TEMPLADO)"
@@ -2997,18 +3057,18 @@
           "2026-05-22"
         ],
         "temperature_2m_max": [
-          17.0,
-          14.0,
+          16.0,
           13.0,
           12.0,
-          13.0
+          13.0,
+          12.0
         ],
         "temperature_2m_min": [
-          null,
-          7.0,
+          5.0,
           8.0,
           10.0,
-          9.0
+          9.0,
+          10.0
         ],
         "precipitation_sum": [
           0.0,
@@ -3025,21 +3085,23 @@
           null
         ],
         "weather_code": [
-          0,
-          0,
+          2,
+          3,
           3,
           3,
           3
         ],
         "__summary_text": [
           [
-            "DESPEJADO"
-          ],
-          [
-            "DESPEJADO"
-          ],
-          [
             "NUBOSIDAD PARCIAL",
+            "DESPEJADO",
+            "DESPEJADO VARIANDO A NUBOSIDAD PARCIAL"
+          ],
+          [
+            "NUBLADO",
+            "CUBIERTO"
+          ],
+          [
             "CUBIERTO"
           ],
           [
@@ -3068,17 +3130,94 @@
           "2026-05-22"
         ],
         "temperature_2m_max": [
-          17.0,
+          16.0,
           15.0,
-          14.0,
           13.0,
-          14.0
+          14.0,
+          13.0
         ],
         "temperature_2m_min": [
-          null,
-          5.0,
+          1.0,
           7.0,
           9.0,
+          8.0,
+          9.0
+        ],
+        "precipitation_sum": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "wind_speed_10m_max": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "weather_code": [
+          45,
+          3,
+          3,
+          3,
+          3
+        ],
+        "__summary_text": [
+          [
+            "CUBIERTO Y NEBLINA",
+            "DESPEJADO",
+            "DESPEJADO VARIANDO A NUBOSIDAD PARCIAL"
+          ],
+          [
+            "CUBIERTO",
+            "NUBOSIDAD PARCIAL",
+            "NUBLADO"
+          ],
+          [
+            "CUBIERTO",
+            "NUBOSIDAD PARCIAL",
+            "NUBLADO"
+          ],
+          [
+            "CUBIERTO",
+            "NUBOSIDAD PARCIAL"
+          ],
+          [
+            "CUBIERTO",
+            "NUBLADO"
+          ]
+        ]
+      },
+      "horizon_days": 5
+    },
+    "linares": {
+      "indice": "linares",
+      "ciudad": "Linares",
+      "reg": "07",
+      "lat": -35.846,
+      "lon": -71.593,
+      "daily": {
+        "time": [
+          "2026-05-18",
+          "2026-05-19",
+          "2026-05-20",
+          "2026-05-21",
+          "2026-05-22"
+        ],
+        "temperature_2m_max": [
+          15.0,
+          16.0,
+          13.0,
+          14.0,
+          13.0
+        ],
+        "temperature_2m_min": [
+          1.0,
+          6.0,
+          8.0,
+          7.0,
           8.0
         ],
         "precipitation_sum": [
@@ -3104,105 +3243,25 @@
         ],
         "__summary_text": [
           [
-            "NUBLADO, NEBLINA Y HELADA VARIANDO A DESPEJADO",
+            "CUBIERTO Y NEBLINA",
             "DESPEJADO",
-            "NUBOSIDAD PARCIAL"
-          ],
-          [
-            "NUBOSIDAD PARCIAL",
-            "CUBIERTO",
-            "DESPEJADO"
+            "DESPEJADO VARIANDO A NUBOSIDAD PARCIAL"
           ],
           [
             "CUBIERTO",
-            "DESPEJADO",
             "NUBOSIDAD PARCIAL"
           ],
           [
             "CUBIERTO",
-            "NUBOSIDAD PARCIAL",
+            "NUBOSIDAD PARCIAL"
+          ],
+          [
+            "CUBIERTO",
+            "NUBOSIDAD PARCIAL"
+          ],
+          [
+            "CUBIERTO",
             "NUBLADO"
-          ],
-          [
-            "CUBIERTO",
-            "NUBOSIDAD PARCIAL"
-          ]
-        ]
-      },
-      "horizon_days": 5
-    },
-    "linares": {
-      "indice": "linares",
-      "ciudad": "Linares",
-      "reg": "07",
-      "lat": -35.846,
-      "lon": -71.593,
-      "daily": {
-        "time": [
-          "2026-05-18",
-          "2026-05-19",
-          "2026-05-20",
-          "2026-05-21",
-          "2026-05-22"
-        ],
-        "temperature_2m_max": [
-          16.0,
-          15.0,
-          14.0,
-          13.0,
-          14.0
-        ],
-        "temperature_2m_min": [
-          null,
-          4.0,
-          6.0,
-          8.0,
-          7.0
-        ],
-        "precipitation_sum": [
-          0.0,
-          0.0,
-          0.0,
-          0.0,
-          0.0
-        ],
-        "wind_speed_10m_max": [
-          null,
-          null,
-          null,
-          null,
-          null
-        ],
-        "weather_code": [
-          45,
-          3,
-          3,
-          3,
-          3
-        ],
-        "__summary_text": [
-          [
-            "NUBLADO, NIEBLA Y HELADA VARIANDO A DESPEJADO",
-            "DESPEJADO",
-            "NUBOSIDAD PARCIAL"
-          ],
-          [
-            "NUBOSIDAD PARCIAL",
-            "CUBIERTO",
-            "DESPEJADO"
-          ],
-          [
-            "CUBIERTO",
-            "DESPEJADO",
-            "NUBOSIDAD PARCIAL"
-          ],
-          [
-            "CUBIERTO",
-            "NUBOSIDAD PARCIAL"
-          ],
-          [
-            "CUBIERTO",
-            "NUBOSIDAD PARCIAL"
           ]
         ]
       },
@@ -3223,18 +3282,18 @@
           "2026-05-22"
         ],
         "temperature_2m_max": [
-          16.0,
-          15.0,
+          18.0,
           18.0,
           14.0,
-          12.0
+          12.0,
+          11.0
         ],
         "temperature_2m_min": [
-          null,
-          3.0,
+          0.0,
           4.0,
           5.0,
-          5.0
+          5.0,
+          6.0
         ],
         "precipitation_sum": [
           0.0,
@@ -3259,13 +3318,8 @@
         ],
         "__summary_text": [
           [
-            "NUBLADO, NIEBLA Y HELADA VARIANDO A DESPEJADO",
-            "DESPEJADO",
-            "DESPEJADO VARIANDO A NUBOSIDAD PARCIAL"
-          ],
-          [
-            "NUBOSIDAD PARCIAL",
-            "CUBIERTO",
+            "NUBOSIDAD PARCIAL VARIANDO A NUBLADO Y NEBLINA",
+            "CUBIERTO, NEBLINA Y HELADA",
             "DESPEJADO"
           ],
           [
@@ -3275,13 +3329,17 @@
             "NUBOSIDAD PARCIAL"
           ],
           [
-            "CUBIERTO",
             "NUBOSIDAD PARCIAL",
+            "CUBIERTO",
             "NUBLADO"
           ],
           [
             "CUBIERTO",
-            "NUBOSIDAD PARCIAL"
+            "NUBLADO"
+          ],
+          [
+            "CUBIERTO",
+            "NUBLADO"
           ]
         ]
       },
@@ -3304,20 +3362,20 @@
           "2026-05-24"
         ],
         "temperature_2m_max": [
-          17.0,
-          14.0,
           16.0,
+          17.0,
+          13.0,
           12.0,
           12.0,
           null,
           null
         ],
         "temperature_2m_min": [
-          null,
           4.0,
           5.0,
           6.0,
           6.0,
+          7.0,
           null,
           null
         ],
@@ -3340,7 +3398,7 @@
           null
         ],
         "weather_code": [
-          0,
+          45,
           3,
           3,
           3,
@@ -3350,24 +3408,24 @@
         ],
         "__summary_text": [
           [
-            "DESPEJADO"
-          ],
-          [
-            "DESPEJADO",
+            "DESPEJADO VARIANDO A NUBOSIDAD PARCIAL",
             "NUBOSIDAD PARCIAL",
-            "NUBLADO"
+            "DESPEJADO",
+            "NUBLADO Y NEBLINA"
           ],
           [
-            "NUBLADO"
-          ],
-          [
-            "CUBIERTO",
-            "NUBLADO"
-          ],
-          [
-            "CUBIERTO",
             "NUBLADO",
-            "NUBOSIDAD PARCIAL"
+            "CUBIERTO"
+          ],
+          [
+            "CUBIERTO",
+            "NUBLADO"
+          ],
+          [
+            "CUBIERTO"
+          ],
+          [
+            "CUBIERTO"
           ],
           [
             "M&IACUTE;NIMA 4,1 HASTA 8 (LIGERAMENTE FR&IACUTE;O)<BR>M&AACUTE;XIMA 12,1 HASTA 16 (LIGERAMENTE TEMPLADO)"
@@ -3395,17 +3453,17 @@
         ],
         "temperature_2m_max": [
           17.0,
-          16.0,
           20.0,
           16.0,
-          13.0
+          13.0,
+          11.0
         ],
         "temperature_2m_min": [
-          null,
           2.0,
           3.0,
           4.0,
-          4.0
+          4.0,
+          6.0
         ],
         "precipitation_sum": [
           0.0,
@@ -3423,18 +3481,15 @@
         ],
         "weather_code": [
           45,
-          3,
           0,
           2,
+          3,
           3
         ],
         "__summary_text": [
           [
-            "DESPEJADO, HELADA Y NIEBLA",
-            "DESPEJADO"
-          ],
-          [
-            "NUBLADO",
+            "NUBOSIDAD PARCIAL VARIANDO A NUBLADO Y NEBLINA",
+            "NUBLADO Y NEBLINA",
             "DESPEJADO"
           ],
           [
@@ -3445,8 +3500,13 @@
             "NUBOSIDAD PARCIAL"
           ],
           [
-            "NUBLADO",
-            "NUBOSIDAD PARCIAL"
+            "CUBIERTO",
+            "NUBOSIDAD PARCIAL",
+            "NUBLADO"
+          ],
+          [
+            "CUBIERTO",
+            "NUBLADO"
           ]
         ]
       },
@@ -3467,18 +3527,18 @@
           "2026-05-22"
         ],
         "temperature_2m_max": [
-          19.0,
           18.0,
-          20.0,
-          17.0,
-          16.0
+          23.0,
+          19.0,
+          16.0,
+          12.0
         ],
         "temperature_2m_min": [
-          null,
           3.0,
           5.0,
-          4.0,
-          3.0
+          6.0,
+          3.0,
+          4.0
         ],
         "precipitation_sum": [
           0.0,
@@ -3495,16 +3555,13 @@
           null
         ],
         "weather_code": [
-          0,
           45,
           45,
           0,
-          0
+          0,
+          2
         ],
         "__summary_text": [
-          [
-            "DESPEJADO"
-          ],
           [
             "NUBOSIDAD PARCIAL",
             "NUBOSIDAD PARCIAL Y NIEBLA",
@@ -3519,6 +3576,9 @@
           ],
           [
             "DESPEJADO"
+          ],
+          [
+            "NUBOSIDAD PARCIAL"
           ]
         ]
       },
@@ -3540,17 +3600,17 @@
         ],
         "temperature_2m_max": [
           16.0,
-          17.0,
-          20.0,
+          22.0,
           18.0,
-          15.0
+          14.0,
+          11.0
         ],
         "temperature_2m_min": [
-          null,
           2.0,
-          4.0,
-          4.0,
-          2.0
+          3.0,
+          5.0,
+          2.0,
+          3.0
         ],
         "precipitation_sum": [
           0.0,
@@ -3568,18 +3628,14 @@
         ],
         "weather_code": [
           45,
-          45,
           0,
           0,
-          2
+          3,
+          3
         ],
         "__summary_text": [
           [
-            "NUBOSIDAD PARCIAL Y NEBLINA",
-            "DESPEJADO"
-          ],
-          [
-            "NUBOSIDAD PARCIAL Y NEBLINA",
+            "NUBLADO Y NIEBLA",
             "DESPEJADO"
           ],
           [
@@ -3589,7 +3645,11 @@
             "DESPEJADO"
           ],
           [
+            "NUBLADO",
             "NUBOSIDAD PARCIAL"
+          ],
+          [
+            "NUBLADO"
           ]
         ]
       },
@@ -3610,18 +3670,18 @@
           "2026-05-22"
         ],
         "temperature_2m_max": [
-          18.0,
+          20.0,
           19.0,
           17.0,
-          17.0,
-          18.0
+          16.0,
+          10.0
         ],
         "temperature_2m_min": [
-          null,
           1.0,
+          9.0,
+          8.0,
           4.0,
-          4.0,
-          1.0
+          3.0
         ],
         "precipitation_sum": [
           0.0,
@@ -3632,23 +3692,19 @@
         ],
         "wind_speed_10m_max": [
           null,
-          null,
           70.0,
           60.0,
+          null,
           null
         ],
         "weather_code": [
           0,
           0,
           0,
-          0,
-          0
+          3,
+          3
         ],
         "__summary_text": [
-          [
-            "DESPEJADO Y HELADA",
-            "DESPEJADO"
-          ],
           [
             "DESPEJADO"
           ],
@@ -3661,7 +3717,11 @@
             "DESPEJADO"
           ],
           [
-            "DESPEJADO"
+            "DESPEJADO",
+            "NUBLADO"
+          ],
+          [
+            "NUBLADO"
           ]
         ]
       },
@@ -3682,18 +3742,18 @@
           "2026-05-22"
         ],
         "temperature_2m_max": [
-          14.0,
-          16.0,
+          15.0,
           20.0,
           17.0,
-          15.0
+          16.0,
+          12.0
         ],
         "temperature_2m_min": [
-          null,
+          4.0,
+          3.0,
           4.0,
           1.0,
-          1.0,
-          1.0
+          3.0
         ],
         "precipitation_sum": [
           0.0,
@@ -3711,29 +3771,28 @@
         ],
         "weather_code": [
           45,
-          45,
-          45,
+          2,
           0,
-          2
+          2,
+          3
         ],
         "__summary_text": [
           [
-            "NUBLADO, NIEBLA Y HELADA",
-            "DESPEJADO",
-            "NUBOSIDAD PARCIAL Y NEBLINA"
-          ],
-          [
-            "NUBOSIDAD PARCIAL Y NEBLINA",
+            "NUBLADO Y NIEBLA",
             "DESPEJADO"
           ],
           [
-            "NUBOSIDAD PARCIAL Y NEBLINA",
+            "NUBOSIDAD PARCIAL",
             "DESPEJADO"
           ],
           [
             "DESPEJADO"
           ],
           [
+            "NUBOSIDAD PARCIAL"
+          ],
+          [
+            "NUBLADO",
             "NUBOSIDAD PARCIAL"
           ]
         ]
@@ -3756,17 +3815,17 @@
         ],
         "temperature_2m_max": [
           14.0,
-          15.0,
           19.0,
-          16.0,
-          14.0
+          17.0,
+          15.0,
+          13.0
         ],
         "temperature_2m_min": [
-          null,
-          5.0,
-          3.0,
+          6.0,
           2.0,
-          1.0
+          2.0,
+          1.0,
+          2.0
         ],
         "precipitation_sum": [
           0.0,
@@ -3785,18 +3844,13 @@
         "weather_code": [
           45,
           45,
-          45,
           0,
-          2
+          2,
+          3
         ],
         "__summary_text": [
           [
-            "NUBLADO Y NIEBLA",
-            "NUBOSIDAD PARCIAL",
-            "NUBOSIDAD PARCIAL Y NEBLINA"
-          ],
-          [
-            "NUBLADO Y NIEBLA",
+            "NUBLADO Y NEBLINA",
             "DESPEJADO",
             "NUBOSIDAD PARCIAL Y NEBLINA"
           ],
@@ -3810,6 +3864,10 @@
           ],
           [
             "NUBOSIDAD PARCIAL"
+          ],
+          [
+            "NUBOSIDAD PARCIAL",
+            "NUBLADO"
           ]
         ]
       },
@@ -3830,17 +3888,17 @@
           "2026-05-22"
         ],
         "temperature_2m_max": [
-          12.0,
-          15.0,
+          14.0,
           18.0,
-          17.0,
-          16.0
+          16.0,
+          15.0,
+          12.0
         ],
         "temperature_2m_min": [
-          null,
           6.0,
           4.0,
           5.0,
+          2.0,
           2.0
         ],
         "precipitation_sum": [
@@ -3861,17 +3919,11 @@
           45,
           45,
           45,
-          45,
-          2
+          2,
+          3
         ],
         "__summary_text": [
           [
-            "NUBLADO Y NIEBLA",
-            "NUBOSIDAD PARCIAL",
-            "NUBLADO"
-          ],
-          [
-            "NUBLADO",
             "NUBLADO Y NEBLINA",
             "DESPEJADO",
             "NUBOSIDAD PARCIAL Y NEBLINA"
@@ -3885,6 +3937,10 @@
             "NUBOSIDAD PARCIAL Y NEBLINA"
           ],
           [
+            "NUBOSIDAD PARCIAL"
+          ],
+          [
+            "NUBLADO",
             "NUBOSIDAD PARCIAL"
           ]
         ]
@@ -3906,18 +3962,18 @@
           "2026-05-22"
         ],
         "temperature_2m_max": [
-          15.0,
           14.0,
           16.0,
-          16.0,
-          13.0
+          15.0,
+          13.0,
+          12.0
         ],
         "temperature_2m_min": [
-          null,
-          5.0,
+          4.0,
           8.0,
-          7.0,
-          5.0
+          6.0,
+          5.0,
+          4.0
         ],
         "precipitation_sum": [
           0.0,
@@ -3934,28 +3990,29 @@
           null
         ],
         "weather_code": [
-          2,
           45,
           0,
           0,
-          2
+          2,
+          3
         ],
         "__summary_text": [
           [
-            "DESPEJADO",
+            "NUBLADO Y NEBLINA",
+            "NUBOSIDAD PARCIAL Y NEBLINA",
+            "DESPEJADO"
+          ],
+          [
+            "DESPEJADO"
+          ],
+          [
+            "DESPEJADO"
+          ],
+          [
             "NUBOSIDAD PARCIAL"
           ],
           [
-            "NUBLADO Y NEBLINA",
-            "DESPEJADO"
-          ],
-          [
-            "DESPEJADO"
-          ],
-          [
-            "DESPEJADO"
-          ],
-          [
+            "NUBLADO",
             "NUBOSIDAD PARCIAL"
           ]
         ]
@@ -3977,18 +4034,18 @@
           "2026-05-22"
         ],
         "temperature_2m_max": [
-          15.0,
-          16.0,
-          18.0,
+          13.0,
           17.0,
-          17.0
+          17.0,
+          15.0,
+          12.0
         ],
         "temperature_2m_min": [
-          null,
+          4.0,
+          4.0,
           5.0,
-          8.0,
-          6.0,
-          5.0
+          2.0,
+          2.0
         ],
         "precipitation_sum": [
           0.0,
@@ -4005,28 +4062,28 @@
           null
         ],
         "weather_code": [
-          2,
           45,
           0,
           0,
-          2
+          2,
+          3
         ],
         "__summary_text": [
           [
-            "DESPEJADO",
+            "NUBOSIDAD PARCIAL Y NEBLINA",
+            "DESPEJADO"
+          ],
+          [
+            "DESPEJADO"
+          ],
+          [
+            "DESPEJADO"
+          ],
+          [
             "NUBOSIDAD PARCIAL"
           ],
           [
-            "NUBLADO Y NEBLINA",
-            "DESPEJADO"
-          ],
-          [
-            "DESPEJADO"
-          ],
-          [
-            "DESPEJADO"
-          ],
-          [
+            "NUBLADO",
             "NUBOSIDAD PARCIAL"
           ]
         ]
@@ -4048,18 +4105,18 @@
           "2026-05-22"
         ],
         "temperature_2m_max": [
-          14.0,
-          16.0,
+          11.0,
           19.0,
-          16.0,
-          15.0
+          15.0,
+          14.0,
+          11.0
         ],
         "temperature_2m_min": [
-          null,
-          4.0,
+          5.0,
           6.0,
           4.0,
-          4.0
+          5.0,
+          3.0
         ],
         "precipitation_sum": [
           0.0,
@@ -4070,26 +4127,21 @@
         ],
         "wind_speed_10m_max": [
           null,
-          null,
           60.0,
+          null,
           null,
           null
         ],
         "weather_code": [
           45,
-          45,
           0,
           0,
+          2,
           2
         ],
         "__summary_text": [
           [
-            "DESPEJADO",
-            "NUBOSIDAD PARCIAL Y NEBLINA"
-          ],
-          [
-            "NUBOSIDAD PARCIAL Y NEBLINA",
-            "NUBOSIDAD PARCIAL",
+            "NUBLADO Y NIEBLA",
             "DESPEJADO"
           ],
           [
@@ -4098,6 +4150,9 @@
           ],
           [
             "DESPEJADO"
+          ],
+          [
+            "NUBOSIDAD PARCIAL"
           ],
           [
             "NUBOSIDAD PARCIAL"
@@ -4121,18 +4176,18 @@
           "2026-05-22"
         ],
         "temperature_2m_max": [
-          13.0,
-          11.0,
+          14.0,
           12.0,
-          10.0,
-          11.0
+          11.0,
+          11.0,
+          9.0
         ],
         "temperature_2m_min": [
-          null,
           -1.0,
-          0.0,
           -2.0,
-          0.0
+          -4.0,
+          -2.0,
+          -1.0
         ],
         "precipitation_sum": [
           0.0,
@@ -4149,29 +4204,29 @@
           null
         ],
         "weather_code": [
-          0,
           45,
           0,
           45,
+          2,
           2
         ],
         "__summary_text": [
           [
+            "NUBLADO, NIEBLA Y HELADA",
+            "DESPEJADO VARIANDO A DESPEJADO",
+            "DESPEJADO"
+          ],
+          [
             "DESPEJADO Y HELADA",
             "DESPEJADO"
           ],
           [
-            "NUBLADO, NIEBLA Y HELADA",
-            "NUBLADO VARIANDO A DESPEJADO",
+            "NUBOSIDAD PARCIAL, NIEBLA Y HELADA",
             "DESPEJADO"
           ],
           [
-            "DESPEJADO Y HELADA",
-            "DESPEJADO"
-          ],
-          [
-            "NUBLADO, NIEBLA Y HELADA",
-            "DESPEJADO"
+            "NUBOSIDAD PARCIAL Y HELADA",
+            "NUBOSIDAD PARCIAL"
           ],
           [
             "NUBOSIDAD PARCIAL Y HELADA",
@@ -4196,18 +4251,18 @@
           "2026-05-22"
         ],
         "temperature_2m_max": [
-          12.0,
-          12.0,
-          12.0,
-          12.0,
-          12.0
+          13.0,
+          10.0,
+          9.0,
+          10.0,
+          7.0
         ],
         "temperature_2m_min": [
-          null,
           -3.0,
-          -4.0,
+          -5.0,
           -6.0,
-          -5.0
+          -4.0,
+          -2.0
         ],
         "precipitation_sum": [
           0.0,
@@ -4226,7 +4281,7 @@
         "weather_code": [
           0,
           0,
-          0,
+          2,
           2,
           2
         ],
@@ -4240,12 +4295,12 @@
             "DESPEJADO"
           ],
           [
-            "DESPEJADO Y HELADA",
+            "NUBOSIDAD PARCIAL Y HELADA",
             "DESPEJADO"
           ],
           [
             "NUBOSIDAD PARCIAL Y HELADA",
-            "DESPEJADO"
+            "NUBOSIDAD PARCIAL"
           ],
           [
             "NUBOSIDAD PARCIAL Y HELADA",
@@ -4270,18 +4325,18 @@
           "2026-05-22"
         ],
         "temperature_2m_max": [
-          11.0,
-          9.0,
           10.0,
-          9.0,
-          11.0
+          10.0,
+          8.0,
+          10.0,
+          10.0
         ],
         "temperature_2m_min": [
-          null,
-          3.0,
-          1.0,
+          4.0,
           0.0,
-          2.0
+          -1.0,
+          2.0,
+          1.0
         ],
         "precipitation_sum": [
           0.0,
@@ -4298,32 +4353,32 @@
           null
         ],
         "weather_code": [
-          3,
           45,
           3,
-          0,
+          2,
+          2,
           2
         ],
         "__summary_text": [
-          [
-            "NUBLADO",
-            "NUBOSIDAD PARCIAL"
-          ],
           [
             "NUBLADO Y NIEBLA",
             "NUBOSIDAD PARCIAL",
             "NUBLADO"
           ],
           [
-            "NUBLADO",
+            "NUBLADO Y HELADA",
             "DESPEJADO"
           ],
           [
             "DESPEJADO Y HELADA",
-            "DESPEJADO"
+            "NUBOSIDAD PARCIAL"
           ],
           [
             "NUBOSIDAD PARCIAL"
+          ],
+          [
+            "NUBOSIDAD PARCIAL",
+            "DESPEJADO"
           ]
         ]
       },
@@ -4346,15 +4401,15 @@
         "temperature_2m_max": [
           14.0,
           13.0,
+          13.0,
           12.0,
-          10.0,
-          9.0
+          11.0
         ],
         "temperature_2m_min": [
-          null,
+          7.0,
+          7.0,
           6.0,
-          5.0,
-          3.0,
+          6.0,
           4.0
         ],
         "precipitation_sum": [
@@ -4365,25 +4420,20 @@
           0.0
         ],
         "wind_speed_10m_max": [
-          40.0,
           null,
           null,
           null,
-          60.0
+          null,
+          null
         ],
         "weather_code": [
+          45,
+          45,
           3,
-          45,
-          45,
           3,
           3
         ],
         "__summary_text": [
-          [
-            "NUBLADO CON VIENTO ENTRE 25 Y 40 KM/H",
-            "NUBOSIDAD PARCIAL",
-            "NUBLADO"
-          ],
           [
             "NUBLADO Y NEBLINA",
             "NUBLADO"
@@ -4397,9 +4447,12 @@
             "NUBOSIDAD PARCIAL"
           ],
           [
-            "NUBOSIDAD PARCIAL CON VIENTO ENTRE 40 Y 60 KM/H",
-            "NUBOSIDAD PARCIAL CON VIENTO ENTRE 25 Y 40 KM/H",
-            "NUBLADO CON VIENTO ENTRE 25 Y 40 KM/H"
+            "NUBLADO",
+            "NUBOSIDAD PARCIAL"
+          ],
+          [
+            "NUBLADO",
+            "NUBOSIDAD PARCIAL"
           ]
         ]
       },
@@ -4427,43 +4480,43 @@
           9.0
         ],
         "temperature_2m_min": [
-          null,
           6.0,
+          7.0,
           6.0,
-          2.0,
+          5.0,
           4.0
         ],
         "precipitation_sum": [
-          0.0,
+          2.0,
           0.0,
           0.0,
           0.0,
           0.0
         ],
         "wind_speed_10m_max": [
-          100.0,
-          40.0,
+          60.0,
           null,
           null,
-          80.0
+          60.0,
+          null
         ],
         "weather_code": [
-          2,
-          2,
+          61,
+          45,
           3,
           3,
           3
         ],
         "__summary_text": [
           [
-            "NUBOSIDAD PARCIAL CON VIENTO ENTRE 80 Y 100 KM/H",
-            "NUBOSIDAD PARCIAL CON VIENTO ENTRE 25 Y 40 KM/H"
+            "NUBOSIDAD PARCIAL CON VIENTO ENTRE 40 Y 60 KM/H",
+            "NUBOSIDAD PARCIAL, OCASIONALMENTE NUBLADO Y CHUBASCOS AISLADOS CON VIENTO ENTRE 40 Y 60 KM/H",
+            "NUBOSIDAD PARCIAL CON VIENTO ENTRE 25 Y 40 KM/H",
+            "NUBOSIDAD PARCIAL, OCASIONALMENTE NUBLADO"
           ],
           [
-            "NUBOSIDAD PARCIAL CON VIENTO ENTRE 25 Y 40 KM/H"
-          ],
-          [
-            "NUBLADO",
+            "NUBLADO Y NEBLINA",
+            "NUBLADO Y NEBLINA VARIANDO A NUBOSIDAD PARCIAL",
             "NUBOSIDAD PARCIAL"
           ],
           [
@@ -4471,9 +4524,13 @@
             "NUBLADO"
           ],
           [
-            "NUBLADO CON VIENTO ENTRE 60 Y 80 KM/H",
-            "NUBOSIDAD PARCIAL CON VIENTO ENTRE 60 Y 80 KM/H",
-            "NUBOSIDAD PARCIAL CON VIENTO ENTRE 40 Y 60 KM/H"
+            "NUBLADO CON VIENTO ENTRE 25 Y 40 KM/H",
+            "NUBOSIDAD PARCIAL CON VIENTO ENTRE 40 Y 60 KM/H",
+            "NUBOSIDAD PARCIAL"
+          ],
+          [
+            "NUBOSIDAD PARCIAL",
+            "NUBLADO"
           ]
         ]
       },
@@ -4494,49 +4551,45 @@
           "2026-05-22"
         ],
         "temperature_2m_max": [
+          12.0,
           11.0,
-          9.0,
+          11.0,
           10.0,
-          8.0,
-          8.0
+          11.0
         ],
         "temperature_2m_min": [
-          null,
+          5.0,
           6.0,
-          6.0,
-          2.0,
-          4.0
+          5.0,
+          4.0,
+          3.0
         ],
         "precipitation_sum": [
-          0.0,
+          2.0,
           0.0,
           0.0,
           0.0,
           0.0
         ],
         "wind_speed_10m_max": [
-          90.0,
           60.0,
           40.0,
           null,
-          80.0
+          60.0,
+          40.0
         ],
         "weather_code": [
-          3,
-          3,
+          61,
           3,
           2,
+          3,
           3
         ],
         "__summary_text": [
           [
-            "NUBLADO, OCASIONALMENTE NUBOSIDAD PARCIAL Y R&AACUTE;FAGAS DE VIENTO HASTA 90 KM/H",
-            "NUBLADO CON VIENTO ENTRE 40 Y 60 KM/H",
-            "NUBOSIDAD PARCIAL CON VIENTO ENTRE 40 Y 60 KM/H"
-          ],
-          [
             "NUBOSIDAD PARCIAL CON VIENTO ENTRE 40 Y 60 KM/H",
-            "NUBLADO CON VIENTO ENTRE 40 Y 60 KM/H",
+            "NUBOSIDAD PARCIAL, OCASIONALMENTE NUBLADO Y CHUBASCOS AISLADOS CON VIENTO ENTRE 40 Y 60 KM/H",
+            "NUBOSIDAD PARCIAL CON VIENTO ENTRE 40 Y 60 KM/H VARIANDO A NUBLADO",
             "NUBLADO CON VIENTO ENTRE 25 Y 40 KM/H"
           ],
           [
@@ -4547,9 +4600,13 @@
             "NUBOSIDAD PARCIAL"
           ],
           [
-            "NUBLADO CON VIENTO ENTRE 60 Y 80 KM/H",
-            "NUBOSIDAD PARCIAL CON VIENTO ENTRE 60 Y 80 KM/H",
-            "NUBOSIDAD PARCIAL CON VIENTO ENTRE 40 Y 60 KM/H"
+            "NUBLADO CON VIENTO ENTRE 40 Y 60 KM/H",
+            "NUBOSIDAD PARCIAL CON VIENTO ENTRE 40 Y 60 KM/H",
+            "NUBOSIDAD PARCIAL CON VIENTO ENTRE 25 Y 40 KM/H"
+          ],
+          [
+            "NUBOSIDAD PARCIAL",
+            "NUBLADO CON VIENTO ENTRE 25 Y 40 KM/H"
           ]
         ]
       },
@@ -4570,59 +4627,63 @@
           "2026-05-22"
         ],
         "temperature_2m_max": [
-          12.0,
-          7.0,
           10.0,
+          13.0,
+          12.0,
           11.0,
-          9.0
+          11.0
         ],
         "temperature_2m_min": [
-          null,
           4.0,
           5.0,
           4.0,
-          3.0
+          4.0,
+          2.0
         ],
         "precipitation_sum": [
           2.0,
           2.0,
-          2.0,
+          0.0,
           0.0,
           0.0
         ],
         "wind_speed_10m_max": [
-          100.0,
           60.0,
           null,
           null,
+          60.0,
           null
         ],
         "weather_code": [
           61,
           61,
-          61,
+          3,
           2,
-          2
+          3
         ],
         "__summary_text": [
           [
-            "NUBLADO Y CHUBASCOS D&EACUTE;BILES CON VIENTO ENTRE 80 Y 100 KM/H",
-            "NUBLADO Y CHUBASCOS D&EACUTE;BILES CON VIENTO ENTRE 60 Y 80 KM/H",
-            "NUBLADO CON VIENTO ENTRE 40 Y 60 KM/H"
-          ],
-          [
             "NUBLADO Y CHUBASCOS CON VIENTO ENTRE 40 Y 60 KM/H",
+            "NUBLADO Y CHUBASCOS CON VIENTO ENTRE 25 Y 40 KM/H",
             "NUBLADO Y CHUBASCOS"
           ],
           [
             "NUBLADO Y CHUBASCOS",
+            "NUBLADO",
+            "NUBOSIDAD PARCIAL"
+          ],
+          [
+            "NUBLADO",
+            "NUBOSIDAD PARCIAL"
+          ],
+          [
+            "NUBOSIDAD PARCIAL",
+            "NUBOSIDAD PARCIAL CON VIENTO ENTRE 40 Y 60 KM/H",
+            "NUBOSIDAD PARCIAL CON VIENTO ENTRE 25 Y 40 KM/H"
+          ],
+          [
+            "NUBOSIDAD PARCIAL",
             "NUBLADO"
-          ],
-          [
-            "NUBOSIDAD PARCIAL"
-          ],
-          [
-            "NUBOSIDAD PARCIAL"
           ]
         ]
       },
@@ -4643,59 +4704,62 @@
           "2026-05-22"
         ],
         "temperature_2m_max": [
+          25.0,
+          23.0,
           24.0,
           25.0,
-          24.0,
-          24.0,
           24.0
         ],
         "temperature_2m_min": [
-          null,
+          19.0,
           20.0,
-          18.0,
-          17.0,
-          19.0
+          15.0,
+          16.0,
+          18.0
         ],
         "precipitation_sum": [
+          2.0,
+          2.0,
           0.0,
           2.0,
-          2.0,
-          2.0,
-          0.0
+          2.0
         ],
         "wind_speed_10m_max": [
-          40.0,
-          40.0,
-          40.0,
-          40.0,
+          50.0,
+          50.0,
+          null,
+          null,
           null
         ],
         "weather_code": [
+          61,
+          61,
           3,
           61,
-          61,
-          61,
-          3
+          61
         ],
         "__summary_text": [
           [
-            "NUBOSIDAD PARCIAL, OCASIONALMENTE NUBLADO",
-            "NUBOSIDAD PARCIAL, OCASIONALMENTE NUBLADO CON VIENTO ENTRE 25 Y 40 KM/H"
+            "NUBLADO, OCASIONALMENTE NUBOSIDAD PARCIAL Y CHUBASCOS AISLADOS CON VIENTO ENTRE 25 Y 40 KM/H",
+            "NUBLADO, OCASIONALMENTE NUBOSIDAD PARCIAL Y CHUBASCOS CON VIENTO ENTRE 25 Y 40 KM/H Y R&AACUTE;FAGAS DE VIENTO HASTA 50 KM/H"
           ],
           [
+            "CUBIERTO Y LLUVIA CON VIENTO ENTRE 25 Y 40 KM/H Y R&AACUTE;FAGAS DE VIENTO HASTA 50 KM/H",
+            "NUBLADO Y CHUBASCOS CON VIENTO ENTRE 25 Y 40 KM/H VARIANDO A NUBOSIDAD PARCIAL",
             "NUBOSIDAD PARCIAL, OCASIONALMENTE NUBLADO Y CHUBASCOS AISLADOS CON VIENTO ENTRE 25 Y 40 KM/H",
-            "NUBLADO, OCASIONALMENTE NUBOSIDAD PARCIAL Y CHUBASCOS CON VIENTO ENTRE 25 Y 40 KM/H"
+            "NUBOSIDAD PARCIAL, OCASIONALMENTE NUBLADO"
           ],
           [
-            "NUBLADO, OCASIONALMENTE NUBOSIDAD PARCIAL Y CHUBASCOS CON VIENTO ENTRE 25 Y 40 KM/H"
-          ],
-          [
-            "NUBLADO, OCASIONALMENTE NUBOSIDAD PARCIAL Y CHUBASCOS CON VIENTO ENTRE 25 Y 40 KM/H",
-            "NUBLADO, OCASIONALMENTE NUBOSIDAD PARCIAL CON VIENTO ENTRE 25 Y 40 KM/H"
-          ],
-          [
-            "NUBLADO, OCASIONALMENTE NUBOSIDAD PARCIAL",
+            "NUBOSIDAD PARCIAL, OCASIONALMENTE NUBLADO",
             "NUBOSIDAD PARCIAL"
+          ],
+          [
+            "NUBOSIDAD PARCIAL",
+            "NUBOSIDAD PARCIAL, OCASIONALMENTE NUBLADO Y CHUBASCOS AISLADOS"
+          ],
+          [
+            "NUBOSIDAD PARCIAL, OCASIONALMENTE NUBLADO",
+            "NUBOSIDAD PARCIAL, OCASIONALMENTE NUBLADO Y CHUBASCOS AISLADOS"
           ]
         ]
       },
@@ -4719,27 +4783,27 @@
           16.0,
           16.0,
           16.0,
-          16.0,
-          17.0
+          17.0,
+          18.0
         ],
         "temperature_2m_min": [
-          null,
           14.0,
           14.0,
           14.0,
-          14.0
+          14.0,
+          13.0
         ],
         "precipitation_sum": [
           0.0,
-          0.0,
           0.5,
+          0.0,
           0.0,
           0.0
         ],
         "wind_speed_10m_max": [
+          40.0,
+          40.0,
           null,
-          40.0,
-          40.0,
           null,
           null
         ],
@@ -4752,10 +4816,6 @@
         ],
         "__summary_text": [
           [
-            "NUBLADO",
-            "CUBIERTO"
-          ],
-          [
             "CUBIERTO",
             "CUBIERTO CON VIENTO ENTRE 25 Y 40 KM/H"
           ],
@@ -4766,6 +4826,10 @@
           ],
           [
             "CUBIERTO"
+          ],
+          [
+            "CUBIERTO",
+            "NUBLADO"
           ],
           [
             "CUBIERTO",
@@ -4790,63 +4854,61 @@
           "2026-05-22"
         ],
         "temperature_2m_max": [
-          -3.0,
-          -3.0,
+          -2.0,
           1.0,
+          2.0,
           2.0,
           2.0
         ],
         "temperature_2m_min": [
-          null,
-          -6.0,
-          -4.0,
+          -5.0,
+          -2.0,
           1.0,
-          1.0
+          0.0,
+          -1.0
         ],
         "precipitation_sum": [
+          0.0,
+          0.0,
           2.0,
-          0.0,
-          0.0,
-          0.0,
-          0.0
+          2.0,
+          2.0
         ],
         "wind_speed_10m_max": [
+          null,
+          null,
+          null,
           70.0,
-          null,
-          null,
-          null,
-          null
+          70.0
         ],
         "weather_code": [
-          71,
           3,
           45,
-          45,
-          45
+          61,
+          61,
+          61
         ],
         "__summary_text": [
           [
-            "CUBIERTO Y CHUBASCOS DE NIEVE CON VIENTO ENTRE 40 Y 60 KM/H Y R&AACUTE;FAGAS DE VIENTO HASTA 70 KM/H",
-            "CUBIERTO VARIANDO A CUBIERTO Y NEVADAS",
-            "CUBIERTO Y NEVADAS"
+            "DESPEJADO",
+            "NUBOSIDAD PARCIAL VARIANDO A NUBLADO"
           ],
           [
-            "NUBLADO VARIANDO A DESPEJADO",
-            "DESPEJADO VARIANDO A NUBOSIDAD PARCIAL",
-            "NUBLADO"
-          ],
-          [
-            "NUBLADO",
-            "CUBIERTO",
+            "NUBLADO VARIANDO A CUBIERTO",
             "CUBIERTO Y NIEBLA"
           ],
           [
-            "CUBIERTO Y NEBLINA",
-            "CUBIERTO Y NIEBLA"
+            "CUBIERTO Y CHUBASCOS AISLADOS",
+            "CUBIERTO Y CHUBASCOS"
           ],
           [
-            "CUBIERTO Y NEBLINA",
-            "CUBIERTO Y NIEBLA"
+            "CUBIERTO Y CHUBASCOS",
+            "CUBIERTO Y CHUBASCOS CON VIENTO ENTRE 40 Y 60 KM/H Y R&AACUTE;FAGAS DE VIENTO HASTA 70 KM/H"
+          ],
+          [
+            "NUBLADO CON VIENTO ENTRE 40 Y 60 KM/H Y R&AACUTE;FAGAS DE VIENTO HASTA 70 KM/H",
+            "NUBLADO CON VIENTO ENTRE 40 Y 60 KM/H Y R&AACUTE;FAGAS DE VIENTO HASTA 70 KM/H VARIANDO A CUBIERTO Y CHUBASCOS",
+            "CUBIERTO Y LLUVIA CON VIENTO ENTRE 40 Y 60 KM/H Y R&AACUTE;FAGAS DE VIENTO HASTA 70 KM/H"
           ]
         ]
       },
