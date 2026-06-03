@@ -15800,7 +15800,7 @@ async function robustGenerate(ev){
     // ── PUNA / ALTITUD (CDI-90008 Cap. 5 / Tabla 5-1) ──
     const _altPuna = (typeof window.__selectedAltitude === 'number' && isFinite(window.__selectedAltitude))
                    ? window.__selectedAltitude : null;
-    if(_altPuna !== null && _altPuna >= 3000){
+    if(_altPuna !== null && _altPuna >= 99999){
       lines.push('');
       lines.push('── PUNA / ALTITUD ─────────────────────────────────');
       lines.push(`  Altitud del punto     : ${_altPuna.toLocaleString('es-CL')} m s.n.m.`);
