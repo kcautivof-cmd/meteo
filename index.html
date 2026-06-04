@@ -6870,13 +6870,11 @@ window.__dmcMapLayers = window.__dmcMapLayers || {};
 
 window.__dmcMapLayers.refreshAlerts = __dmcRefreshAlertsLayer;
 
-// ══════════════════════════════════════════════════════════════════════
-//  CAPAS METEOROLÓGICAS — OpenWeatherMap (tiempo real) + RainViewer
+// ════════════════════//  CAPAS METEOROLÓGICAS — OpenWeatherMap (tiempo real) + RainViewer
 //  Sin API key: RainViewer radar lluvia
 //  Con API key OWM (gratis): nubosidad, precipitación, viento, presión, temp
 //  Para activar OWM: window.__OWM_KEY = 'TU_API_KEY'  (gratis en openweathermap.org)
-// ══════════════════════════════════════════════════════════════════════
-
+// ════════════════════
 // CAPAS METEOROLÓGICAS — ver script separado al final
 
 function hideInteractiveMapAlertsMenu(){
@@ -12596,7 +12594,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div id="bulletinQuickModal" class="bulletin-modal" aria-hidden="true">
           <div class="bulletin-modal-card">
             <div class="bulletin-modal-head">
-              <div class="bulletin-modal-title">BOLETÍN RÁPIDO DMC</div>
+              <div class="bulletin-modal-title">BOLETÍN METEOROLÓGICO</div>
               <button type="button" class="bulletin-modal-close" id="bulletinQuickClose">CERRAR</button>
             </div>
             <div class="bulletin-modal-body">
@@ -12618,7 +12616,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const html = `
         <div id="quickBulletinWrap" class="quick-output-wrap">
           <div class="quick-output-head">
-            <div class="quick-output-title">BOLETÍN RÁPIDO DMC</div>
+            <div class="quick-output-title">BOLETÍN METEOROLÓGICO</div>
             <div class="quick-output-actions">
               <button type="button" id="quickBulletinCopyBtn">COPIAR TEXTO</button>
               <button type="button" id="quickBulletinCopyWaBtn">COPIAR WHATSAPP</button>
@@ -12969,7 +12967,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div id="bulletinQuickModal" class="bulletin-modal" aria-hidden="true">
           <div class="bulletin-modal-card">
             <div class="bulletin-modal-head">
-              <div class="bulletin-modal-title">BOLETÍN RÁPIDO DMC</div>
+              <div class="bulletin-modal-title">BOLETÍN METEOROLÓGICO</div>
               <button type="button" class="bulletin-modal-close" id="bulletinQuickClose">CERRAR</button>
             </div>
             <div class="bulletin-modal-body">
@@ -15744,14 +15742,11 @@ async function robustGenerate(ev){
       return out.slice(0,3).reduce(function(acc,x){ return acc.concat(x.lines); }, []);
     }
 
-    // ══════════════════════════════════════════════════════════
-    // ══════════════════════════════════════════════════════════
-    //  COMPOSICIÓN DEL BOLETÍN RÁPIDO — FORMATO COMPACTO v2
+    // ════════    // ════════    //  COMPOSICIÓN DEL BOLETÍN RÁPIDO — FORMATO COMPACTO v2
     //  Caso A: hora puntual  (isoTo === iso, hhmmFin === hhmm)
     //  Caso B: tramo horario (isoTo === iso, hhmmFin !== hhmm)
     //  Caso C: rango de días (isoTo !== iso)
-    // ══════════════════════════════════════════════════════════
-
+    // ════════
     // ── Leer campos de rango desde el modal activo ──────────
     function readRangeFields(){
       // Prioridad 1: campos DOM del modal activo
@@ -15841,9 +15836,9 @@ async function robustGenerate(ev){
       const place   = revGeo||(hasLbl?lblCity:null);
       const ref     = place?(coords?`${place} (${coords})`:place):(coords||'Sin ubicación');
 
-      lines.push('BOLETÍN RÁPIDO DMC');
+      lines.push('BOLETÍN METEOROLÓGICO');
       lines.push('══════════════════════════════════════════════════');
-      lines.push(`Lugar : ${ref}`);
+      lines.push(`Lugar: ${ref}`);
       lines.push(`Fuente: Dirección Meteorológica de Chile (DMC) / AccuWeather`);
 
       if(isMultiDay){
@@ -15859,14 +15854,12 @@ async function robustGenerate(ev){
         const hNum = Number(String(hhmm).slice(0,2));
         const hFin = String(Math.min(hNum+1,23)).padStart(2,'0')+':00';
         lines.push(`Fecha : ${shortDay(iso)}`);
-        lines.push(`Hora  : ${hhmm} hrs.`);
+        lines.push(`Hora: ${hhmm} hrs.`);
       }
     })();
 
-    // ════════════════════════════════════════════════════════
-    //  CASO C — RANGO DE DÍAS
-    // ════════════════════════════════════════════════════════
-    if(isMultiDay){
+    // ══════    //  CASO C — RANGO DE DÍAS
+    // ══════    if(isMultiDay){
       const days = dateRange(iso, isoTo, 10);
       lines.push('');
       lines.push('── VARIABLES POR DÍA ─────────────────────────────────────────────');
@@ -15900,7 +15893,7 @@ async function robustGenerate(ev){
 
       // Conclusión multi-día
       lines.push('');
-      lines.push('── CONCLUSIÓN ────────────────────────────────────────────────────');
+      lines.push('*Conclusión*──────────────');
       const condPred = dayRows.length ? (dayRows.map(r=>String(r.cond||'').toLowerCase()).sort((a,b)=>
         dayRows.filter(x=>x.cond===b).length - dayRows.filter(x=>x.cond===a).length)[0]) : 'variable';
       let concl=`Período de ${days.length} días con predominio de ${condPred}`;
@@ -15913,15 +15906,13 @@ async function robustGenerate(ev){
       const alertLines = alertasBlock(iso, isoTo);
       const hasAlerts = alertLines.length && !alertLines[0].includes('Sin alertas');
       lines.push('');
-      lines.push('── ALERTAS DMC VIGENTES ──────────────────────────────────────────');
+      lines.push('*Alertas vigentes*──────────');
       alertLines.forEach(l => lines.push(l));
       if(hasAlerts) lines.push('  ⚠ Verificar vigencia de cada alerta según su fecha de término.');
-      lines.push('Se mantiene el monitoreo y seguimiento continuo. Fuente: DMC/AccuWeather.');
+      lines.push('Fuente: DMC / AccuWeather');
 
-    // ════════════════════════════════════════════════════════
-    //  CASO B — TRAMO HORARIO (mismo día)
-    // ════════════════════════════════════════════════════════
-    } else if(isTimeRange){
+    // ══════    //  CASO B — TRAMO HORARIO (mismo día)
+    // ══════    } else if(isTimeRange){
       const h0=Number(String(hhmm).slice(0,2));
       const h1=Number(String(hhmmFin).slice(0,2));
       const tramoData = h1>h0 ? getTramoAvg(h0,h1) : null;
@@ -15965,7 +15956,7 @@ async function robustGenerate(ev){
 
       // Conclusión tramo
       lines.push('');
-      lines.push('── CONCLUSIÓN ──────────────────────────────────────');
+      lines.push('*Conclusión*');
       {
         const td=tramoData;
         let concl=`Para el tramo ${hhmm}–${hhmmFin} se prevé ${String(fxWx||'condiciones variables').toLowerCase()}`;
@@ -15975,44 +15966,42 @@ async function robustGenerate(ev){
           concl+=` con rachas hasta ${fmt0(td.wind_gusts_10m,' km/h')}`;
         lines.push(concl+'.');
         lines.push(`Riesgo tramo     : ${riskLbl}`);
-        lines.push(`Tendencia        : ${tendLbl}`);
+        lines.push(`Tendencia: ${tendLbl}`);
         lines.push(`Ventana favorable: ${ventanaLbl}`);
         lines.push('');
         lines.push('');
         // Alertas
         const alertLinesB = alertasBlock();
-        lines.push('── ALERTAS DMC VIGENTES ────────────────────────────────');
+        lines.push('*Alertas vigentes*');
         alertLinesB.forEach(l => lines.push(l));
-        lines.push('Se mantiene el monitoreo y seguimiento continuo. Fuente: DMC/AccuWeather.');
+        lines.push('Fuente: DMC / AccuWeather');
       }
 
-    // ════════════════════════════════════════════════════════
-    //  CASO A — HORA PUNTUAL
-    // ════════════════════════════════════════════════════════
-    } else {
+    // ══════    //  CASO A — HORA PUNTUAL
+    // ══════    } else {
       lines.push('');
-      lines.push('── VARIABLES ────────────────────────────────────────');
-      lines.push(`Condición        : ${upperFirst(fxWx)}`);
+      lines.push('*Variables*');
+      lines.push(`Condición: ${upperFirst(fxWx)}`);
 
       if(forecast.temp!==null)
-        lines.push(`Temperatura      : ${fmt1(forecast.temp,'°C')}`+
+        lines.push(`Temp: ${fmt1(forecast.temp,'°C')}`+
           (tmin!==null&&tmax!==null?`  (mín ${fmt0(tmin,'°C')} / máx ${fmt0(tmax,'°C')})`:
            tmax!==null?`  (máx estimada ${fmt0(tmax,'°C')})`:''));
       else if(tmin!==null||tmax!==null)
-        lines.push(`Temperatura      : mín ${fmt0(tmin,'°C')} / máx ${fmt0(tmax,'°C')}`);
+        lines.push(`Temp: mín ${fmt0(tmin,'°C')} / máx ${fmt0(tmax,'°C')}`);
 
-      lines.push(`Precipitación    : ${forecast.precip!==null?fmt1(forecast.precip,' mm/h'):'0,0 mm/h'}`);
+      lines.push(`Precip: ${forecast.precip!==null?fmt1(forecast.precip,' mm/h'):'0,0 mm/h'}`);
 
       if(forecast.wind!==null)
-        lines.push(`Viento           : ${fmt0(forecast.wind,' km/h')}`+
+        lines.push(`Viento: ${fmt0(forecast.wind,' km/h')}`+
           (forecast.dir!==null&&forecast.dir!==0?`  Dir: ${dirText(forecast.dir)}`:'')+
           `  (${num(forecast.wind)<10?'débil':num(forecast.wind)<25?'moderado':'fuerte'})`);
       if(forecast.gust!==null&&(forecast.wind===null||forecast.gust>=forecast.wind))
-        lines.push(`Racha máxima     : ${fmt0(forecast.gust,' km/h')}`);
-      if(forecast.hum!==null)   lines.push(`Humedad rel.     : ${fmt1(forecast.hum,'%')}`);
-      if(forecast.cloud!==null) lines.push(`Nubosidad        : ${fmt0(forecast.cloud,'%')}`);
+        lines.push(`Racha: ${fmt0(forecast.gust,' km/h')}`);
+      if(forecast.hum!==null)   lines.push(`HR: ${fmt1(forecast.hum,'%')}`);
+      if(forecast.cloud!==null) lines.push(`Nubosidad: ${fmt0(forecast.cloud,'%')}`);
       if(forecast.vis!==null&&forecast.vis>0)
-        lines.push(`Visibilidad      : ${forecast.vis>=1000?fmt1(forecast.vis/1000,' km'):fmt0(forecast.vis,' m')}`);
+        lines.push(`Visibilidad: ${forecast.vis>=1000?fmt1(forecast.vis/1000,' km'):fmt0(forecast.vis,' m')}`);
 
       // Observado oficial
       if(observed.temp!==null||observed.wind!==null){
@@ -16030,7 +16019,7 @@ async function robustGenerate(ev){
 
       // Conclusión hora puntual
       lines.push('');
-      lines.push('── CONCLUSIÓN ──────────────────────────────────────');
+      lines.push('*Conclusión*');
       {
         let concl=`Se prevé ${String(fxWx||'condiciones variables').toLowerCase()}`;
         if(tmin!==null||tmax!==null) concl+=`, con temperaturas entre ${fmt0(tmin,'°C')} y ${fmt0(tmax,'°C')}`;
@@ -16040,16 +16029,16 @@ async function robustGenerate(ev){
         if(forecast.precip!==null&&num(forecast.precip)>0)
           concl+=`. Precipitación estimada: ${fmt1(forecast.precip,' mm/h')}`;
         lines.push(concl+'.');
-        lines.push(`Riesgo principal : ${riskLbl}`);
-        lines.push(`Tendencia        : ${tendLbl}`);
+        lines.push(`Riesgo: ${riskLbl}`);
+        lines.push(`Tendencia: ${tendLbl}`);
         lines.push(`Ventana favorable: ${ventanaLbl}`);
         lines.push('');
         lines.push('');
         // Alertas
         const alertLinesA = alertasBlock();
-        lines.push('── ALERTAS DMC VIGENTES ────────────────────────────────');
+        lines.push('*Alertas vigentes*');
         alertLinesA.forEach(l => lines.push(l));
-        lines.push('Se mantiene el monitoreo y seguimiento continuo. Fuente: DMC/AccuWeather.');
+        lines.push('Fuente: DMC / AccuWeather');
       }
     }
 
@@ -16244,8 +16233,7 @@ async function robustGenerate(ev){
 })();
 </script>
 
-<!-- ═══════════════════════════════════════════════════════════════
-     ANCLAJE DEFINITIVO DEL BOLETÍN RÁPIDO ESTRUCTURADO
+<!-- ═════════════     ANCLAJE DEFINITIVO DEL BOLETÍN RÁPIDO ESTRUCTURADO
      Garantiza que la versión mejorada se imponga sobre todos los
      listeners y timers previos, sin tocar nada fuera del boletín.
 ═════════════════════════════════════════════════════════════════ -->
@@ -16846,11 +16834,9 @@ window.closeBulletinMenu = function(){
 </script>
 <script>
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  MÓDULO COMPARACIÓN PUNTO A vs B
+// ════════════════════════════//  MÓDULO COMPARACIÓN PUNTO A vs B
 //  Solo visible para rol admin. Click derecho en mapa = fijar punto B.
-// ══════════════════════════════════════════════════════════════════════════════
-(function(){
+// ════════════════════════════(function(){
 
   // ── Estado ──────────────────────────────────────────────────────────────────
   window.__cmpState = {
@@ -17265,8 +17251,7 @@ window.closeBulletinMenu = function(){
 
 
 <script>
-/* ══════════════════════════════════════════════════════════════
-   PUNTO B – Comparación EXCLUSIVA DMC + AccuWeather v3
+/* ════════════   PUNTO B – Comparación EXCLUSIVA DMC + AccuWeather v3
    Rellena TODOS los campos disponibles en ambas fuentes
    ══════════════════════════════════════════════════════════════ */
 (function(){
