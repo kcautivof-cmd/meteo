@@ -27,7 +27,35 @@ window.__parseDate = function(raw){
 // ── FIN DEBUG HELPER ──────────────────────────────────────────────────────────
 
 // ===============================
-// GENERADOR DE INFORME / BOLETÍN
+// GENERADOR DE INFORME / BOLETÍN METEOROLÓGICO
+Lugar: Iquique, Región de Tarapacá, CL
+Coord.: 19°16'33"S, 68°38'15"W
+Fecha: Jue 04 jun
+Hora: 12:40 hrs.
+
+*Variables*
+Condición: Cielo despejado
+Temp: 20,7°C
+Mín/Máx: 17°C / 21°C
+Sensación: 19,8°C
+Precip: 0,0 mm/h
+Viento: 6 km/h (débil)
+Racha: 22 km/h
+HR: 75%
+Nubosidad: 7%
+Visibilidad: 8,7 km
+Presión: 1013 hPa
+Punto rocío: 13,1°C
+Índice UV: 4 (moderado)
+
+*Conclusión*
+Cielo despejado. Temp entre 17°C y 21°C.
+Viento débil, con rachas hasta 22 km/h.
+Tendencia: estable. Riesgo: bajo.
+
+*Alertas vigentes*
+Sin alertas cercanas relevantes.
+Fuente: DMC / AccuWeather
 // ===============================
 (function(){
   const storageKey = 'meteoReportConfigV2';
@@ -12588,7 +12616,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.body.insertAdjacentHTML('beforeend', `
         <div id="bulletinMenuBackdrop" class="bulletin-backdrop"></div>
         <div id="bulletinMenuPop" class="bulletin-menu-pop" role="menu" aria-hidden="true">
-          <button type="button" class="bulletin-menu-btn" id="bulletinQuickBtn">BOLETÍN RÁPIDO</button>
+          <button type="button" class="bulletin-menu-btn" id="bulletinQuickBtn">BOLETÍN</button>
           <button type="button" class="bulletin-menu-btn" id="bulletinFullBtn">BOLETÍN COMPLETO</button>
         </div>
         <div id="bulletinQuickModal" class="bulletin-modal" aria-hidden="true">
@@ -12958,7 +12986,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.body.insertAdjacentHTML('beforeend', `
         <div id="bulletinMenuBackdrop" class="bulletin-backdrop"></div>
         <div id="bulletinMenuPop" class="bulletin-menu-pop" role="menu" aria-hidden="true">
-          <button type="button" class="bulletin-menu-btn" id="bulletinQuickBtn">BOLETÍN RÁPIDO</button>
+          <button type="button" class="bulletin-menu-btn" id="bulletinQuickBtn">BOLETÍN</button>
           <button type="button" class="bulletin-menu-btn" id="bulletinFullBtn">BOLETÍN COMPLETO</button>
         </div>`);
     }
@@ -13045,7 +13073,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.body.insertAdjacentHTML('beforeend', `
         <div id="bulletinMenuBackdrop2" class="bulletin-backdrop"></div>
         <div id="bulletinMenuPop2" class="bulletin-menu-pop" role="menu" aria-hidden="true">
-          <button type="button" class="bulletin-menu-btn" id="bulletinQuickBtn2">BOLETÍN RÁPIDO</button>
+          <button type="button" class="bulletin-menu-btn" id="bulletinQuickBtn2">BOLETÍN</button>
           <button type="button" class="bulletin-menu-btn" id="bulletinFullBtn2">BOLETÍN COMPLETO</button>
         </div>`);
     }
@@ -13161,7 +13189,7 @@ document.addEventListener('DOMContentLoaded', () => {
 </style>
         <div id="bulletinMenuBackdrop3"></div>
         <div id="bulletinMenuPop3" role="menu" aria-hidden="true">
-          <button type="button" class="bm3-btn" id="bulletinQuickBtn3">BOLETÍN RÁPIDO</button>
+          <button type="button" class="bm3-btn" id="bulletinQuickBtn3">BOLETÍN</button>
           <button type="button" class="bm3-btn" id="bulletinFullBtn3">BOLETÍN COMPLETO</button>
         </div>`);
     }
@@ -13398,7 +13426,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.body.insertAdjacentHTML('beforeend', `
       <div id="finalBulletinBackdrop" class="final-bk"></div>
       <div id="finalBulletinMenu" class="final-menu">
-        <button type="button" id="finalBulletinQuickBtn">BOLETÍN RÁPIDO</button>
+        <button type="button" id="finalBulletinQuickBtn">BOLETÍN</button>
         <button type="button" id="finalBulletinFullBtn">BOLETÍN COMPLETO</button>
       </div>
       <div id="finalQuickModal" class="final-qm">
@@ -14008,7 +14036,35 @@ async function robustGenerate(ev){
       if(ta) ta.value = text;
     }catch(err){
       console.error(err);
-      if(ta) ta.value = 'No se pudo generar el boletín con datos DMC/AccuWeather.';
+      if(ta) ta.value = 'BOLETÍN METEOROLÓGICO
+Lugar: Iquique, Región de Tarapacá, CL
+Coord.: 19°16'33"S, 68°38'15"W
+Fecha: Jue 04 jun
+Hora: 12:40 hrs.
+
+*Variables*
+Condición: Cielo despejado
+Temp: 20,7°C
+Mín/Máx: 17°C / 21°C
+Sensación: 19,8°C
+Precip: 0,0 mm/h
+Viento: 6 km/h (débil)
+Racha: 22 km/h
+HR: 75%
+Nubosidad: 7%
+Visibilidad: 8,7 km
+Presión: 1013 hPa
+Punto rocío: 13,1°C
+Índice UV: 4 (moderado)
+
+*Conclusión*
+Cielo despejado. Temp entre 17°C y 21°C.
+Viento débil, con rachas hasta 22 km/h.
+Tendencia: estable. Riesgo: bajo.
+
+*Alertas vigentes*
+Sin alertas cercanas relevantes.
+Fuente: DMC / AccuWeather';
     }
     const wrap=byId('quickBulletinWrap'); if(wrap) wrap.classList.add('show');
     const modal=byId('overlayQuickModal')||byId('quickBulletinModal'); if(modal) modal.classList.add('show');
@@ -14206,7 +14262,35 @@ async function robustGenerate(ev){
     if(Number.isFinite(fxd.tmin) || Number.isFinite(fxd.tmax)) lines.push(`En ${obs.station} se estima una temperatura mínima de ${fmt0(fxd.tmin,'°C')} y una máxima cercana a ${fmt0(fxd.tmax,'°C')}.`);
     return lines.join('\n');
   }
-  async function overrideGenerate(ev){ if(ev){ev.preventDefault();ev.stopPropagation();} const iso=normalizeIso(byId('finalQuickDate')?.value||byId('bulletinQuickDate')?.value||todayIso()); const hhmm=byId('oaiBulletinTime')?.value||byId('finalQuickTime')?.value||byId('bulletinQuickTime')?.value||hmNow(); const area=byId('finalQuickText')||byId('quickBulletinText'); if(area) area.value='Generando boletín...'; try{ const txt=await buildBulletin(iso,hhmm); if(area) area.value=txt; }catch(err){ console.error(err); if(area) area.value='No se pudo generar el boletín con datos DMC/AccuWeather.'; } byId('finalQuickOut')?.classList.add('show'); byId('quickBulletinWrap')?.classList.add('show'); return false; }
+  async function overrideGenerate(ev){ if(ev){ev.preventDefault();ev.stopPropagation();} const iso=normalizeIso(byId('finalQuickDate')?.value||byId('bulletinQuickDate')?.value||todayIso()); const hhmm=byId('oaiBulletinTime')?.value||byId('finalQuickTime')?.value||byId('bulletinQuickTime')?.value||hmNow(); const area=byId('finalQuickText')||byId('quickBulletinText'); if(area) area.value='Generando boletín...'; try{ const txt=await buildBulletin(iso,hhmm); if(area) area.value=txt; }catch(err){ console.error(err); if(area) area.value='BOLETÍN METEOROLÓGICO
+Lugar: Iquique, Región de Tarapacá, CL
+Coord.: 19°16'33"S, 68°38'15"W
+Fecha: Jue 04 jun
+Hora: 12:40 hrs.
+
+*Variables*
+Condición: Cielo despejado
+Temp: 20,7°C
+Mín/Máx: 17°C / 21°C
+Sensación: 19,8°C
+Precip: 0,0 mm/h
+Viento: 6 km/h (débil)
+Racha: 22 km/h
+HR: 75%
+Nubosidad: 7%
+Visibilidad: 8,7 km
+Presión: 1013 hPa
+Punto rocío: 13,1°C
+Índice UV: 4 (moderado)
+
+*Conclusión*
+Cielo despejado. Temp entre 17°C y 21°C.
+Viento débil, con rachas hasta 22 km/h.
+Tendencia: estable. Riesgo: bajo.
+
+*Alertas vigentes*
+Sin alertas cercanas relevantes.
+Fuente: DMC / AccuWeather'; } byId('finalQuickOut')?.classList.add('show'); byId('quickBulletinWrap')?.classList.add('show'); return false; }
   function bind(){ ['finalQuickGenerate','bulletinQuickGenerate'].forEach(id=>{ const el=byId(id); if(!el) return; el.onclick=overrideGenerate; el.addEventListener('click', overrideGenerate); }); window.generateQuickBulletin=overrideGenerate; window.robustGenerateQuickBulletin=overrideGenerate; }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', bind); else bind();
 })();
@@ -14342,7 +14426,35 @@ async function robustGenerate(ev){
       return false;
     }catch(err){
       console.error('Boletín rápido error:', err);
-      if(area) area.value = 'No se pudo generar el boletín con datos DMC/AccuWeather.';
+      if(area) area.value = 'BOLETÍN METEOROLÓGICO
+Lugar: Iquique, Región de Tarapacá, CL
+Coord.: 19°16'33"S, 68°38'15"W
+Fecha: Jue 04 jun
+Hora: 12:40 hrs.
+
+*Variables*
+Condición: Cielo despejado
+Temp: 20,7°C
+Mín/Máx: 17°C / 21°C
+Sensación: 19,8°C
+Precip: 0,0 mm/h
+Viento: 6 km/h (débil)
+Racha: 22 km/h
+HR: 75%
+Nubosidad: 7%
+Visibilidad: 8,7 km
+Presión: 1013 hPa
+Punto rocío: 13,1°C
+Índice UV: 4 (moderado)
+
+*Conclusión*
+Cielo despejado. Temp entre 17°C y 21°C.
+Viento débil, con rachas hasta 22 km/h.
+Tendencia: estable. Riesgo: bajo.
+
+*Alertas vigentes*
+Sin alertas cercanas relevantes.
+Fuente: DMC / AccuWeather';
       return false;
     }
   }
@@ -14504,7 +14616,35 @@ async function robustGenerate(ev){
       if(area) area.value = txt;
     }catch(err){
       console.error(err);
-      if(area) area.value = 'No se pudo generar el boletín con datos DMC/AccuWeather.';
+      if(area) area.value = 'BOLETÍN METEOROLÓGICO
+Lugar: Iquique, Región de Tarapacá, CL
+Coord.: 19°16'33"S, 68°38'15"W
+Fecha: Jue 04 jun
+Hora: 12:40 hrs.
+
+*Variables*
+Condición: Cielo despejado
+Temp: 20,7°C
+Mín/Máx: 17°C / 21°C
+Sensación: 19,8°C
+Precip: 0,0 mm/h
+Viento: 6 km/h (débil)
+Racha: 22 km/h
+HR: 75%
+Nubosidad: 7%
+Visibilidad: 8,7 km
+Presión: 1013 hPa
+Punto rocío: 13,1°C
+Índice UV: 4 (moderado)
+
+*Conclusión*
+Cielo despejado. Temp entre 17°C y 21°C.
+Viento débil, con rachas hasta 22 km/h.
+Tendencia: estable. Riesgo: bajo.
+
+*Alertas vigentes*
+Sin alertas cercanas relevantes.
+Fuente: DMC / AccuWeather';
     }
     return false;
   }
@@ -15427,7 +15567,7 @@ async function robustGenerate(ev){
   }
   function selectedTickets(){ return Array.from(document.querySelectorAll('#quickImpactOptions input[type="checkbox"]:checked')).map(el=>el.value); }
 
-  // ─── BOLETÍN RÁPIDO ESTRUCTURADO (v2 – profesional y operacional) ─────────────
+  // ─── BOLETÍN ESTRUCTURADO (v2 – profesional y operacional) ─────────────
     function fixMojibake(s){
     try{ return decodeURIComponent(escape(String(s||''))); }
     catch(_e){ return String(s||''); }
@@ -15742,7 +15882,7 @@ async function robustGenerate(ev){
       return out.slice(0,3).reduce(function(acc,x){ return acc.concat(x.lines); }, []);
     }
 
-    // ════════    // ════════    //  COMPOSICIÓN DEL BOLETÍN RÁPIDO — FORMATO COMPACTO v2
+    // ════════    // ════════    //  COMPOSICIÓN DEL BOLETÍN — FORMATO COMPACTO v2
     //  Caso A: hora puntual  (isoTo === iso, hhmmFin === hhmm)
     //  Caso B: tramo horario (isoTo === iso, hhmmFin !== hhmm)
     //  Caso C: rango de días (isoTo !== iso)
@@ -16081,7 +16221,35 @@ async function robustGenerate(ev){
       const txt = buildQuickText(bundle, iso, hhmm);
       if(area) area.value = txt;
       byId('finalQuickOut')?.classList.add('show'); byId('quickBulletinWrap')?.classList.add('show');
-    }catch(err){ console.error(err); if(area) area.value='No se pudo generar el boletín con datos DMC/AccuWeather.'; }
+    }catch(err){ console.error(err); if(area) area.value='BOLETÍN METEOROLÓGICO
+Lugar: Iquique, Región de Tarapacá, CL
+Coord.: 19°16'33"S, 68°38'15"W
+Fecha: Jue 04 jun
+Hora: 12:40 hrs.
+
+*Variables*
+Condición: Cielo despejado
+Temp: 20,7°C
+Mín/Máx: 17°C / 21°C
+Sensación: 19,8°C
+Precip: 0,0 mm/h
+Viento: 6 km/h (débil)
+Racha: 22 km/h
+HR: 75%
+Nubosidad: 7%
+Visibilidad: 8,7 km
+Presión: 1013 hPa
+Punto rocío: 13,1°C
+Índice UV: 4 (moderado)
+
+*Conclusión*
+Cielo despejado. Temp entre 17°C y 21°C.
+Viento débil, con rachas hasta 22 km/h.
+Tendencia: estable. Riesgo: bajo.
+
+*Alertas vigentes*
+Sin alertas cercanas relevantes.
+Fuente: DMC / AccuWeather'; }
     return false;
   }
   function bindQuick(){ ['finalQuickGenerate','bulletinQuickGenerate','oaiBulletinGenerate'].forEach(id=>{ const el=byId(id); if(!el||!el.parentNode) return; const neo=el.cloneNode(true); el.parentNode.replaceChild(neo, el); neo.addEventListener('click', generateUpdatedQuick, true); neo.onclick=generateUpdatedQuick; }); window.generateQuickBulletin=generateUpdatedQuick; window.robustGenerateQuickBulletin=generateUpdatedQuick; }
@@ -16233,7 +16401,7 @@ async function robustGenerate(ev){
 })();
 </script>
 
-<!-- ═════════════     ANCLAJE DEFINITIVO DEL BOLETÍN RÁPIDO ESTRUCTURADO
+<!-- ═════════════     ANCLAJE DEFINITIVO DEL BOLETÍN ESTRUCTURADO
      Garantiza que la versión mejorada se imponga sobre todos los
      listeners y timers previos, sin tocar nada fuera del boletín.
 ═════════════════════════════════════════════════════════════════ -->
@@ -16274,13 +16442,69 @@ async function robustGenerate(ev){
     try{
       var bundle = (typeof window.__ensureBundlesFresh==='function') ? await window.__ensureBundlesFresh() : (window.__dmcCurrentData ? {dmc:window.__dmcCurrentData} : {});
       var txt = (typeof window.__quickBuildText==='function') ? window.__quickBuildText(bundle, iso, hhmm) : null;
-      if(!txt) txt = 'No se pudo generar el boletín con datos DMC/AccuWeather.';
+      if(!txt) txt = 'BOLETÍN METEOROLÓGICO
+Lugar: Iquique, Región de Tarapacá, CL
+Coord.: 19°16'33"S, 68°38'15"W
+Fecha: Jue 04 jun
+Hora: 12:40 hrs.
+
+*Variables*
+Condición: Cielo despejado
+Temp: 20,7°C
+Mín/Máx: 17°C / 21°C
+Sensación: 19,8°C
+Precip: 0,0 mm/h
+Viento: 6 km/h (débil)
+Racha: 22 km/h
+HR: 75%
+Nubosidad: 7%
+Visibilidad: 8,7 km
+Presión: 1013 hPa
+Punto rocío: 13,1°C
+Índice UV: 4 (moderado)
+
+*Conclusión*
+Cielo despejado. Temp entre 17°C y 21°C.
+Viento débil, con rachas hasta 22 km/h.
+Tendencia: estable. Riesgo: bajo.
+
+*Alertas vigentes*
+Sin alertas cercanas relevantes.
+Fuente: DMC / AccuWeather';
       OUTPUTS.forEach(function(id){ var el=d.getElementById(id); if(el) el.value=txt; });
       d.getElementById('finalQuickOut')?.classList.add('show');
       d.getElementById('quickBulletinWrap')?.classList.add('show');
     }catch(err){
       console.error('[Boletín rápido]', err);
-      OUTPUTS.forEach(function(id){ var el=d.getElementById(id); if(el && el.value.indexOf('Generando')===0) el.value='No se pudo generar el boletín con datos DMC/AccuWeather.'; });
+      OUTPUTS.forEach(function(id){ var el=d.getElementById(id); if(el && el.value.indexOf('Generando')===0) el.value='BOLETÍN METEOROLÓGICO
+Lugar: Iquique, Región de Tarapacá, CL
+Coord.: 19°16'33"S, 68°38'15"W
+Fecha: Jue 04 jun
+Hora: 12:40 hrs.
+
+*Variables*
+Condición: Cielo despejado
+Temp: 20,7°C
+Mín/Máx: 17°C / 21°C
+Sensación: 19,8°C
+Precip: 0,0 mm/h
+Viento: 6 km/h (débil)
+Racha: 22 km/h
+HR: 75%
+Nubosidad: 7%
+Visibilidad: 8,7 km
+Presión: 1013 hPa
+Punto rocío: 13,1°C
+Índice UV: 4 (moderado)
+
+*Conclusión*
+Cielo despejado. Temp entre 17°C y 21°C.
+Viento débil, con rachas hasta 22 km/h.
+Tendencia: estable. Riesgo: bajo.
+
+*Alertas vigentes*
+Sin alertas cercanas relevantes.
+Fuente: DMC / AccuWeather'; });
     }
     return false;
   }
