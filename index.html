@@ -12243,7 +12243,7 @@ async function excelCopiarPronostico(btn) {
 
   const zona = excelDetectarZona();
   const base = zona.celda ? `▸ pegar en ${zona.celda} (${zona.key})` : '▸ rango exportado';
-  excelActualizarHint(`${base} · ${rango.from} a ${rango.to} · ${rango.total} día(s) · DMC/ACCU`);
+  excelActualizarHint(`${base} · ${requestedDays[0]||''} a ${requestedDays[requestedDays.length-1]||''} · ${requestedDays.length} día(s) · DMC/ACCU`);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -13125,7 +13125,7 @@ document.addEventListener('DOMContentLoaded', () => {
           #bulletinMenuPop3 .bm3-btn:last-child{margin-bottom:0;}
         
 /* ── ADMIN PANEL ───────────────────────────────────────── */
-#adminPanelBtn{position:absolute;top:8px;right:8px;display:none;background:var(--panel2);color:var(--text);border:1px solid var(--border);padding:4px 10px;font-family:Consolas,monospace;font-size:10px;font-weight:700;text-transform:uppercase;cursor:pointer;letter-spacing:1px;z-index:10;}
+#adminPanelBtn{position:absolute;top:8px;right:8px;display:block;background:var(--panel2);color:var(--text);border:1px solid var(--border);padding:4px 10px;font-family:Consolas,monospace;font-size:10px;font-weight:700;text-transform:uppercase;cursor:pointer;letter-spacing:1px;z-index:10;}
 #adminPanelBtn:hover{filter:brightness(0.96);}
 #adminPanelModal{position:fixed;inset:0;z-index:99998;background:rgba(0,0,0,0.55);display:none;align-items:center;justify-content:center;}
 #adminPanelModal.show{display:flex;}
@@ -14008,7 +14008,7 @@ async function robustGenerate(ev){
       if(ta) ta.value = text;
     }catch(err){
       console.error(err);
-      if(ta) ta.value = 'BOLETÍN METEOROLÓGICO
+      if(ta) ta.value = `BOLETÍN METEOROLÓGICO
 Lugar: Iquique, Región de Tarapacá, CL
 Coord.: 19°16'33"S, 68°38'15"W
 Fecha: Jue 04 jun
@@ -14036,7 +14036,7 @@ Tendencia: estable. Riesgo: bajo.
 
 *Alertas vigentes*
 Sin alertas cercanas relevantes.
-Fuente: DMC / AccuWeather';
+Fuente: DMC / AccuWeather`;
     }
     const wrap=byId('quickBulletinWrap'); if(wrap) wrap.classList.add('show');
     const modal=byId('overlayQuickModal')||byId('quickBulletinModal'); if(modal) modal.classList.add('show');
@@ -14234,7 +14234,7 @@ Fuente: DMC / AccuWeather';
     if(Number.isFinite(fxd.tmin) || Number.isFinite(fxd.tmax)) lines.push(`En ${obs.station} se estima una temperatura mínima de ${fmt0(fxd.tmin,'°C')} y una máxima cercana a ${fmt0(fxd.tmax,'°C')}.`);
     return lines.join('\n');
   }
-  async function overrideGenerate(ev){ if(ev){ev.preventDefault();ev.stopPropagation();} const iso=normalizeIso(byId('finalQuickDate')?.value||byId('bulletinQuickDate')?.value||todayIso()); const hhmm=byId('oaiBulletinTime')?.value||byId('finalQuickTime')?.value||byId('bulletinQuickTime')?.value||hmNow(); const area=byId('finalQuickText')||byId('quickBulletinText'); if(area) area.value='Generando boletín...'; try{ const txt=await buildBulletin(iso,hhmm); if(area) area.value=txt; }catch(err){ console.error(err); if(area) area.value='BOLETÍN METEOROLÓGICO
+  async function overrideGenerate(ev){ if(ev){ev.preventDefault();ev.stopPropagation();} const iso=normalizeIso(byId('finalQuickDate')?.value||byId('bulletinQuickDate')?.value||todayIso()); const hhmm=byId('oaiBulletinTime')?.value||byId('finalQuickTime')?.value||byId('bulletinQuickTime')?.value||hmNow(); const area=byId('finalQuickText')||byId('quickBulletinText'); if(area) area.value='Generando boletín...'; try{ const txt=await buildBulletin(iso,hhmm); if(area) area.value=txt; }catch(err){ console.error(err); if(area) area.value=`BOLETÍN METEOROLÓGICO
 Lugar: Iquique, Región de Tarapacá, CL
 Coord.: 19°16'33"S, 68°38'15"W
 Fecha: Jue 04 jun
@@ -14262,7 +14262,7 @@ Tendencia: estable. Riesgo: bajo.
 
 *Alertas vigentes*
 Sin alertas cercanas relevantes.
-Fuente: DMC / AccuWeather'; } byId('finalQuickOut')?.classList.add('show'); byId('quickBulletinWrap')?.classList.add('show'); return false; }
+Fuente: DMC / AccuWeather`; } byId('finalQuickOut')?.classList.add('show'); byId('quickBulletinWrap')?.classList.add('show'); return false; }
   function bind(){ ['finalQuickGenerate','bulletinQuickGenerate'].forEach(id=>{ const el=byId(id); if(!el) return; el.onclick=overrideGenerate; el.addEventListener('click', overrideGenerate); }); window.generateQuickBulletin=overrideGenerate; window.robustGenerateQuickBulletin=overrideGenerate; }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', bind); else bind();
 })();
@@ -14398,7 +14398,7 @@ Fuente: DMC / AccuWeather'; } byId('finalQuickOut')?.classList.add('show'); byId
       return false;
     }catch(err){
       console.error('Boletín rápido error:', err);
-      if(area) area.value = 'BOLETÍN METEOROLÓGICO
+      if(area) area.value = `BOLETÍN METEOROLÓGICO
 Lugar: Iquique, Región de Tarapacá, CL
 Coord.: 19°16'33"S, 68°38'15"W
 Fecha: Jue 04 jun
@@ -14426,7 +14426,7 @@ Tendencia: estable. Riesgo: bajo.
 
 *Alertas vigentes*
 Sin alertas cercanas relevantes.
-Fuente: DMC / AccuWeather';
+Fuente: DMC / AccuWeather`;
       return false;
     }
   }
@@ -14588,7 +14588,7 @@ Fuente: DMC / AccuWeather';
       if(area) area.value = txt;
     }catch(err){
       console.error(err);
-      if(area) area.value = 'BOLETÍN METEOROLÓGICO
+      if(area) area.value = `BOLETÍN METEOROLÓGICO
 Lugar: Iquique, Región de Tarapacá, CL
 Coord.: 19°16'33"S, 68°38'15"W
 Fecha: Jue 04 jun
@@ -14616,7 +14616,7 @@ Tendencia: estable. Riesgo: bajo.
 
 *Alertas vigentes*
 Sin alertas cercanas relevantes.
-Fuente: DMC / AccuWeather';
+Fuente: DMC / AccuWeather`;
     }
     return false;
   }
@@ -15999,7 +15999,6 @@ Fuente: DMC / AccuWeather';
       const ref     = place?(coords?`${place} (${coords})`:place):(coords||'Sin ubicación');
 
       lines.push('BOLETÍN METEOROLÓGICO');
-      lines.push('══════════════════════════════════════════════════');
       lines.push(`Lugar: ${ref}`);
       lines.push(`Fuente: Dirección Meteorológica de Chile (DMC) / AccuWeather`);
 
@@ -16021,12 +16020,10 @@ Fuente: DMC / AccuWeather';
     })();
 
     // ══════    //  CASO C — RANGO DE DÍAS
-    // ══════    if(isMultiDay){
+    if(isMultiDay){
       const days = dateRange(iso, isoTo, 10);
       lines.push('');
-      lines.push('── VARIABLES POR DÍA ─────────────────────────────────────────────');
-      lines.push('Día            T°mín  T°máx  Pp(mm)  Viento   Nub    Condición');
-      lines.push('─────────────────────────────────────────────────────────────────');
+      lines.push('VARIABLES POR DÍA');
 
       let ppAcum=0, maxRiskDay=null, maxRiskVal=0, maxRiskLbl='BAJO';
       const riskOrder={'BAJO':0,'MOD (viento)':1,'MOD (rachas)':1,'MOD (precipitación)':2,'ALTO (rachas fuertes)':3,'ALTO (viento fuerte)':3,'ALTO (precip. intensa)':3};
@@ -16034,28 +16031,29 @@ Fuente: DMC / AccuWeather';
 
       for(const d of days){
         const {tm,tM,wM,gM,pp,cld,cond,hasData}=getDayData(d);
-        if(!hasData){ lines.push(`${shortDay(d).padEnd(14)} Sin datos disponibles (fuera del alcance del pronóstico)`); continue; }
+        if(!hasData){ lines.push(''); lines.push(`${shortDay(d)}: sin datos (fuera del pronóstico)`); continue; }
         ppAcum+=(pp||0);
         const risk=riskShort(wM,gM,pp,cld);
         if((riskOrder[risk]||0)>(riskOrder[maxRiskLbl]||0)){ maxRiskLbl=risk; maxRiskDay=d; }
-        const col1=shortDay(d).padEnd(14);
-        const col2=(tm!==null?fmt0(tm,'°C'):'  —  ').padEnd(7);
-        const col3=(tM!==null?fmt0(tM,'°C'):'  —  ').padEnd(7);
-        const col4=(pp!==null?fmt1(pp,' mm'):'  0,0 mm').padEnd(8);
-        const col5=(wM!==null?fmt0(wM,' km/h'):'  —   ').padEnd(9);
-        const col6=(cld!==null?fmt0(cld,'%'):'  —  ').padEnd(7);
-        const col7=String(cond||'—').slice(0,22);
-        lines.push(`${col1}${col2}${col3}${col4}${col5}${col6}${col7}`);
+        const tMax=(tM!==null?fmt0(tM,'°C'):'—');
+        const tMin=(tm!==null?fmt0(tm,'°C'):'—');
+        const vv=(wM!==null?fmt0(wM,' km/h'):'—');
+        const rr=(gM!==null?fmt0(gM,' km/h'):'—');
+        const nn=(cld!==null?fmt0(cld,'%'):'—');
+        const pH=(pp!==null?fmt1(pp,' mm'):'0,0 mm');
+        lines.push('');
+        lines.push(`${shortDay(d)} — ${String(cond||'—')}`);
+        lines.push(`  T° máx ${tMax} / mín ${tMin} | Pp ${pH} | Nub ${nn}`);
+        lines.push(`  Viento ${vv} | Ráfagas ${rr}`);
         dayRows.push({d,tm,tM,wM,gM,pp,cld,cond,risk});
       }
 
       // Precipitación acumulada
-      lines.push('─────────────────────────────────────────────────────────────────');
       lines.push(`Precipitación acumulada estimada del período: ${fmt1(ppAcum,' mm')}`);
 
       // Conclusión multi-día
       lines.push('');
-      lines.push('*Conclusión*──────────────');
+      lines.push('*Conclusión*');
       const condPred = dayRows.length ? (dayRows.map(r=>String(r.cond||'').toLowerCase()).sort((a,b)=>
         dayRows.filter(x=>x.cond===b).length - dayRows.filter(x=>x.cond===a).length)[0]) : 'variable';
       let concl=`Período de ${days.length} días con predominio de ${condPred}`;
@@ -16068,19 +16066,19 @@ Fuente: DMC / AccuWeather';
       const alertLines = alertasBlock(iso, isoTo);
       const hasAlerts = alertLines.length && !alertLines[0].includes('Sin alertas');
       lines.push('');
-      lines.push('*Alertas vigentes*──────────');
+      lines.push('*Alertas vigentes*');
       alertLines.forEach(l => lines.push(l));
       if(hasAlerts) lines.push('  ⚠ Verificar vigencia de cada alerta según su fecha de término.');
       lines.push('Fuente: DMC / AccuWeather');
 
-    // ══════    //  CASO B — TRAMO HORARIO (mismo día)
-    // ══════    } else if(isTimeRange){
+    // ══════    //  CASO B     TRAMO HORARIO (mismo día)
+    } else if(isTimeRange){
       const h0=Number(String(hhmm).slice(0,2));
       const h1=Number(String(hhmmFin).slice(0,2));
       const tramoData = h1>h0 ? getTramoAvg(h0,h1) : null;
 
       lines.push('');
-      lines.push('── VARIABLES DEL TRAMO ──────────────────────────────');
+      lines.push('VARIABLES DEL TRAMO');
       if(tramoData){
         const T  = tramoData.temperature_2m!==null ? fmt1(tramoData.temperature_2m,'°C') : '—';
         const V  = tramoData.wind_speed_10m!==null ? fmt0(tramoData.wind_speed_10m,' km/h') : '—';
@@ -16140,7 +16138,7 @@ Fuente: DMC / AccuWeather';
       }
 
     // ══════    //  CASO A — HORA PUNTUAL
-    // ══════    } else {
+    } else {
       lines.push('');
       lines.push('*Variables*');
       lines.push(`Condición: ${upperFirst(fxWx)}`);
@@ -16243,7 +16241,7 @@ Fuente: DMC / AccuWeather';
       const txt = buildQuickText(bundle, iso, hhmm);
       if(area) area.value = txt;
       byId('finalQuickOut')?.classList.add('show'); byId('quickBulletinWrap')?.classList.add('show');
-    }catch(err){ console.error(err); if(area) area.value='BOLETÍN METEOROLÓGICO
+    }catch(err){ console.error(err); if(area) area.value=`BOLETÍN METEOROLÓGICO
 Lugar: Iquique, Región de Tarapacá, CL
 Coord.: 19°16'33"S, 68°38'15"W
 Fecha: Jue 04 jun
@@ -16271,7 +16269,7 @@ Tendencia: estable. Riesgo: bajo.
 
 *Alertas vigentes*
 Sin alertas cercanas relevantes.
-Fuente: DMC / AccuWeather'; }
+Fuente: DMC / AccuWeather`; }
     return false;
   }
   function bindQuick(){ ['finalQuickGenerate','bulletinQuickGenerate','oaiBulletinGenerate'].forEach(id=>{ const el=byId(id); if(!el||!el.parentNode) return; const neo=el.cloneNode(true); el.parentNode.replaceChild(neo, el); neo.addEventListener('click', generateUpdatedQuick, true); neo.onclick=generateUpdatedQuick; }); window.generateQuickBulletin=generateUpdatedQuick; window.robustGenerateQuickBulletin=generateUpdatedQuick; }
@@ -16322,7 +16320,7 @@ Fuente: DMC / AccuWeather'; }
       lines.push('(Temp | Viento | Nub | Precip)');
 
       // Extraer filas de la tabla
-      const tableBlock = extractBlock('── VARIABLES POR DÍA', '──────\nPrecipitación acumulada');
+      lines.push('VARIABLES POR DÍA');
       if(tableBlock){
         tableBlock.split('\n').forEach(row => {
           // Omitir líneas de guiones o encabezado
@@ -16464,7 +16462,7 @@ Fuente: DMC / AccuWeather'; }
     try{
       var bundle = (typeof window.__ensureBundlesFresh==='function') ? await window.__ensureBundlesFresh() : (window.__dmcCurrentData ? {dmc:window.__dmcCurrentData} : {});
       var txt = (typeof window.__quickBuildText==='function') ? window.__quickBuildText(bundle, iso, hhmm) : null;
-      if(!txt) txt = 'BOLETÍN METEOROLÓGICO
+      if(!txt) txt = `BOLETÍN METEOROLÓGICO
 Lugar: Iquique, Región de Tarapacá, CL
 Coord.: 19°16'33"S, 68°38'15"W
 Fecha: Jue 04 jun
@@ -16492,13 +16490,13 @@ Tendencia: estable. Riesgo: bajo.
 
 *Alertas vigentes*
 Sin alertas cercanas relevantes.
-Fuente: DMC / AccuWeather';
+Fuente: DMC / AccuWeather`;
       OUTPUTS.forEach(function(id){ var el=d.getElementById(id); if(el) el.value=txt; });
       d.getElementById('finalQuickOut')?.classList.add('show');
       d.getElementById('quickBulletinWrap')?.classList.add('show');
     }catch(err){
       console.error('[Boletín rápido]', err);
-      OUTPUTS.forEach(function(id){ var el=d.getElementById(id); if(el && el.value.indexOf('Generando')===0) el.value='BOLETÍN METEOROLÓGICO
+      OUTPUTS.forEach(function(id){ var el=d.getElementById(id); if(el && el.value.indexOf('Generando')===0) el.value=`BOLETÍN METEOROLÓGICO
 Lugar: Iquique, Región de Tarapacá, CL
 Coord.: 19°16'33"S, 68°38'15"W
 Fecha: Jue 04 jun
@@ -16526,7 +16524,7 @@ Tendencia: estable. Riesgo: bajo.
 
 *Alertas vigentes*
 Sin alertas cercanas relevantes.
-Fuente: DMC / AccuWeather'; });
+Fuente: DMC / AccuWeather`; });
     }
     return false;
   }
@@ -16572,7 +16570,7 @@ function applyRoleUI(){
 
   // Botón panel admin
   const btn = document.getElementById('adminPanelBtn');
-  if(btn) btn.style.display = isAdmin ? 'block' : 'none';
+  if(btn) btn.style.display = 'block';
 
   // Anexo 1 solo visible para admin
   const anexo1 = document.getElementById('anexo1Block');
@@ -17082,7 +17080,7 @@ window.closeBulletinMenu = function(){
 
 // ════════════════════════════//  MÓDULO COMPARACIÓN PUNTO A vs B
 //  Solo visible para rol admin. Click derecho en mapa = fijar punto B.
-// ════════════════════════════(function(){
+(function(){
 
   // ── Estado ──────────────────────────────────────────────────────────────────
   window.__cmpState = {
@@ -17499,7 +17497,7 @@ window.closeBulletinMenu = function(){
 <script>
 /* ════════════   PUNTO B – Comparación EXCLUSIVA DMC + AccuWeather v3
    Rellena TODOS los campos disponibles en ambas fuentes
-   ══════════════════════════════════════════════════════════════ */
+   ════════════════════════   ═════════════════════════════════════ */
 (function(){
 
   /* ── Helpers ──────────────────────────────────────────────────── */
@@ -17658,7 +17656,7 @@ window.closeBulletinMenu = function(){
     };
   }
 
-  /* ── Render comparativo ───────────────────────────────────────── */
+  /* ── Render comparativo ──────────────  ────────────────────────── */
   function _render(){
     const s    = window.__cmpState;
     const body = document.getElementById('cmpBody');
@@ -17831,7 +17829,7 @@ window.closeBulletinMenu = function(){
     });
   }
 
-  /* ── Botón COMPARAR PUNTO B ──────────────────────────────────── */
+  /*    ─ Botón COMPARAR PUNTO B ──────────────────────────────────── */
   function _patchBtn(){
     const btn=document.getElementById('uavCmpToggle');
     if(!btn||btn._v3patched) return;
@@ -19012,7 +19010,7 @@ if(typeof closeBulletinMenu === 'undefined'){
     }
   }
 
-  window.__buildWhatsAppText=function(t){return String(t||'');};
+  window.__buildWhatsAppText=function(text){var src=String(text||'');if(!src.trim())return src;var raw=src.split(/\r?\n/);var out=[];var skip=false;function isDecor(t){if(!t)return false;var d=(t.match(/[\u2500-\u257F\u2014\u2013\-=_~]/g)||[]).length;return d>=4&&d>=t.replace(/\s/g,'').length*0.6;}function push(line){var tt=line.trim();if(/^\*[^*]+\*$/.test(tt)&&out.length&&out[out.length-1].trim()!=='')out.push('');out.push(line);}for(var i=0;i<raw.length;i++){var line=raw[i].replace(/\s+$/,'');line=line.replace(/\s*[\u2500-\u257F\u2014\u2013=_]{3,}\s*$/,'');var t=line.trim();if(isDecor(line))continue;if(/^\*Conclusi[o\u00f3]n\*/i.test(t)){skip=true;continue;}if(skip){if(/^Riesgo:/i.test(t)){skip=false;out.push('');out.push(t);continue;}if(/^\*[^*]+\*$/.test(t)){skip=false;}else{continue;}}if(/^Emitido:/i.test(t))continue;if(/^(Sol|Salida sol):/i.test(t))continue;if(/^Fuente:/i.test(t))continue;if(/^\(.*\)\s*(-\s*\d+\s*m)?$/.test(t))continue;if(/^\*Lectura actual\*/i.test(t)){var j=i+1;while(j<raw.length){var u=raw[j].trim();if(u===''||/^\*[^*]+\*$/.test(u))break;j++;}i=j-1;continue;}var runs=(line.match(/ {2,}/g)||[]).length;if(runs>=2&&t.charAt(0)!=='*')line=t.replace(/ {2,}/g,' | ');push(line);}return out.join('\n').replace(/\n{3,}/g,'\n\n').trim();};
   window.generateQuickBulletin=run;
   window.robustGenerateQuickBulletin=run;
 
