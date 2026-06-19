@@ -2043,7 +2043,7 @@ window.__parseDate = function(raw){
       ${cfg.notes ? tblRow('Contexto adicional', h(cfg.notes)) : ''}
     `));
 
-    // ── VI. RECOMENDACIONES ──────────────────────────────────────────────
+    // ── VI. RECOMENDACIONES ─────────────────────────  ────────────────────
     let recsHtml = '';
     if(cfg.includeRecs){
       const rawRecs = buildRecommendations(metrics, cfg);
@@ -5170,7 +5170,7 @@ function __alertsRenderDMC(){
             const parts = z.split(',');
             const expanded = [];
             parts.forEach(p=>{
-                const sub = p.split(/\)(?=[A-ZÁÉÍÓÚÑÜ])/);
+                const sub = p.split(/\)(?=[A-ZÁÉÍÓÚ    Ü])/);
                 sub.forEach((s,idx)=>{
                     const seg = (idx < sub.length-1) ? s+')' : s;
                     expanded.push(seg.trim().toUpperCase());
@@ -12020,7 +12020,7 @@ function _astro(iso, lat, lon) {
 }
 
 /* Copiar TSV */
-function _copiarTSV(btn, tsv) {
+function _copiarTSV(btn, tsv, html) {
   const orig = btn.innerHTML;
 
   const ok = () => {
@@ -12034,7 +12034,7 @@ function _copiarTSV(btn, tsv) {
     }, 2400);
   };
 
-  navigator.clipboard.writeText(tsv).then(ok).catch(() => {
+  const fallbackPlain = () => {
     try {
       const ta = document.createElement('textarea');
       ta.value = tsv;
@@ -12048,7 +12048,25 @@ function _copiarTSV(btn, tsv) {
       window.__excelTSV = tsv;
       __notify('No se pudo copiar automáticamente. Datos en consola: window.__excelTSV');
     }
-  });
+  };
+
+  // Preferir clipboard con HTML (cada día = celda colspan=2) para que Excel
+  // respete las celdas combinadas del cuadro y pegue los 7 días de una sin
+  // desfasar la primera columna.
+  try {
+    if (html && navigator.clipboard && typeof window.ClipboardItem === 'function') {
+      const item = new window.ClipboardItem({
+        'text/plain': new Blob([tsv], { type: 'text/plain' }),
+        'text/html': new Blob([html], { type: 'text/html' })
+      });
+      navigator.clipboard.write([item]).then(ok).catch(() => {
+        navigator.clipboard.writeText(tsv).then(ok).catch(fallbackPlain);
+      });
+      return;
+    }
+  } catch(e) {}
+
+  navigator.clipboard.writeText(tsv).then(ok).catch(fallbackPlain);
 }
 
 /* Selector de rango */
@@ -12141,7 +12159,7 @@ async function excelCopiarPronostico(btn) {
   const requestedDays = _rangeDateList(rango.from, rango.to, 31);
   const indexByIso = Object.fromEntries((times || []).map((t, idx) => [String(t).slice(0,10), idx]));
   const previewByIso = Object.fromEntries(officialPreview.map((it) => [String(it?.date || '').slice(0,10), it || {}]));
-  const R = Array.from({ length: 17 }, () => []);
+  const R = Array.from({ length: 11 }, () => []);
 
   function pickRaw(officialArr, baseArr, i) {
     const vo = Array.isArray(officialArr) ? officialArr[i] : undefined;
@@ -12227,19 +12245,39 @@ async function excelCopiarPronostico(btn) {
     R[5].push(_rnd(uvMax));
     R[6].push(_dec1(precip));
     R[7].push((humOfficial !== undefined && humOfficial !== null && humOfficial !== '') ? _rnd(humOfficial) : st.humMedia);
-    R[8].push(`${windMin} - ${windMax}`);
-    R[9].push(`${gustMin} - ${gustMax}`);
-    R[10].push(st.cloudBaseMedia);
-    R[11].push(st.visMinM);
-    R[12].push(st.presionMedia);
-    R[13].push(moon.illum);
-    R[14].push(moon.phase);
-    R[15].push(astro.iccm);
-    R[16].push(astro.tccv);
+    R[8].push(windMax);
+    R[9].push(gustMax);
+    R[10].push(st.presionMedia);
   }
 
-  const tsv = R.map(row => row.join('\t')).join('\n');
-  _copiarTSV(btn, tsv);
+  const _htmlEsc = (s) => String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  // Devuelve el valor numérico (o null si es texto). Acepta coma o punto decimal.
+  const _numVal = (v) => {
+    if (v === null || v === undefined) return null;
+    const s = String(v).trim().replace(',', '.');
+    if (s === '' || !/^-?\d+(\.\d+)?$/.test(s)) return null;
+    const n = parseFloat(s);
+    return isFinite(n) ? n : null;
+  };
+  // TSV (respaldo): números con punto.
+  const tsv = R.map(row => row.map(v => {
+    const n = _numVal(v);
+    return n === null ? String(v == null ? '' : v) : String(n);
+  }).join('\t')).join('\n');
+  // HTML: cada día = celda colspan=2 (calza con las celdas combinadas) y los
+  // numéricos llevan x:num para que Excel los lea como NÚMERO aunque el
+  // separador decimal local sea coma.
+  const _cell = (v) => {
+    const n = _numVal(v);
+    if (n === null) return `<td colspan="2">${_htmlEsc(v)}</td>`;
+    return `<td colspan="2" x:num="${n}">${n}</td>`;
+  };
+  const tsvHtml =
+    '<table>' +
+    R.map(row => '<tr>' + row.map(_cell).join('') + '</tr>').join('') +
+    '</table>';
+  _copiarTSV(btn, tsv, tsvHtml);
 
   const zona = excelDetectarZona();
   const base = zona.celda ? `▸ pegar en ${zona.celda} (${zona.key})` : '▸ rango exportado';
@@ -12396,7 +12434,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function buildSituationSentence(fxWx, cloud, tmin, tmax, wind, gust){
     let base = normWx(fxWx);
     if(!base) base = skyTextFromCloud(cloud) || 'condición variable';
-    let s = `Se prevé ${base}`;
+    let s = `Se prev   ${base}`;
     if(Number.isFinite(tmin) || Number.isFinite(tmax)) s += `, con temperaturas entre ${fmt0(tmin,'°C')} y ${fmt0(tmax,'°C')}`;
     if(Number.isFinite(wind)) s += `, vientos del orden de ${fmt0(wind,' km/h')}`;
     if(Number.isFinite(gust)) s += ` y rachas de hasta ${fmt0(gust,' km/h')}`;
@@ -17382,7 +17420,7 @@ window.closeBulletinMenu = function(){
     }
   }
 
-  // ── Handler click derecho en mapa (evento Leaflet) ──────────────────────────
+  // ── Handler click derecho en mapa (evento Leaflet) ────────────────   ─────────
   function cmpContextHandler(ev){
     // Siempre bloquar el menú nativo del navegador sobre el mapa
     try {
