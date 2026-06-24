@@ -2043,7 +2043,7 @@ window.__parseDate = function(raw){
       ${cfg.notes ? tblRow('Contexto adicional', h(cfg.notes)) : ''}
     `));
 
-    // ── VI. RECOMENDACIONES ─────────────────────────   ────────────────────
+    // ── VI. RECOMENDACIONES ─────────────────────────     ────────────────────
     let recsHtml = '';
     if(cfg.includeRecs){
       const rawRecs = buildRecommendations(metrics, cfg);
@@ -15119,7 +15119,7 @@ Fuente: DMC / AccuWeather`;
     lines.push(`${conditionTxt}. Temp entre ${tmin!=null?fmt(tmin,0)+'°C':'N/D'} y ${tmax!=null?fmt(tmax,0)+'°C':'N/D'}.`);
     lines.push(`Viento ${vientoBand || 'variable'}, con rachas hasta ${gustNow!=null?Math.round(gustNow)+' km/h':'N/D'}.`);
     lines.push(`${hasRange ? 'Durante el rango evaluado se esperan variaciones por horas y sectores' : 'Evolución estimada'}: ${trendText}.`);
-    lines.push(`Tendencia: ${tendencia}. Riesgo: ${risk}.`);
+    lines.push(`Tendencia: ${tendencia}.`);
     lines.push('');
     lines.push('*Alertas vigentes*');
     lines.push(alertText);
@@ -15404,7 +15404,7 @@ Fuente: DMC / AccuWeather`;
     const val=(...keys)=>{ if(idx<0) return null; for(const k of keys){ const arr=H[k]; const n=Array.isArray(arr)?num(arr[idx]):null; if(n!==null) return n; } return null; };
     return { temp:val('temperature_2m','temp_c'), hum:val('relative_humidity_2m','humidity'), wind:val('wind_speed_10m','wind_speed'), gust:val('wind_gusts_10m','wind_gust'), dir:val('wind_direction_10m','wind_direction'), precip:val('precipitation','precip_mm'), cloud:val('cloud_cover','cloudiness'), vis:val('visibility','visibility_m'), code:val('weather_code','code') };
   }
-  function dmcDaily(pack, iso){ const D=pack?.daily||pack?.forecast_preview||pack?.preview||pack?.forecast?.daily||{}; const time=Array.isArray(D.time)?D.time:(Array.isArray(D.date)?D.date:[]); const idx=time.findIndex(t=>String(t).slice(0,10)===iso); const val=(...keys)=>{ if(idx<0) return null; for(const k of keys){ const arr=D[k]; const n=Array.isArray(arr)?num(arr[idx]):null; if(n!==null) return n; } return null; }; return { tmin:val('temperature_2m_min','tmin','temp_min'), tmax:val('temperature_2m_max','tmax','temp_max'), windMax:val('wind_speed_10m_max','wind_max'), gustMax:val('wind_gusts_10m_max','gust_max'), precip:val('precipitation_sum','precip_mm','precip') }; }
+  function dmcDaily(pack, iso){ const D=pack?.daily||pack?.forecast_preview||pack?.preview||pack?.forecast?.daily||{}; const time=Array.isArray(D.time)?D.time:(Array.isArray(D.date)?D.date:[]); const idx=time.findIndex(t=>String(t).slice(0,10)===iso); const val=(...keys)=>{ if(idx<0) return null; for(const k of keys){ const arr=D[k]; const n=Array.isArray(arr)?num(arr[idx]):null; if(n!==null) return n; } return null; }; return { tmin:val('temperature_2m_min','tmin','temp_min'), tmax:val('temperature_2m_max','tmax','temp_max'), windMax:val('wind_speed_10m_max','wind_max'), gustMax:val('wind_gusts_10m_max','gust_max'), precip:val('precipitation_sum','precip_mm','precip'), code:val('weather_code','code'), cloud:val('cloud_cover','cloudiness'), hum:val('relative_humidity_2m_max','humidity') }; }
   function accuCurrent(bundle){ const x=bundle?.accuNow?.data || bundle?.accuNow || bundle?.current?.data || bundle?.current || {}; return { temp:num(x?.Temperature?.Metric?.Value ?? x?.Temperature?.Value ?? x?.temperature ?? x?.temp), hum:num(x?.RelativeHumidity ?? x?.humidity), wind:num(x?.Wind?.Speed?.Metric?.Value ?? x?.Wind?.Speed?.Value ?? x?.windSpeed ?? x?.wind), gust:num(x?.WindGust?.Speed?.Metric?.Value ?? x?.WindGust?.Speed?.Value ?? x?.windGust ?? x?.gust), dir:num(x?.Wind?.Direction?.Degrees ?? x?.windDirection ?? x?.direction), pres:num(x?.Pressure?.Metric?.Value ?? x?.Pressure?.Value ?? x?.pressure), cloud:num(x?.CloudCover ?? x?.cloudCover), vis:(()=>{const v=num(x?.Visibility?.Metric?.Value ?? x?.Visibility?.Value ?? x?.visibility ?? x?.vis); return v===null?null:(v<80?v*1000:v);})(), condition: upperFirst(x?.WeatherText || x?.IconPhrase || x?.condition) }; }
   function accuHourly(bundle, iso, hhmm){
     const arr = Array.isArray(bundle?.accuH12?.data) ? bundle.accuH12.data : (Array.isArray(bundle?.accuH12?.HourlyForecasts) ? bundle.accuH12.HourlyForecasts : (Array.isArray(bundle?.accuH12) ? bundle.accuH12 : []));
@@ -15670,11 +15670,8 @@ Fuente: DMC / AccuWeather`;
     // ── Fuentes de datos (lógica existente preservada) ──
     const obs    = observedDMC(bundle.dmc||{});
     const obsAcc = accuCurrent(bundle);
-    const pageFx = forecastFromPage(iso, hhmm);
     const dmcFxH = dmcHourly(bundle.dmcForecast||bundle.dmc||{}, iso, hhmm);
     const dmcFxD = dmcDaily(bundle.dmcForecast||bundle.dmc||{}, iso);
-    const accuFxH= accuHourly(bundle, iso, hhmm);
-    const accuFxD= accuDaily(bundle, iso, hhmm);
 
     const observed = {
       temp:  pick(obs.temp,  obsAcc.temp),
@@ -15689,23 +15686,23 @@ Fuente: DMC / AccuWeather`;
       code:  pick(obs.code),
       condition: weatherText(obs.code, obs.cloud, obs.hum, obs.precip)
     };
-    const estTemp = estimateTempFromDaily(pick(pageFx.tmin,dmcFxD.tmin,accuFxD.tmin), pick(pageFx.tmax,dmcFxD.tmax,accuFxD.tmax), hhmm);
+    const estTemp = estimateTempFromDaily(dmcFxD.tmin, dmcFxD.tmax, hhmm);
     const forecast = {
-      temp:  pick(pageFx.temp,  dmcFxH.temp,  accuFxH.temp,  estTemp),
-      hum:   pick(pageFx.hum,   dmcFxH.hum,   accuFxH.hum,   observed.hum),
-      wind:  pick(pageFx.wind,  dmcFxH.wind,  accuFxH.wind,  accuFxD.wind,  dmcFxD.windMax, observed.wind),
-      gust:  pick(pageFx.gust,  dmcFxH.gust,  accuFxH.gust,  accuFxD.gust,  dmcFxD.gustMax, observed.gust),
-      dir:   pick(pageFx.dir,   dmcFxH.dir,   accuFxH.dir,   observed.dir),
-      precip:pick(pageFx.precip,dmcFxH.precip,accuFxH.precip,0),
-      cloud: pick(pageFx.cloud, dmcFxH.cloud, accuFxH.cloud, observed.cloud),
-      vis:   pick(pageFx.vis,   dmcFxH.vis,   accuFxH.vis,   observed.vis),
-      code:  pick(pageFx.code,  dmcFxH.code,  accuFxH.code,  accuFxD.code,  observed.code),
-      condition: pick(accuFxH.condition, accuFxD.condition, weatherText(pick(pageFx.code,dmcFxH.code,accuFxH.code), pick(pageFx.cloud,dmcFxH.cloud,accuFxH.cloud), pick(pageFx.hum,dmcFxH.hum,accuFxH.hum), pick(pageFx.precip,dmcFxH.precip,accuFxH.precip)))
+      temp:  pick(dmcFxH.temp,  estTemp),
+      hum:   pick(dmcFxH.hum,   observed.hum),
+      wind:  pick(dmcFxH.wind,  dmcFxD.windMax, observed.wind),
+      gust:  pick(dmcFxH.gust,  dmcFxD.gustMax, observed.gust),
+      dir:   pick(dmcFxH.dir,   observed.dir),
+      precip:pick(dmcFxH.precip,0),
+      cloud: pick(dmcFxH.cloud, observed.cloud),
+      vis:   pick(dmcFxH.vis,   observed.vis),
+      code:  pick(dmcFxH.code,  observed.code),
+      condition: pick(weatherText(dmcFxH.code,dmcFxH.cloud,dmcFxH.hum,dmcFxH.precip), weatherText(observed.code,observed.cloud,observed.hum,observed.precip))
     };
-    const tmin    = pick(pageFx.tmin, dmcFxD.tmin, accuFxD.tmin);
-    const tmax    = pick(pageFx.tmax, dmcFxD.tmax, accuFxD.tmax);
-    const windMax = pick(dmcFxD.windMax, accuFxD.wind,  forecast.wind);
-    const gustMax = pick(dmcFxD.gustMax, accuFxD.gust,  forecast.gust);
+    const tmin    = dmcFxD.tmin;
+    const tmax    = dmcFxD.tmax;
+    const windMax = pick(dmcFxD.windMax, forecast.wind);
+    const gustMax = pick(dmcFxD.gustMax, forecast.gust);
 
     const _rawSt  = obs.station;
     const _stRaw=(_rawSt&&_rawSt!=='Estación DMC más cercana'?_rawSt:null)||(window.__dmcCurrentData&&(window.__dmcCurrentData.station_name||window.__dmcCurrentData.station))||txt('valDmcStation')||txt('lblCity')||byId('cityInput')?.value||'Estación oficial DMC';
@@ -15790,8 +15787,11 @@ Fuente: DMC / AccuWeather`;
       if(humN!==null&&Number.isFinite(humN)&&humN<=20){ level='ALTO'; reasons.push('humedad '+Math.round(humN)+'% (<=20%)'); }
       // UV >= 8 (mayor)
       if(uvN!==null&&Number.isFinite(uvN)&&uvN>=8){ level='ALTO'; reasons.push('UV '+Math.round(uvN)+' (>=8)'); }
-      // Visibilidad < 1500 m (con dato real > 0)
-      if(vN!==null&&Number.isFinite(vN)&&vN>0&&vN<1500){ if(level==='BAJO') level='ALTO'; reasons.push('visibilidad reducida '+(vN/1000).toFixed(1)+' km (<1.5)'); }
+      // Visibilidad < 1500 m — solo si hay niebla/bruma o precipitacion activa
+      // (si cielo despejado y sin precip, visibilidad baja es dato erroneo del proveedor)
+      var _lowVis = vN!==null&&Number.isFinite(vN)&&vN>0&&vN<1500;
+      var _fogOrRain = (clN!==null&&clN>60) || (pN!==null&&pN>0.5) || (codeN!==null&&(codeN===45||codeN===48||codeN===51||codeN===53||codeN===55||codeN===61||codeN===63||codeN===65||codeN===80||codeN===81||codeN===82));
+      if(_lowVis && _fogOrRain){ if(level==='BAJO') level='ALTO'; reasons.push('visibilidad reducida '+(vN/1000).toFixed(1)+' km (<1.5)'); }
       // Iluminacion lunar <= 15% (menor) — solo si hay dato
       // (evaluada si esta disponible via clN/luna, no implementada por falta de dato directo)
       // ── AMARILLO (nivel 2) ──
@@ -15809,7 +15809,8 @@ Fuente: DMC / AccuWeather`;
       // UV 3-7 (mayor)
       if(uvN!==null&&Number.isFinite(uvN)&&uvN>=3&&uvN<8){ if(level==='BAJO') level='MODERADO'; reasons.push('UV '+Math.round(uvN)+' (>=3)'); }
       // Visibilidad 1500-3000 m
-      if(vN!==null&&Number.isFinite(vN)&&vN>0&&vN>=1500&&vN<=3000){ if(level==='BAJO') level='MODERADO'; reasons.push('visibilidad limitada 1.5–3 km'); }
+      var _lowVis2 = vN!==null&&Number.isFinite(vN)&&vN>0&&vN>=1500&&vN<=3000;
+      if(_lowVis2 && _fogOrRain){ if(level==='BAJO') level='MODERADO'; reasons.push('visibilidad limitada 1.5–3 km'); }
       // Iluminacion lunar <= 40% (menor) — amarillo
       // (evaluada si hay dato, omitida por ahora)
       // Nubosidad elevada (informativo)
@@ -15844,12 +15845,16 @@ Fuente: DMC / AccuWeather`;
     function alertasBlock(rangeFrom, rangeTo){
       // rangeFrom / rangeTo: strings ISO opcionales para filtrar por período (Caso C)
       // 1. Obtener pool de alertas desde estado global o DOM
-      var pool=(Array.isArray(window.__alertsState&&window.__alertsState.items)&&window.__alertsState.items.length)
+      var pool=(Array.isArray(window.__dmcAlertsItems)&&window.__dmcAlertsItems.length)
+        ? window.__dmcAlertsItems
+        : (Array.isArray(window.__alertsState&&window.__alertsState.items)&&window.__alertsState.items.length)
         ? window.__alertsState.items
-        : Array.from(document.querySelectorAll('#alertsList .alert-item')).map(function(el){
+        : Array.from(document.querySelectorAll('#alertsList .alert-item[style*="risk-"]')).map(function(el){
             return {
               titulo:(el.querySelector('.alert-title')&&el.querySelector('.alert-title').textContent.trim())||'ALERTA',
-              contenido:el.textContent&&el.textContent.trim()||''
+              contenido:el.textContent&&el.textContent.trim()||'',
+              tipo:el.className||'',
+              textoZonaAfecta:el.getAttribute('data-region')||''
             };
           });
       if(!pool.length) return ['  Sin alertas cercanas relevantes para la ubicación seleccionada.'];
@@ -16051,16 +16056,14 @@ Fuente: DMC / AccuWeather`;
     // ── Helper: datos diarios para un ISO ───────────────────
     function getDayData(isoDate){
       const dmcFxD = dmcDaily(bundle.dmcForecast||bundle.dmc||{}, isoDate);
-      const accuFxD= accuDaily(bundle, isoDate, hhmm);
-      const pageFx = forecastFromPage(isoDate, '12:00');
-      const tm  = pick(pageFx.tmin,  dmcFxD.tmin,  accuFxD.tmin);
-      const tM  = pick(pageFx.tmax,  dmcFxD.tmax,  accuFxD.tmax);
-      const wM  = pick(dmcFxD.windMax, accuFxD.wind);
-      const gM  = pick(dmcFxD.gustMax, accuFxD.gust);
-      const pp  = pick(dmcFxD.precip, accuFxD.precip, 0);
-      const cld = pick(dmcFxD.cloud,  accuFxD.cloud);
-      const cod = pick(dmcFxD.code,   accuFxD.code);
-      const cond= pick(accuFxD.condition, weatherText(cod, cld, null, pp));
+      const tm  = dmcFxD.tmin;
+      const tM  = dmcFxD.tmax;
+      const wM  = pick(dmcFxD.windMax);
+      const gM  = pick(dmcFxD.gustMax);
+      const pp  = pick(dmcFxD.precip, 0);
+      const cld = dmcFxD.cloud;
+      const cod = dmcFxD.code;
+      const cond= weatherText(cod, cld, null, pp);
       const hasData = (tm!==null||tM!==null||wM!==null||pp!==null);
       return { tm, tM, wM, gM, pp, cld, cond, hasData };
     }
@@ -16106,7 +16109,7 @@ Fuente: DMC / AccuWeather`;
 
       lines.push('BOLETÍN METEOROLÓGICO');
       lines.push(`Lugar: ${ref}`);
-      lines.push('Fuente: DMC / AccuWeather');
+      lines.push('Fuente: Dirección Meteorológica de Chile (DMC)');
 
       if(isMultiDay){
         const totalDays = dateRange(iso, isoTo).length;
@@ -16146,7 +16149,6 @@ Fuente: DMC / AccuWeather`;
         if(!hasData){ lines.push(`${shortDay(d)}  sin datos`); continue; }
         ppAcum+=(pp||0);
         const risk=riskShort(wM,gM,pp,cld);
-        if((riskOrder[risk]||0)>(riskOrder[maxRiskLbl]||0)){ maxRiskLbl=risk; maxRiskDay=d; }
         const tMax=(tM!==null?fmt0(tM,'C'):'--');
         const tMin=(tm!==null?fmt0(tm,'C'):'--');
         const vv=(wM!==null?fmt0(wM,''):'--');
@@ -16166,8 +16168,6 @@ Fuente: DMC / AccuWeather`;
         dayRows.filter(x=>x.cond===b).length - dayRows.filter(x=>x.cond===a).length)[0]) : 'variable';
       let concl=`Período ${days.length} días, predominio ${condPred}. Pp acum ${fmt1(ppAcum,' mm')}.`;
       lines.push(concl);
-      if(maxRiskDay) lines.push(`Día crítico: ${shortDay(maxRiskDay)} (${maxRiskLbl})`);
-      else lines.push('Sin días de riesgo elevado.');
       if(days.length>7) lines.push('Días 8-10: solo AccuWeather (menor precisión).');
       // Alertas vigentes — filtradas por período
       const alertLines = alertasBlock(iso, isoTo);
@@ -16177,7 +16177,7 @@ Fuente: DMC / AccuWeather`;
         lines.push('ALERTAS DMC');
         alertLines.forEach(l => lines.push(l));
       }
-      lines.push('Fuente: DMC / AccuWeather');
+      lines.push(station?('Estacion: '+station):'Estacion: DMC');
 
     // ══════    //  CASO B — TRAMO HORARIO
     } else if(isTimeRange){
@@ -16251,7 +16251,6 @@ Fuente: DMC / AccuWeather`;
         if(td&&td.wind_gusts_10m!==null&&(td.wind_speed_10m===null||td.wind_gusts_10m>=td.wind_speed_10m))
           concl+=', rachas '+fmt0(td.wind_gusts_10m,' km/h');
         lines.push(concl+'.');
-        lines.push('Riesgo: '+riskLbl);
         lines.push('Tendencia: '+tendLbl);
         lines.push('Ventana: '+ventanaLbl);
         const alertLinesB = alertasBlock();
@@ -16261,7 +16260,7 @@ Fuente: DMC / AccuWeather`;
           lines.push('ALERTAS DMC');
           alertLinesB.forEach(l => lines.push(l));
         }
-        lines.push('Fuente: DMC / AccuWeather');
+        lines.push(station?('Estacion: '+station):'Estacion: DMC');
       }
 
     // ══════    //  CASO A — HORA PUNTUAL
@@ -16301,7 +16300,6 @@ Fuente: DMC / AccuWeather`;
         if(forecast.precip!==null&&num(forecast.precip)>0)
           concl+='. Pp: '+fmt1(forecast.precip,' mm/h');
         lines.push(concl+'.');
-        lines.push('Riesgo: '+riskLbl);
         lines.push('Tendencia: '+tendLbl);
         lines.push('Ventana: '+ventanaLbl);
         const alertLinesA = alertasBlock();
@@ -16311,7 +16309,7 @@ Fuente: DMC / AccuWeather`;
           lines.push('ALERTAS DMC');
           alertLinesA.forEach(l => lines.push(l));
         }
-        lines.push('Fuente: DMC / AccuWeather');
+        lines.push(station?('Estacion: '+station):'Estacion: DMC');
       }
     }
 
@@ -16416,7 +16414,6 @@ Fuente: DMC / AccuWeather`; }
 
     const lugar     = extract('Lugar');
     const tendencia = extract('Tendencia');
-    const riesgo    = (extract('Riesgo principal')||extract('Riesgo tramo')||'').replace(/\s*—.*$/,'').trim();
     const alertBlock= extractBlock('── ALERTAS DMC VIGENTES', 'Se mantiene');
 
     const lines = [];
@@ -16463,7 +16460,6 @@ Fuente: DMC / AccuWeather`; }
       lines.push('');
       lines.push('*Conclusión*');
       if(maxRisk) lines.push(`Mayor riesgo: ${maxRisk}`);
-      if(riesgo)  lines.push(`Riesgo: ${riesgo}`);
 
     } else if(isTimeRange){
       // ── CASO B ──
@@ -16478,7 +16474,6 @@ Fuente: DMC / AccuWeather`; }
       const conclBlock = extractBlock('*Conclusión*\n', '\nRiesgo');
       if(conclBlock) lines.push(conclBlock.split('\n')[0]);
       if(tendencia) lines.push(`Tendencia: ${tendencia}`);
-      if(riesgo)    lines.push(`Riesgo: ${riesgo}`);
 
     } else {
       // ── CASO A ──
@@ -16505,7 +16500,6 @@ Fuente: DMC / AccuWeather`; }
         if(concBlock) lines.push(concBlock.slice(0,120));
       }
       if(tendencia) lines.push(`Tendencia: ${tendencia}`);
-      if(riesgo)    lines.push(`Riesgo: ${riesgo}`);
     }
 
     // ── Alertas (si hay activas) ──
@@ -18536,10 +18530,15 @@ if(typeof closeBulletinMenu === 'undefined'){
   function getAlerts(pack){
     var out=[];
     try{
-      var arr=window.__senapredAlerts||(pack&&pack.alerts)||[];
+      // Alertas oficiales DMC (solo DMC, no SENAPRED)
+      var arr=window.__dmcAlertsItems||[];
       if(Array.isArray(arr)) arr.forEach(function(a){
-        var t=a.title||a.titulo||a.event||a.descripcion;
-        if(t) out.push(String(t).trim());
+        var t=a.titulo||a.title||a.tipo||a.subtitulo||a.descripcion||'';
+        var zona=a.textoZonaAfecta||a.region||a.zona||'';
+        var nivel=a.tipo||a.nivel||'';
+        var label='';
+        if(nivel) label='['+String(nivel).toUpperCase()+'] ';
+        if(t) out.push(label+String(t).trim()+(zona?' - '+String(zona).trim():''));
       });
     }catch(_){}
     return out;
@@ -18727,7 +18726,7 @@ if(typeof closeBulletinMenu === 'undefined'){
     fcA.forEach(function(ln){L.push(ln);});
     L.push('Riesgo: '+calcRiesgo([snap]));
     L.push('');
-    L.push('Fuente: DMC / AccuWeather');
+    L.push(stationLine?stationLine:'Estacion: DMC');
     return L.join('\n');
   }
 
@@ -18809,7 +18808,7 @@ if(typeof closeBulletinMenu === 'undefined'){
     fcB.forEach(function(ln){L.push(ln);});
     L.push('Riesgo: '+calcRiesgo(snaps));
     L.push('');
-    L.push('Fuente: DMC / AccuWeather');
+    L.push(stationLine?stationLine:'Estacion: DMC');
     return L.join('\n');
   }
 
@@ -18936,7 +18935,7 @@ if(typeof closeBulletinMenu === 'undefined'){
     fcC.forEach(function(ln){L.push(ln);});
     L.push('Riesgo: '+riesgoC(rows,ppTot,gMax));
     L.push('');
-    L.push('Fuente: DMC / AccuWeather');
+    L.push(stationLine?stationLine:'Estacion: DMC');
     return L.join('\n');
   }
 
@@ -18997,11 +18996,15 @@ if(typeof closeBulletinMenu === 'undefined'){
   /* ---- alertas al pie ---- */
   function appendAlerts(text,alerts){
     if(!alerts.length) return text;
-    var b='\n\n*Alerta DMC activa*';
+    var b='\n*Alertas DMC vigentes*';
     alerts.forEach(function(a){b+='\n\u2022 '+a;});
-    // Insertar antes de la linea de Fuente
-    var idx=text.lastIndexOf('\nFuente:');
-    if(idx<0) return text+b;
+    b+='\n';
+    // Insertar despues de la linea de Riesgo: y antes de la linea de Fuente:
+    var idx=text.lastIndexOf('\n\nFuente:');
+    if(idx<0){
+      idx=text.lastIndexOf('\nFuente:');
+      if(idx<0) return text+b;
+    }
     return text.slice(0,idx)+b+text.slice(idx);
   }
 
