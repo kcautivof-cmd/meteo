@@ -2043,7 +2043,7 @@ window.__parseDate = function(raw){
       ${cfg.notes ? tblRow('Contexto adicional', h(cfg.notes)) : ''}
     `));
 
-    // ── VI. RECOMENDACIONES ─────────────────────────  ────────────────────
+    // ── VI. RECOMENDACIONES ─────────────────────────   ────────────────────
     let recsHtml = '';
     if(cfg.includeRecs){
       const rawRecs = buildRecommendations(metrics, cfg);
@@ -5170,7 +5170,7 @@ function __alertsRenderDMC(){
             const parts = z.split(',');
             const expanded = [];
             parts.forEach(p=>{
-                const sub = p.split(/\)(?=[A-ZÁÉÍÓÚ            Ü])/);
+                const sub = p.split(/\)(?=[A-ZÁÉÍÓÚ                Ü])/);
                 sub.forEach((s,idx)=>{
                     const seg = (idx < sub.length-1) ? s+')' : s;
                     expanded.push(seg.trim().toUpperCase());
@@ -13866,7 +13866,7 @@ async function robustGenerate(ev){
   function fakeZero(v){ return Number.isFinite(v) && Math.abs(v) < 0.0001; }
   function weatherText(code, cloud, hum, precip){
     const c=num(code), cl=num(cloud), p=num(precip);
-    const map={0:'despejado',1:'mayormente despejado',2:'parcialmente nublado',3:'nublado',45:'neblina',48:'neblina',51:'llovizna débil',53:'llovizna',55:'llovizna intensa',61:'lluvia débil',63:'lluvia',65:'lluvia intensa',71:'nieve débil',73:'nieve',75:'nieve intensa',80:'chubascos',81:'chubascos',82:'chubascos fuertes',95:'tormenta eléctrica',96:'tormenta eléctrica',99:'tormenta eléctrica'};
+    const map={0:'despejado',1:'mayormente despejado',2:'parcialmente nublado',3:'nublado',45:'neblina',48:'neblina',51:'llovizna débil',53:'llovizna',55:'llovizna intensa',61:'lluvia d  bil',63:'lluvia',65:'lluvia intensa',71:'nieve débil',73:'nieve',75:'nieve intensa',80:'chubascos',81:'chubascos',82:'chubascos fuertes',95:'tormenta eléctrica',96:'tormenta eléctrica',99:'tormenta eléctrica'};
     if(Number.isFinite(c) && map[c]) return map[c];
     if(Number.isFinite(p) && p>0.2) return 'inestabilidad con precipitación';
     if(Number.isFinite(cl)){
@@ -15768,25 +15768,56 @@ Fuente: DMC / AccuWeather`;
     // ── Análisis de riesgo y tendencia ──
     const gustN = num(forecast.gust); const windN = num(forecast.wind);
     const precipN = num(forecast.precip); const visN = num(forecast.vis);
-    function buildRiskLabel(wN,gN,pN,vN,clN){
-      // Umbrales: MDI-70002 Tabla 1-2 / CDI-90008 3.2.2 Tabla 3-2 / RDI-20005
+    function buildRiskLabel(wN,gN,pN,vN,clN,codeN,tN,tnN,humN,uvN){
+      // Umbrales oficiales Hoja "Umbrales" BOLETIN METEOROLOGICO N°26
+      // + DMC: Aviso/Alerta por tormenta electrica (WMO 95/96/99)
       const reasons=[];
       let level='BAJO';
-      // SEVERO / ALTO
-      if(pN!==null&&pN>13)  { level='ALTO'; reasons.push(`precipitación intensa (${(pN).toFixed(1)} mm/h)`); }
-      if(gN!==null&&gN>=50) { level='ALTO'; reasons.push(`rachas ${Math.round(gN)} km/h`); }
-      if(wN!==null&&wN>=50) { level='ALTO'; reasons.push(`viento fuerte sostenido ${Math.round(wN)} km/h`); }
-      if(vN!==null&&Number.isFinite(vN)&&vN>0&&vN<1500){ if(level==='BAJO') level='ALTO'; reasons.push(`visibilidad muy reducida (${(vN/1000).toFixed(1)} km)`); }
-      // MODERADO
-      if(pN!==null&&pN>=3&&pN<=13){ if(level==='BAJO') level='MODERADO'; reasons.push(`precipitación moderada (${(pN).toFixed(1)} mm/h)`); }
-      if(gN!==null&&gN>=37&&gN<50){ if(level==='BAJO') level='MODERADO'; reasons.push(`rachas ${Math.round(gN)} km/h`); }
-      if(wN!==null&&wN>=29&&wN<50){ if(level==='BAJO') level='MODERADO'; reasons.push(`viento ${Math.round(wN)} km/h (Beaufort terreno)`); }
-      if(vN!==null&&Number.isFinite(vN)&&vN>0&&vN>=1500&&vN<=3000){ if(level==='BAJO') level='MODERADO'; reasons.push('visibilidad limitada (1.5–3 km)'); }
-      if(clN!==null&&clN>85&&level==='BAJO') reasons.push('cobertura nubosa elevada');
-      if(!reasons.length) reasons.push('viento débil, visibilidad adecuada, sin precipitación');
+      // TORMENTA ELECTRICA (DMC / MDI-70002 4.6 Telecomunicaciones)
+      if(codeN!==null&&(codeN===96||codeN===99)){ level='ALTO'; reasons.push('tormenta electrica severa con granizo (WMO '+codeN+')'); }
+      else if(codeN!==null&&codeN===95){ if(level==='BAJO') level='MODERADO'; reasons.push('tormenta electrica (WMO 95)'); }
+      // ── ROJO (nivel 3) ──
+      // Temp. diurna >= 32°C (mayor)
+      if(tN!==null&&Number.isFinite(tN)&&tN>=32){ level='ALTO'; reasons.push('temp. maxima '+Math.round(tN)+'°C (>=32°C)'); }
+      // Frio nocturno: sens. termica <= -30°C (menor)
+      if(tnN!==null&&Number.isFinite(tnN)&&tnN<=-30){ level='ALTO'; reasons.push('sens. termica min '+Math.round(tnN)+'°C (<=-30°C)'); }
+      // Viento / rachagas >= 50 km/h (mayor)
+      if(gN!==null&&Number.isFinite(gN)&&gN>=50){ level='ALTO'; reasons.push('rachas '+Math.round(gN)+' km/h (>=50)'); }
+      if(wN!==null&&Number.isFinite(wN)&&wN>=50){ level='ALTO'; reasons.push('viento '+Math.round(wN)+' km/h (>=50)'); }
+      // Precipitacion > 13 mm (mayor)
+      if(pN!==null&&Number.isFinite(pN)&&pN>13){ level='ALTO'; reasons.push('precip. intensa '+pN.toFixed(1)+' mm (>13)'); }
+      // Humedad <= 20% (menor)
+      if(humN!==null&&Number.isFinite(humN)&&humN<=20){ level='ALTO'; reasons.push('humedad '+Math.round(humN)+'% (<=20%)'); }
+      // UV >= 8 (mayor)
+      if(uvN!==null&&Number.isFinite(uvN)&&uvN>=8){ level='ALTO'; reasons.push('UV '+Math.round(uvN)+' (>=8)'); }
+      // Visibilidad < 1500 m (con dato real > 0)
+      if(vN!==null&&Number.isFinite(vN)&&vN>0&&vN<1500){ if(level==='BAJO') level='ALTO'; reasons.push('visibilidad reducida '+(vN/1000).toFixed(1)+' km (<1.5)'); }
+      // Iluminacion lunar <= 15% (menor) — solo si hay dato
+      // (evaluada si esta disponible via clN/luna, no implementada por falta de dato directo)
+      // ── AMARILLO (nivel 2) ──
+      // Temp. diurna 25-31°C (mayor)
+      if(tN!==null&&Number.isFinite(tN)&&tN>=25&&tN<32){ if(level==='BAJO') level='MODERADO'; reasons.push('temp. maxima '+Math.round(tN)+'°C (>=25°C)'); }
+      // Frio nocturno: sens. termica 0 a -29°C (menor)
+      if(tN!==null&&Number.isFinite(tnN)&&tnN<=0&&tnN>-30){ if(level==='BAJO') level='MODERADO'; reasons.push('sens. termica '+Math.round(tnN)+'°C (<=0°C)'); }
+      // Viento / rachagas 30-49 km/h (mayor)
+      if(gN!==null&&Number.isFinite(gN)&&gN>=30&&gN<50){ if(level==='BAJO') level='MODERADO'; reasons.push('rachas '+Math.round(gN)+' km/h (>=30)'); }
+      if(wN!==null&&Number.isFinite(wN)&&wN>=30&&wN<50){ if(level==='BAJO') level='MODERADO'; reasons.push('viento '+Math.round(wN)+' km/h (>=30)'); }
+      // Precipitacion 3-13 mm (mayor)
+      if(pN!==null&&Number.isFinite(pN)&&pN>=3&&pN<=13){ if(level==='BAJO') level='MODERADO'; reasons.push('precip. '+pN.toFixed(1)+' mm (>=3)'); }
+      // Humedad 21-30% (menor)
+      if(humN!==null&&Number.isFinite(humN)&&humN>20&&humN<=30){ if(level==='BAJO') level='MODERADO'; reasons.push('humedad '+Math.round(humN)+'% (<=30%)'); }
+      // UV 3-7 (mayor)
+      if(uvN!==null&&Number.isFinite(uvN)&&uvN>=3&&uvN<8){ if(level==='BAJO') level='MODERADO'; reasons.push('UV '+Math.round(uvN)+' (>=3)'); }
+      // Visibilidad 1500-3000 m
+      if(vN!==null&&Number.isFinite(vN)&&vN>0&&vN>=1500&&vN<=3000){ if(level==='BAJO') level='MODERADO'; reasons.push('visibilidad limitada 1.5–3 km'); }
+      // Iluminacion lunar <= 40% (menor) — amarillo
+      // (evaluada si hay dato, omitida por ahora)
+      // Nubosidad elevada (informativo)
+      if(clN!==null&&Number.isFinite(clN)&&clN>85&&level==='BAJO') reasons.push('cobertura nubosa elevada');
+      if(!reasons.length) reasons.push('viento debil, visibilidad adecuada, sin precipitacion');
       return `${level} — ${reasons.join(', ')}`;
     }
-    const riskLbl = buildRiskLabel(gustN, windN, precipN, visN, num(forecast.cloud));
+    const riskLbl = buildRiskLabel(gustN, windN, precipN, visN, num(forecast.cloud), num(forecast.code), num(tmax), num(tmin), num(forecast.hum), null);
     const obsWind = num(observed.wind);
     const tendLbl = (windN!==null&&obsWind!==null) ? (windN>obsWind+5?'Viento en aumento respecto al observado':windN<obsWind-5?'Viento en descenso respecto al observado':'Estable respecto al observado') : 'Sin datos suficientes para evaluar tendencia';
     const hSel = Number(String(hhmm||'08:00').slice(0,2));
