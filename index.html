@@ -5170,7 +5170,7 @@ function __alertsRenderDMC(){
             const parts = z.split(',');
             const expanded = [];
             parts.forEach(p=>{
-                const sub = p.split(/\)(?=[A-ZÁÉÍÓÚ    Ü])/);
+                const sub = p.split(/\)(?=[A-ZÁÉÍÓÚ          Ü])/);
                 sub.forEach((s,idx)=>{
                     const seg = (idx < sub.length-1) ? s+')' : s;
                     expanded.push(seg.trim().toUpperCase());
@@ -12034,6 +12034,28 @@ function _copiarTSV(btn, tsv, html) {
     }, 2400);
   };
 
+  // Fallback con HTML via contenteditable + execCommand (funciona en file://)
+  const fallbackHtml = () => {
+    try {
+      var ce = document.createElement('div');
+      ce.contentEditable = true;
+      ce.innerHTML = html || tsv;
+      ce.style.cssText = 'position:fixed;left:-9999px;opacity:0;';
+      document.body.appendChild(ce);
+      var range = document.createRange();
+      range.selectNodeContents(ce);
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      document.execCommand('copy');
+      sel.removeAllRanges();
+      document.body.removeChild(ce);
+      ok();
+    } catch(e) {
+      fallbackPlain();
+    }
+  };
+
   const fallbackPlain = () => {
     try {
       const ta = document.createElement('textarea');
@@ -12050,23 +12072,33 @@ function _copiarTSV(btn, tsv, html) {
     }
   };
 
-  // Preferir clipboard con HTML (cada día = celda colspan=2) para que Excel
-  // respete las celdas combinadas del cuadro y pegue los 7 días de una sin
-  // desfasar la primera columna.
+  // Metodo 1: ClipboardItem con HTML (funciona en HTTPS / GitHub)
   try {
     if (html && navigator.clipboard && typeof window.ClipboardItem === 'function') {
-      const item = new window.ClipboardItem({
+      var item = new window.ClipboardItem({
         'text/plain': new Blob([tsv], { type: 'text/plain' }),
         'text/html': new Blob([html], { type: 'text/html' })
       });
-      navigator.clipboard.write([item]).then(ok).catch(() => {
-        navigator.clipboard.writeText(tsv).then(ok).catch(fallbackPlain);
+      navigator.clipboard.write([item]).then(ok).catch(function(){
+        // ClipboardItem fallo (file://) — usar contenteditable fallback
+        fallbackHtml();
       });
       return;
     }
   } catch(e) {}
 
-  navigator.clipboard.writeText(tsv).then(ok).catch(fallbackPlain);
+  // Metodo 2: contenteditable + execCommand (funciona en file:// local)
+  if (html) {
+    fallbackHtml();
+    return;
+  }
+
+  // Metodo 3: texto plano solamente
+  try {
+    navigator.clipboard.writeText(tsv).then(ok).catch(fallbackPlain);
+  } catch(e) {
+    fallbackPlain();
+  }
 }
 
 /* Selector de rango */
@@ -15633,16 +15665,8 @@ Fuente: DMC / AccuWeather`;
     catch(_e){ return String(s||''); }
   }
   function buildQuickText(bundle, iso, hhmm){
-    // Auto-corrección de hora: si viene vacío, leer del modal activo
-    if(!hhmm || hhmm==='08:00'){
-      var _oM=document.getElementById('oaiBulletinModal');
-      var _tSrc=(_oM&&_oM.classList.contains('show'))
-        ? document.getElementById('oaiBulletinTime')
-        : (document.getElementById('finalQuickTime')||document.getElementById('bulletinQuickTime')||document.getElementById('oaiBulletinTime'));
-      var _tv=_tSrc&&_tSrc.value;
-      if(_tv&&_tv!=='08:00') hhmm=_tv;
-      else hhmm=new Date().toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit',hour12:false});
-    }
+    // Usar exactamente la hora que viene del modal — sin auto-corrección
+    if(!hhmm) hhmm='08:00';
     // ── Fuentes de datos (lógica existente preservada) ──
     const obs    = observedDMC(bundle.dmc||{});
     const obsAcc = accuCurrent(bundle);
@@ -16021,6 +16045,19 @@ Fuente: DMC / AccuWeather`;
       return 'BAJO';
     }
 
+    // ── Helper: icono de cielo ──
+    function skyIcon(cld, cond){
+      cond = String(cond||'').toLowerCase();
+      if(cond.includes('lluvia')||cond.includes('rain')) return '🌧';
+      if(cond.includes('nieve')||cond.includes('snow')) return '❄';
+      if(cond.includes('niebla')||cond.includes('fog')||cond.includes('bruma')) return '🌫';
+      if(cond.includes('nublado')||cond.includes('cubierto')||cond.includes('overcast')) return '☁';
+      if(cond.includes('parcial')||cond.includes('nube')||cond.includes('partly')) return '🌤';
+      if(cld!==null && cld>=80) return '☁';
+      if(cld!==null && cld>=40) return '🌤';
+      return '☀';
+    }
+
     // ── ENCABEZADO COMÚN ─────────────────────────────────────
     const lines = [];
     (function(){
@@ -16038,17 +16075,23 @@ Fuente: DMC / AccuWeather`;
 
       lines.push('BOLETÍN METEOROLÓGICO');
       lines.push(`Lugar: ${ref}`);
-      lines.push(`Fuente: Dirección Meteorológica de Chile (DMC) / AccuWeather`);
+      lines.push('Fuente: DMC / AccuWeather');
 
       if(isMultiDay){
         const totalDays = dateRange(iso, isoTo).length;
         lines.push(`Período: ${shortDay(iso)} – ${shortDay(isoTo)} (${totalDays} días)`);
         if(totalDays>7) lines.push('⚠ Precisión reducida después del día 7 (solo AccuWeather disponible).');
       } else if(isTimeRange){
-        const hI=Number(String(hhmm).slice(0,2)), hF=Number(String(hhmmFin).slice(0,2));
-        if(hF<=hI) lines.push('⚠ Hora fin debe ser posterior a hora inicio — revisa los campos.');
+        const hI=Number(String(hhmm).slice(0,2))*60+Number(String(hhmm).slice(3,5));
+        const hF=Number(String(hhmmFin).slice(0,2))*60+Number(String(hhmmFin).slice(3,5));
+        const _overnight = hF<=hI;
         lines.push(`Fecha : ${shortDay(iso)}`);
-        lines.push(`Tramo : ${hhmm} – ${hhmmFin} hrs.`);
+        if(_overnight){
+          const _d2=new Date(iso+'T12:00:00Z'); _d2.setUTCDate(_d2.getUTCDate()+1);
+          lines.push(`Tramo : ${hhmm} – ${hhmmFin} hrs.`);
+        } else {
+          lines.push(`Tramo : ${hhmm} – ${hhmmFin} hrs.`);
+        }
       } else {
         const hNum = Number(String(hhmm).slice(0,2));
         const hFin = String(Math.min(hNum+1,23)).padStart(2,'0')+':00';
@@ -16057,185 +16100,186 @@ Fuente: DMC / AccuWeather`;
       }
     })();
 
-    // ══════    //  CASO C — RANGO DE DÍAS
+    // ══════    //  CASO C — RANGO DE DÍAS (FORMATO MILITAR SINTETIZADO)
     if(isMultiDay){
       const days = dateRange(iso, isoTo, 10);
       lines.push('');
-      lines.push('VARIABLES POR DÍA');
+      lines.push('PRONÓSTICO POR DÍA');
 
-      let ppAcum=0, maxRiskDay=null, maxRiskVal=0, maxRiskLbl='BAJO';
+      let ppAcum=0, maxRiskDay=null, maxRiskLbl='BAJO';
       const riskOrder={'BAJO':0,'MOD (viento)':1,'MOD (rachas)':1,'MOD (precipitación)':2,'ALTO (rachas fuertes)':3,'ALTO (viento fuerte)':3,'ALTO (precip. intensa)':3};
       const dayRows=[];
 
       for(const d of days){
         const {tm,tM,wM,gM,pp,cld,cond,hasData}=getDayData(d);
-        if(!hasData){ lines.push(''); lines.push(`${shortDay(d)}: sin datos (fuera del pronóstico)`); continue; }
+        if(!hasData){ lines.push(`${shortDay(d)}  sin datos`); continue; }
         ppAcum+=(pp||0);
         const risk=riskShort(wM,gM,pp,cld);
         if((riskOrder[risk]||0)>(riskOrder[maxRiskLbl]||0)){ maxRiskLbl=risk; maxRiskDay=d; }
-        const tMax=(tM!==null?fmt0(tM,'°C'):'—');
-        const tMin=(tm!==null?fmt0(tm,'°C'):'—');
-        const vv=(wM!==null?fmt0(wM,' km/h'):'—');
-        const rr=(gM!==null?fmt0(gM,' km/h'):'—');
-        const nn=(cld!==null?fmt0(cld,'%'):'—');
-        const pH=(pp!==null?fmt1(pp,' mm'):'0,0 mm');
-        lines.push('');
-        lines.push(`${shortDay(d)} — ${String(cond||'—')}`);
-        lines.push(`  T° máx ${tMax} / mín ${tMin} | Pp ${pH} | Nub ${nn}`);
-        lines.push(`  Viento ${vv} | Ráfagas ${rr}`);
+        const tMax=(tM!==null?fmt0(tM,'C'):'--');
+        const tMin=(tm!==null?fmt0(tm,'C'):'--');
+        const vv=(wM!==null?fmt0(wM,''):'--');
+        const rr=(gM!==null?fmt0(gM,''):'--');
+        const pH=(pp!==null?fmt1(pp,''):'0,0');
+        const icon=skyIcon(cld,cond);
+        lines.push(`${shortDay(d)} ${icon} ${tMax}/${tMin} ${vv}/${rr}km/h Pp${pH}mm ${String(cond||'--')}`);
         dayRows.push({d,tm,tM,wM,gM,pp,cld,cond,risk});
       }
 
-      // Precipitación acumulada
-      lines.push(`Precipitación acumulada estimada del período: ${fmt1(ppAcum,' mm')}`);
+      lines.push(`Pp acum período: ${fmt1(ppAcum,' mm')}`);
 
       // Conclusión multi-día
       lines.push('');
-      lines.push('*Conclusión*');
+      lines.push('CONCLUSIÓN');
       const condPred = dayRows.length ? (dayRows.map(r=>String(r.cond||'').toLowerCase()).sort((a,b)=>
         dayRows.filter(x=>x.cond===b).length - dayRows.filter(x=>x.cond===a).length)[0]) : 'variable';
-      let concl=`Período de ${days.length} días con predominio de ${condPred}`;
-      if(ppAcum>0) concl+=`. Precipitación acumulada estimada: ${fmt1(ppAcum,' mm')}`;
-      lines.push(concl+'.');
-      if(maxRiskDay) lines.push(`Día de mayor riesgo: ${shortDay(maxRiskDay)} — ${maxRiskLbl}`);
-      else lines.push('Sin días de riesgo elevado en el período.');
-      if(days.length>7) lines.push('⚠ Días 8–10: datos solo disponibles desde AccuWeather (menor precisión).');
+      let concl=`Período ${days.length} días, predominio ${condPred}. Pp acum ${fmt1(ppAcum,' mm')}.`;
+      lines.push(concl);
+      if(maxRiskDay) lines.push(`Día crítico: ${shortDay(maxRiskDay)} (${maxRiskLbl})`);
+      else lines.push('Sin días de riesgo elevado.');
+      if(days.length>7) lines.push('Días 8-10: solo AccuWeather (menor precisión).');
       // Alertas vigentes — filtradas por período
       const alertLines = alertasBlock(iso, isoTo);
       const hasAlerts = alertLines.length && !alertLines[0].includes('Sin alertas');
-      lines.push('');
-      lines.push('*Alertas vigentes*');
-      alertLines.forEach(l => lines.push(l));
-      if(hasAlerts) lines.push('  ⚠ Verificar vigencia de cada alerta según su fecha de término.');
+            if(hasAlerts){
+        lines.push('');
+        lines.push('ALERTAS DMC');
+        alertLines.forEach(l => lines.push(l));
+      }
       lines.push('Fuente: DMC / AccuWeather');
 
-    // ══════    //  CASO B     TRAMO HORARIO (mismo día)
+    // ══════    //  CASO B — TRAMO HORARIO
     } else if(isTimeRange){
-      const h0=Number(String(hhmm).slice(0,2));
-      const h1=Number(String(hhmmFin).slice(0,2));
-      const tramoData = h1>h0 ? getTramoAvg(h0,h1) : null;
+
+      // ── Tramo (puede cruzar medianoche) ──
+      const startMin=Number(String(hhmm).slice(0,2))*60+Number(String(hhmm).slice(3,5));
+      let endMin=Number(String(hhmmFin).slice(0,2))*60+Number(String(hhmmFin).slice(3,5));
+      if(endMin<=startMin) endMin+=1440; // cruza medianoche
+      const nextIso=(function(){const d=new Date(iso+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+1);return d.toISOString().slice(0,10);})();
+      const _H=((bundle.dmcForecast||bundle.dmc||{})||{}).hourly||{};
+      const _Ht=Array.isArray(_H.time)?_H.time:[];
+      const _HK=['temperature_2m','wind_speed_10m','wind_gusts_10m','cloud_cover','precipitation','visibility'];
+      function _clk(min){const m=((min%1440)+1440)%1440;return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');}
+      function avgWindow(aMin,bMin){
+        const sums={},counts={};
+        _Ht.forEach((t,i)=>{
+          const s=String(t||''),day=s.slice(0,10);
+          if(day!==iso&&day!==nextIso)return;
+          const h=Number(s.slice(11,13));
+          const abs=(day===nextIso?h+24:h)*60;
+          if(abs<aMin||abs>=bMin)return;
+          _HK.forEach(k=>{const arr=_H[k];const v=Array.isArray(arr)?num(arr[i]):null;if(v!==null){sums[k]=(sums[k]||0)+v;counts[k]=(counts[k]||0)+1;}});
+        });
+        const o={};_HK.forEach(k=>{o[k]=counts[k]?sums[k]/counts[k]:null;});
+        if(counts.precipitation)o.precipitation=sums.precipitation; // acumulada
+        if(o.temperature_2m===null&&(tmin!==null||tmax!==null)){const mh=Math.round(((aMin+bMin)/2)/60)%24;o.temperature_2m=estimateTempFromDaily(tmin,tmax,String(mh).padStart(2,'0')+':00');}
+        if(o.wind_speed_10m===null)o.wind_speed_10m=windMax;
+        if(o.wind_gusts_10m===null)o.wind_gusts_10m=gustMax;
+        if(o.cloud_cover===null&&forecast&&forecast.cloud!=null)o.cloud_cover=num(forecast.cloud);
+        const n=Math.max.apply(null,_HK.map(k=>counts[k]||0).concat([0]));
+        return {d:o,n:n};
+      }
+      const SEGS=[];
+      [['Madrugada',0,6],['Mañana',6,12],['Tarde',12,18],['Noche',18,24]].forEach(sg=>{
+        [0,1440].forEach(off=>{const a=sg[1]*60+off,b=sg[2]*60+off;const ia=Math.max(a,startMin),ib=Math.min(b,endMin);if(ib>ia)SEGS.push({label:sg[0],a:ia,b:ib});});
+      });
+      SEGS.sort((x,y)=>x.a-y.a);
+      const overall=avgWindow(startMin,endMin);
+      const tramoData = (overall.n>0||overall.d.temperature_2m!==null) ? overall.d : null;
 
       lines.push('');
       lines.push('VARIABLES DEL TRAMO');
       if(tramoData){
-        const T  = tramoData.temperature_2m!==null ? fmt1(tramoData.temperature_2m,'°C') : '—';
-        const V  = tramoData.wind_speed_10m!==null ? fmt0(tramoData.wind_speed_10m,' km/h') : '—';
-        const R  = tramoData.wind_gusts_10m!==null ? fmt0(tramoData.wind_gusts_10m,' km/h') : '—';
-        const N  = tramoData.cloud_cover!==null    ? fmt0(tramoData.cloud_cover,'%') : '—';
-        const Pp = tramoData.precipitation!==null  ? fmt1(tramoData.precipitation,' mm') : '0,0 mm';
-        const Vi = (tramoData.visibility!==null&&tramoData.visibility>0) ? fmt1(tramoData.visibility/1000,' km') : '—';
-        const wdesc = tramoData.wind_speed_10m!==null
-          ? (tramoData.wind_speed_10m<10?'débil':tramoData.wind_speed_10m<25?'moderado':'fuerte') : '';
-
-        lines.push(`Temperatura (prom)   : ${T}`);
-        lines.push(`Precipitación (acum) : ${Pp}`);
-        lines.push(`Viento (prom)        : ${V}${wdesc?' ('+wdesc+')':''}`);
-        lines.push(`Racha máxima (prom)  : ${R}`);
-        lines.push(`Humedad rel. (prom)  : ${forecast.hum!==null?fmt1(forecast.hum,'%'):'—'}`);
-        lines.push(`Nubosidad (prom)     : ${N}`);
-        lines.push(`Visibilidad (prom)   : ${Vi}`);
+        SEGS.forEach(seg=>{
+          const r=avgWindow(seg.a,seg.b).d;
+          const T=r.temperature_2m!==null?fmt1(r.temperature_2m,'C'):'--';
+          const S=r.temperature_2m!==null?fmt1(r.temperature_2m-2,'C'):'--';
+          const V=r.wind_speed_10m!==null?fmt0(r.wind_speed_10m,''):'--';
+          const R=r.wind_gusts_10m!==null?fmt0(r.wind_gusts_10m,''):'--';
+          const Pp=r.precipitation!==null?fmt1(r.precipitation,''):'0,0';
+          const nD=r.cloud_cover!==null?(r.cloud_cover<20?'despejado':r.cloud_cover<50?'parcial':r.cloud_cover<80?'nuboso':'cubierto'):'--';
+          const icon=skyIcon(r.cloud_cover,nD);
+          const wD=r.wind_speed_10m!==null?(r.wind_speed_10m<10?'deb':r.wind_speed_10m<25?'mod':'fuer'):'';
+          const dVal=r.wind_speed_10m!==null&&forecast&&forecast.dir?dirText(forecast.dir):'';
+          lines.push(icon+' '+seg.label.toUpperCase()+' '+_clk(seg.a)+'-'+(seg.b%1440===0?'00:00':_clk(seg.b)));
+          lines.push('  T:'+T+' Sens:'+S+' V:'+V+(dVal?' '+dVal:'')+(wD?' ('+wD+')':'')+' R:'+R+' Nub:'+nD+' Pp:'+Pp+'mm');
+        });
+        lines.push('Prom tramo: T:'+((tramoData.temperature_2m!==null)?fmt1(tramoData.temperature_2m,'C'):'--')+' Pp acum:'+((tramoData.precipitation!==null)?fmt1(tramoData.precipitation,' mm'):'0,0 mm'));
       } else {
-        lines.push('Sin datos horarios suficientes para el tramo solicitado.');
-      }
-
-      // Observado
-      if(observed.temp!==null||observed.wind!==null){
-        lines.push('');
-        lines.push(`  [ Observado oficial — ${obs.hora||'N/D'} ]`);
-        const op=[];
-        if(observed.temp!==null)   op.push(`T:${fmt1(observed.temp,'°C')}`);
-        if(observed.hum!==null)    op.push(`HR:${fmt1(observed.hum,'%')}`);
-        if(observed.wind!==null)   op.push(`V:${fmt0(observed.wind,' km/h')}`);
-        if(observed.gust!==null)   op.push(`Racha:${fmt0(observed.gust,' km/h')}`);
-        if(observed.precip!==null) op.push(`Pp:${fmt1(observed.precip,' mm')}`);
-        if(observed.cloud!==null)  op.push(`Nub:${fmt0(observed.cloud,'%')}`);
-        lines.push('  '+op.join('  '));
+        lines.push('Sin datos horarios suficientes para el tramo.');
       }
 
       // Conclusión tramo
       lines.push('');
-      lines.push('*Conclusión*');
+      lines.push('CONCLUSION');
       {
         const td=tramoData;
-        let concl=`Para el tramo ${hhmm}–${hhmmFin} se prevé ${String(fxWx||'condiciones variables').toLowerCase()}`;
-        if(tmin!==null||tmax!==null) concl+=`, temperaturas entre ${fmt0(tmin,'°C')} y ${fmt0(tmax,'°C')}`;
-        if(td&&td.wind_speed_10m!==null) concl+=`, viento ${td.wind_speed_10m<10?'débil':td.wind_speed_10m<25?'moderado':'fuerte'} (~${fmt0(td.wind_speed_10m,' km/h')})`;
+        let concl='Tramo '+hhmm+'-'+hhmmFin+': '+String(fxWx||'condiciones variables');
+        if(tmin!==null||tmax!==null) concl+=', T entre '+fmt0(tmin,'C')+' y '+fmt0(tmax,'C');
+        if(td&&td.wind_speed_10m!==null) concl+=', viento '+(td.wind_speed_10m<10?'debil':td.wind_speed_10m<25?'moderado':'fuerte')+' (~'+fmt0(td.wind_speed_10m,' km/h')+')';
         if(td&&td.wind_gusts_10m!==null&&(td.wind_speed_10m===null||td.wind_gusts_10m>=td.wind_speed_10m))
-          concl+=` con rachas hasta ${fmt0(td.wind_gusts_10m,' km/h')}`;
+          concl+=', rachas '+fmt0(td.wind_gusts_10m,' km/h');
         lines.push(concl+'.');
-        lines.push(`Riesgo tramo     : ${riskLbl}`);
-        lines.push(`Tendencia: ${tendLbl}`);
-        lines.push(`Ventana favorable: ${ventanaLbl}`);
-        lines.push('');
-        lines.push('');
-        // Alertas
+        lines.push('Riesgo: '+riskLbl);
+        lines.push('Tendencia: '+tendLbl);
+        lines.push('Ventana: '+ventanaLbl);
         const alertLinesB = alertasBlock();
-        lines.push('*Alertas vigentes*');
-        alertLinesB.forEach(l => lines.push(l));
+        const hasAlertsB = alertLinesB.length && !alertLinesB[0].includes('Sin alertas');
+        if(hasAlertsB){
+          lines.push('');
+          lines.push('ALERTAS DMC');
+          alertLinesB.forEach(l => lines.push(l));
+        }
         lines.push('Fuente: DMC / AccuWeather');
       }
 
     // ══════    //  CASO A — HORA PUNTUAL
     } else {
       lines.push('');
-      lines.push('*Variables*');
-      lines.push(`Condición: ${upperFirst(fxWx)}`);
+      lines.push('VARIABLES');
+      const icon=skyIcon(forecast.cloud,fxWx);
+      lines.push(icon+' '+upperFirst(fxWx));
 
       if(forecast.temp!==null)
-        lines.push(`Temp: ${fmt1(forecast.temp,'°C')}`+
-          (tmin!==null&&tmax!==null?`  (mín ${fmt0(tmin,'°C')} / máx ${fmt0(tmax,'°C')})`:
-           tmax!==null?`  (máx estimada ${fmt0(tmax,'°C')})`:''));
+        lines.push('Temp: '+fmt1(forecast.temp,'C')+
+          (tmin!==null&&tmax!==null?'  (min '+fmt0(tmin,'C')+' / max '+fmt0(tmax,'C')+')':
+           tmax!==null?'  (max est. '+fmt0(tmax,'C')+')':''));
       else if(tmin!==null||tmax!==null)
-        lines.push(`Temp: mín ${fmt0(tmin,'°C')} / máx ${fmt0(tmax,'°C')}`);
+        lines.push('Temp: min '+fmt0(tmin,'C')+' / max '+fmt0(tmax,'C'));
 
-      lines.push(`Precip: ${forecast.precip!==null?fmt1(forecast.precip,' mm/h'):'0,0 mm/h'}`);
+      lines.push('Precip: '+(forecast.precip!==null?fmt1(forecast.precip,' mm/h'):'0,0 mm/h'));
 
       if(forecast.wind!==null)
-        lines.push(`Viento: ${fmt0(forecast.wind,' km/h')}`+
-          (forecast.dir!==null&&forecast.dir!==0?`  Dir: ${dirText(forecast.dir)}`:'')+
-          `  (${num(forecast.wind)<10?'débil':num(forecast.wind)<25?'moderado':'fuerte'})`);
+        lines.push('Viento: '+fmt0(forecast.wind,' km/h')+
+          (forecast.dir!==null&&forecast.dir!==0?' Dir: '+dirText(forecast.dir):'')+
+          ' ('+(num(forecast.wind)<10?'debil':num(forecast.wind)<25?'moderado':'fuerte')+')');
       if(forecast.gust!==null&&(forecast.wind===null||forecast.gust>=forecast.wind))
-        lines.push(`Racha: ${fmt0(forecast.gust,' km/h')}`);
-      if(forecast.hum!==null)   lines.push(`HR: ${fmt1(forecast.hum,'%')}`);
-      if(forecast.cloud!==null) lines.push(`Nubosidad: ${fmt0(forecast.cloud,'%')}`);
-      if(forecast.vis!==null&&forecast.vis>0)
-        lines.push(`Visibilidad: ${forecast.vis>=1000?fmt1(forecast.vis/1000,' km'):fmt0(forecast.vis,' m')}`);
+        lines.push('Racha: '+fmt0(forecast.gust,' km/h'));
 
-      // Observado oficial
-      if(observed.temp!==null||observed.wind!==null){
-        lines.push('');
-        lines.push(`  [ Observado oficial — ${obs.hora||'N/D'} ]`);
-        const op=[];
-        if(observed.temp!==null)   op.push(`T:${fmt1(observed.temp,'°C')}`);
-        if(observed.hum!==null)    op.push(`HR:${fmt1(observed.hum,'%')}`);
-        if(observed.wind!==null)   op.push(`V:${fmt0(observed.wind,' km/h')}`);
-        if(observed.gust!==null)   op.push(`Racha:${fmt0(observed.gust,' km/h')}`);
-        if(observed.precip!==null) op.push(`Pp:${fmt1(observed.precip,' mm')}`);
-        if(observed.cloud!==null)  op.push(`Nub:${fmt0(observed.cloud,'%')}`);
-        lines.push('  '+op.join('  '));
-      }
+      if(forecast.cloud!==null) lines.push('Nubosidad: '+fmt0(forecast.cloud,'%'));
 
       // Conclusión hora puntual
       lines.push('');
-      lines.push('*Conclusión*');
+      lines.push('CONCLUSION');
       {
-        let concl=`Se prevé ${String(fxWx||'condiciones variables').toLowerCase()}`;
-        if(tmin!==null||tmax!==null) concl+=`, con temperaturas entre ${fmt0(tmin,'°C')} y ${fmt0(tmax,'°C')}`;
-        if(forecast.wind!==null) concl+=`, viento ${num(forecast.wind)<10?'débil':num(forecast.wind)<25?'moderado':'fuerte'} (~${fmt0(forecast.wind,' km/h')})`;
+        let concl='Se prevé '+String(fxWx||'condiciones variables');
+        if(tmin!==null||tmax!==null) concl+=', T entre '+fmt0(tmin,'C')+' y '+fmt0(tmax,'C');
+        if(forecast.wind!==null) concl+=', viento '+(num(forecast.wind)<10?'debil':num(forecast.wind)<25?'moderado':'fuerte')+' (~'+fmt0(forecast.wind,' km/h')+')';
         if(forecast.gust!==null&&(forecast.wind===null||forecast.gust>=forecast.wind))
-          concl+=` con rachas hasta ${fmt0(forecast.gust,' km/h')}`;
+          concl+=', rachas '+fmt0(forecast.gust,' km/h');
         if(forecast.precip!==null&&num(forecast.precip)>0)
-          concl+=`. Precipitación estimada: ${fmt1(forecast.precip,' mm/h')}`;
+          concl+='. Pp: '+fmt1(forecast.precip,' mm/h');
         lines.push(concl+'.');
-        lines.push(`Riesgo: ${riskLbl}`);
-        lines.push(`Tendencia: ${tendLbl}`);
-        lines.push(`Ventana favorable: ${ventanaLbl}`);
-        lines.push('');
-        lines.push('');
-        // Alertas
+        lines.push('Riesgo: '+riskLbl);
+        lines.push('Tendencia: '+tendLbl);
+        lines.push('Ventana: '+ventanaLbl);
         const alertLinesA = alertasBlock();
-        lines.push('*Alertas vigentes*');
-        alertLinesA.forEach(l => lines.push(l));
+        const hasAlertsA = alertLinesA.length && !alertLinesA[0].includes('Sin alertas');
+        if(hasAlertsA){
+          lines.push('');
+          lines.push('ALERTAS DMC');
+          alertLinesA.forEach(l => lines.push(l));
+        }
         lines.push('Fuente: DMC / AccuWeather');
       }
     }
@@ -16262,7 +16306,7 @@ Fuente: DMC / AccuWeather`;
       _hhmm_val = (_fqt&&_fqt.value&&_fqt.value!=='08:00') ? _fqt.value : null;
     }
     const iso  = normalizeIso(_iso_val || todayIso());
-    const hhmm = _hhmm_val || hmNow();
+    const hhmm = _hhmm_val || '08:00';
     // ── Leer campos de rango y exponerlos para buildQuickText ──
     (function(){
       var _oaiOpen = byId('oaiBulletinModal')&&byId('oaiBulletinModal').classList.contains('show');
@@ -16483,7 +16527,7 @@ Fuente: DMC / AccuWeather`; }
       ? d.getElementById('oaiBulletinDate')
       : (d.getElementById('finalQuickDate') || d.getElementById('bulletinQuickDate') || d.getElementById('oaiBulletinDate'));
     if(_isoEl && _isoEl.value) isoRaw = _isoEl.value;
-    var hhmm = (_tEl && _tEl.value) || (new Date().toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit',hour12:false}));
+    var hhmm = (_tEl && _tEl.value) || '08:00';
     var iso = isoRaw || (new Date().toISOString().slice(0,10));
     var m = String(iso).match(/^(\d{2})-(\d{2})-(\d{4})$/);
     if(m) iso = m[3]+'-'+m[2]+'-'+m[1];
