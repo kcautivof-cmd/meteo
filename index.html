@@ -5170,7 +5170,7 @@ function __alertsRenderDMC(){
             const parts = z.split(',');
             const expanded = [];
             parts.forEach(p=>{
-                const sub = p.split(/\)(?=[A-ZÁÉÍÓÚ          Ü])/);
+                const sub = p.split(/\)(?=[A-ZÁÉÍÓÚ            Ü])/);
                 sub.forEach((s,idx)=>{
                     const seg = (idx < sub.length-1) ? s+')' : s;
                     expanded.push(seg.trim().toUpperCase());
@@ -15776,12 +15776,12 @@ Fuente: DMC / AccuWeather`;
       if(pN!==null&&pN>13)  { level='ALTO'; reasons.push(`precipitación intensa (${(pN).toFixed(1)} mm/h)`); }
       if(gN!==null&&gN>=50) { level='ALTO'; reasons.push(`rachas ${Math.round(gN)} km/h`); }
       if(wN!==null&&wN>=50) { level='ALTO'; reasons.push(`viento fuerte sostenido ${Math.round(wN)} km/h`); }
-      if(vN!==null&&vN<1500){ if(level==='BAJO') level='ALTO'; reasons.push('visibilidad muy reducida (<1.5 km)'); }
+      if(vN!==null&&Number.isFinite(vN)&&vN>0&&vN<1500){ if(level==='BAJO') level='ALTO'; reasons.push(`visibilidad muy reducida (${(vN/1000).toFixed(1)} km)`); }
       // MODERADO
       if(pN!==null&&pN>=3&&pN<=13){ if(level==='BAJO') level='MODERADO'; reasons.push(`precipitación moderada (${(pN).toFixed(1)} mm/h)`); }
       if(gN!==null&&gN>=37&&gN<50){ if(level==='BAJO') level='MODERADO'; reasons.push(`rachas ${Math.round(gN)} km/h`); }
       if(wN!==null&&wN>=29&&wN<50){ if(level==='BAJO') level='MODERADO'; reasons.push(`viento ${Math.round(wN)} km/h (Beaufort terreno)`); }
-      if(vN!==null&&vN>=1500&&vN<=3000){ if(level==='BAJO') level='MODERADO'; reasons.push('visibilidad limitada (1.5–3 km)'); }
+      if(vN!==null&&Number.isFinite(vN)&&vN>0&&vN>=1500&&vN<=3000){ if(level==='BAJO') level='MODERADO'; reasons.push('visibilidad limitada (1.5–3 km)'); }
       if(clN!==null&&clN>85&&level==='BAJO') reasons.push('cobertura nubosa elevada');
       if(!reasons.length) reasons.push('viento débil, visibilidad adecuada, sin precipitación');
       return `${level} — ${reasons.join(', ')}`;
