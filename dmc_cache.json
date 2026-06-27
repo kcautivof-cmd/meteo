@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-27T14:20:56.751912Z",
+  "generated_at": "2026-06-27T15:57:16.772763Z",
   "localities": {
     "visviri": {
       "indice": "visviri",
@@ -3375,7 +3375,7 @@
           null
         ],
         "precipitation_sum": [
-          2.0,
+          0.0,
           0.0,
           0.0,
           0.0,
@@ -3393,7 +3393,7 @@
           null
         ],
         "weather_code": [
-          61,
+          2,
           3,
           0,
           3,
@@ -3403,9 +3403,8 @@
         ],
         "__summary_text": [
           [
-            "NUBOSIDAD PARCIAL VARIANDO A NUBLADO Y CHUBASCOS AISLADOS",
-            "NUBOSIDAD PARCIAL CON VIENTO ENTRE 25 Y 40 KM/H",
-            "NUBOSIDAD PARCIAL"
+            "NUBOSIDAD PARCIAL",
+            "NUBOSIDAD PARCIAL CON VIENTO ENTRE 25 Y 40 KM/H"
           ],
           [
             "NUBOSIDAD PARCIAL",
@@ -3623,8 +3622,8 @@
           null,
           null,
           null,
-          null,
-          null
+          40.0,
+          40.0
         ],
         "weather_code": [
           61,
@@ -3649,9 +3648,11 @@
           ],
           [
             "NUBOSIDAD PARCIAL",
-            "NUBLADO Y CHUBASCOS D&EACUTE;BILES"
+            "NUBLADO Y CHUBASCOS D&EACUTE;BILES",
+            "NUBOSIDAD PARCIAL CON VIENTO ENTRE 25 Y 40 KM/H"
           ],
           [
+            "DESPEJADO CON VIENTO ENTRE 25 Y 40 KM/H",
             "DESPEJADO"
           ]
         ]
@@ -3697,8 +3698,8 @@
           null,
           null,
           null,
-          null,
-          60.0
+          70.0,
+          80.0
         ],
         "weather_code": [
           61,
@@ -3726,11 +3727,10 @@
           [
             "NUBLADO",
             "NUBLADO Y CHUBASCOS D&EACUTE;BILES",
-            "NUBOSIDAD PARCIAL"
+            "NUBOSIDAD PARCIAL CON VIENTO ENTRE 40 Y 60 KM/H Y R&AACUTE;FAGAS DE VIENTO HASTA 70 KM/H"
           ],
           [
-            "DESPEJADO",
-            "DESPEJADO CON VIENTO ENTRE 40 Y 60 KM/H"
+            "DESPEJADO CON VIENTO ENTRE 60 Y 80 KM/H"
           ]
         ]
       },
