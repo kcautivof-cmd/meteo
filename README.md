@@ -20,5 +20,4 @@ Esta herramienta tiene **carácter informativo**.
 No sustituye información oficial emitida por organismos competentes.
 
 ## Uso
-(Repositorio interno)
-
+Proyecto open source disponible para la comunidad. Las contribuciones son bienvenidas.
