@@ -8571,11 +8571,32 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
         }
 
         function getMoonPhase(date) {
+            // Iluminacion y fase lunar via SunCalc 1.9.0 (algoritmos de Jean Meeus,
+            // "Astronomical Algorithms"), referencia estandar en astronomia.
+            try {
+                if (window.SunCalc && typeof window.SunCalc.getMoonIllumination === "function") {
+                    const mi = window.SunCalc.getMoonIllumination(date);
+                    const percent = Math.round(mi.fraction * 100);
+                    const p = mi.phase; // 0=nueva, 0.25=cuarto crec., 0.5=llena, 0.75=cuarto meng.
+                    let name;
+                    if      (p < 0.0625 || p >= 0.9375) name = "NUEVA";
+                    else if (p < 0.1875)                name = "CRECIENTE";
+                    else if (p < 0.3125)                name = "CUARTO CREC.";
+                    else if (p < 0.4375)                name = "GIBOSA CREC.";
+                    else if (p < 0.5625)                name = "LLENA";
+                    else if (p < 0.6875)                name = "GIBOSA MENG.";
+                    else if (p < 0.8125)                name = "CUARTO MENG.";
+                    else                                name = "MENGUANTE";
+                    return { phase: name, illum: percent };
+                }
+            } catch(e) {}
+            // Respaldo si SunCalc no esta disponible (formula de iluminacion corregida)
             const lp = 2551443;
             const new_moon = new Date(1970, 0, 7, 20, 35, 0);
             const phaseSec = ((date.getTime() - new_moon.getTime()) / 1000) % lp;
             const days = Math.floor(phaseSec / (24 * 3600));
-            const percent = Math.round((phaseSec / lp) * 100);
+            const frac = phaseSec / lp;
+            const percent = Math.round((1 - Math.cos(2 * Math.PI * frac)) / 2 * 100);
             let name = "NUEVA";
             if(days < 2) name = "NUEVA"; else if(days < 7) name = "CRECIENTE"; else if(days === 7) name = "CUARTO CREC.";
             else if(days < 14) name = "GIBOSA CREC."; else if(days === 14) name = "LLENA"; else if(days < 21) name = "GIBOSA MENG.";
@@ -11984,11 +12005,31 @@ function _nubosidad(daily, hourly, i, iso) {
 /* Fase lunar */
 function _moon(iso) {
   const date = new Date(iso + 'T12:00:00');
+  // Iluminacion y fase lunar via SunCalc 1.9.0 (algoritmos de Jean Meeus).
+  try {
+    if (window.SunCalc && typeof window.SunCalc.getMoonIllumination === 'function') {
+      const mi = window.SunCalc.getMoonIllumination(date);
+      const illum = Math.round(mi.fraction * 100);
+      const p = mi.phase;
+      let phase;
+      if      (p < 0.0625 || p >= 0.9375) phase = 'LUNA NUEVA';
+      else if (p < 0.1875)                phase = 'CRECIENTE';
+      else if (p < 0.3125)                phase = 'CUARTO CREC.';
+      else if (p < 0.4375)                phase = 'GIBOSA CREC.';
+      else if (p < 0.5625)                phase = 'LUNA LLENA';
+      else if (p < 0.6875)                phase = 'GIBOSA MENG.';
+      else if (p < 0.8125)                phase = 'CUARTO MENG.';
+      else                                phase = 'MENGUANTE';
+      return { phase, illum };
+    }
+  } catch(e) {}
+  // Respaldo si SunCalc no esta disponible (formula de iluminacion corregida)
   const lp   = 2551443;
   const nm   = new Date(1970, 0, 7, 20, 35, 0);
   const ps   = ((date.getTime() - nm.getTime()) / 1000) % lp;
   const days = Math.floor(ps / 86400);
-  const illum = Math.round((ps / lp) * 100);
+  const frac = ps / lp;
+  const illum = Math.round((1 - Math.cos(2 * Math.PI * frac)) / 2 * 100);
 
   let phase = 'LUNA NUEVA';
   if      (days < 2)    phase = 'LUNA NUEVA';
