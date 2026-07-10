@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>METEOROLOGIA APLICADA</title>
@@ -3898,7 +3901,10 @@ body.role-user #cmpPanel { display:block !important; }
                 <div style="display:grid;grid-template-columns:auto 1fr;align-items:center;gap:0;padding:14px 16px 10px;border-bottom:1px solid var(--border);">
                     <!-- Temp grande -->
                     <div style="padding-right:20px;border-right:1px solid var(--border);margin-right:20px;display:flex;flex-direction:column;align-items:flex-start;">
-                        <span id="valTemp" style="font-size:3.8em;font-weight:300;color:var(--text);line-height:1;letter-spacing:-2px;">--°</span>
+                        <span style="display:flex;align-items:center;gap:10px;">
+                            <span id="valWeatherIcon" style="font-size:2.4em;line-height:1;" title="">--</span>
+                            <span id="valTemp" style="font-size:3.8em;font-weight:300;color:var(--text);line-height:1;letter-spacing:-2px;">--°</span>
+                        </span>
                         <span id="valWeatherDesc" style="font-size:0.82em;font-weight:700;color:var(--muted);margin-top:4px;letter-spacing:0.5px;">--</span>
                     </div>
                     <!-- Métricas secundarias en 2 cols -->
@@ -6458,15 +6464,16 @@ try {
         }),
         onEachFeature: (feature, layer) => {
             const p = feature?.properties || {};
-            const dmcTip = 'CHILE · DMC' + (p.ciudad || p.name ? ' · ' + String(p.ciudad || p.name).toUpperCase() : '');
+            const __fx = (s) => { s = String(s || ''); try { return (s.indexOf('\u00c3') < 0 && s.indexOf('\u00c2') < 0) ? s : decodeURIComponent(escape(s)); } catch (_e) { return s; } };
+            const dmcTip = 'CHILE · DMC' + (p.ciudad || p.name ? ' · ' + __fx(p.ciudad || p.name).toUpperCase() : '');
             layer.bindTooltip(dmcTip, { sticky:true, direction:'top', opacity:0.96, offset:[0,-6] });
             const popupId = `dmcPopup_${String(p.indice || '').replace(/[^a-z0-9_-]/gi,'_')}`;
             const btnId = `dmcBtn_${String(p.indice || '').replace(/[^a-z0-9_-]/gi,'_')}`;
             const baseHtml = `
               <div style="min-width:260px; font-family:Consolas,monospace;">
                 <div style="font-weight:800; margin-bottom:4px; color:#0f766e;">DMC · ESTACIÓN / LOCALIDAD OFICIAL</div>
-                <div><b>${String(p.ciudad || p.name || '').toUpperCase()}</b></div>
-                <div style="font-size:11px; color:#475569; margin-top:2px;">Región: ${String(p.region_name || p.region_code || '-')}</div>
+                <div><b>${__fx(p.ciudad || p.name || '').toUpperCase()}</b></div>
+                <div style="font-size:11px; color:#475569; margin-top:2px;">Región: ${__fx(p.region_name || p.region_code || '-')}</div>
                 <div style="font-size:11px; color:#475569;">Modelo: WRF DMC</div>
                 <div style="font-size:11px; color:#475569;">Fuente: Dirección Meteorológica de Chile</div>
                 <div style="font-size:11px; color:#475569;">Coords: ${(feature?.geometry?.coordinates?.[1] ?? '').toString()}, ${(feature?.geometry?.coordinates?.[0] ?? '').toString()}</div>
@@ -6677,12 +6684,17 @@ try {
     function __dmcGetOfficialCoord(name, tipo){
         try{
             if(tipo === 'regiones'){
-                const k = 'myCoordinates_' + name;
-                return typeof window[k] !== 'undefined' ? window[k] : null;
+                if(window.coordenadas_regiones_2024 && window.coordenadas_regiones_2024[name] != null) return window.coordenadas_regiones_2024[name];
+                var kr = 'myCoordinates_' + name;
+                if(typeof window[kr] !== 'undefined') return window[kr];
+                return null;
             }
             if(tipo === 'zonas'){
-                const k = 'coordenadas_' + name;
-                return typeof window[k] !== 'undefined' ? window[k] : null;
+                var dz = [window.coordenadas_zonas_2024, window.coordenadas_zonas_2024_region_11_antigua];
+                for(var i=0;i<dz.length;i++){ if(dz[i] && dz[i][name] != null) return dz[i][name]; }
+                var kz = 'coordenadas_' + name;
+                if(typeof window[kz] !== 'undefined') return window[kz];
+                return null;
             }
         }catch(_e){}
         return null;
@@ -6779,6 +6791,63 @@ try {
     window.__dmcMapLayers.__normalizeItems = __dmcOfficialNormalizeItems;
     window.__dmcMapLayers.__resetAlertsCache = function(){ __dmcOfficialAlertsPromise = null; };
 
+    // [FIX geo] Helpers de geometria DENTRO del try (aqui __dmcGetOfficialCoord/__dmcExpandOfficialZones SI estan en scope)
+    window.__dmcMapLayers.refreshAlerts = __dmcRefreshAlertsLayer;
+    window.__dmcMapLayers.__itemRings = function(it){
+      try{
+        var rings = [];
+        var push = function(c){
+          if(!Array.isArray(c) || !c.length) return;
+          if(Array.isArray(c[0]) && typeof c[0][0] === 'number'){ rings.push(c); }
+          else if(Array.isArray(c[0]) && Array.isArray(c[0][0])){ c.forEach(function(r){ if(Array.isArray(r) && r.length) rings.push(r); }); }
+        };
+        var t = String(it && it.tipoZonaAfecta || '').toLowerCase();
+        if(t === 'area'){
+          var pairs = String(it.dataZonaAfecta||'').split('|').map(function(s){ return s.split(',').map(Number); }).filter(function(a){ return a.length===2 && isFinite(a[0]) && isFinite(a[1]); });
+          if(pairs.length >= 3) rings.push(pairs);
+        } else if(t === 'regiones'){
+          String(it.dataZonaAfecta||'').split(',').map(function(s){ return s.trim(); }).filter(Boolean).forEach(function(reg){
+            if(reg==='ip'||reg==='jf'||reg==='an') return;
+            push(__dmcGetOfficialCoord(reg,'regiones'));
+          });
+        } else if(t === 'zonas'){
+          __dmcExpandOfficialZones(it.dataZonaAfecta||'').forEach(function(z){ push(__dmcGetOfficialCoord(z,'zonas')); });
+        }
+        return rings;
+      }catch(_e){ return []; }
+    };
+    window.__dmcMapLayers.__pointInItem = function(it, lat, lng){
+      try{
+        if(!isFinite(lat) || !isFinite(lng)) return null;
+        var hasGeo = !!(it && ((it.tipoZonaAfecta && String(it.tipoZonaAfecta).trim()) || (it.dataZonaAfecta && String(it.dataZonaAfecta).trim())));
+        var src = (it && Array.isArray(it.__rings) && it.__rings.length) ? it.__rings : window.__dmcMapLayers.__itemRings(it);
+        var flat = [];
+        var isVtx = function(p){ return (Array.isArray(p) && (typeof p[0]==='number' || typeof p[0]==='string')) || (p && typeof p==='object' && !Array.isArray(p) && (p.lat!=null)); };
+        var collect = function(x){
+          if(!Array.isArray(x) || !x.length) return;
+          if(typeof x[0] === 'number' || typeof x[0]==='string') return;
+          if(isVtx(x[0])){ flat.push(x); return; }
+          x.forEach(collect);
+        };
+        collect(src);
+        if(!flat.length) return hasGeo ? 'unresolved' : null;
+        var vy = function(p){ return Array.isArray(p)?Number(p[0]):Number(p.lat); };
+        var vx = function(p){ return Array.isArray(p)?Number(p[1]):Number(p.lng!=null?p.lng:p.lon); };
+        var inRing = function(ring){
+          var inside = false;
+          for(var i=0, j=ring.length-1; i<ring.length; j=i++){
+            var yi=vy(ring[i]), xi=vx(ring[i]), yj=vy(ring[j]), xj=vx(ring[j]);
+            var denom = (yj - yi) || 1e-12;
+            var hit = ((yi>lat)!==(yj>lat)) && (lng < (xj-xi)*(lat-yi)/denom + xi);
+            if(hit) inside = !inside;
+          }
+          return inside;
+        };
+        for(var k=0;k<flat.length;k++){ if(inRing(flat[k])) return true; }
+        return false;
+      }catch(_e){ return null; }
+    };
+
     async function __dmcRefreshAlertsLayer(){
         try{
             __dmcEnsureAlertsOverlay();
@@ -6801,10 +6870,12 @@ try {
                 const targetLayer = tipoLow.includes('alarma') ? __dmc.alertLayerAlarma
                                   : tipoLow.includes('alerta') ? __dmc.alertLayerAlerta
                                   : __dmc.alertLayerAviso;
+                it.__rings = [];
 
                 if(String(it.tipoZonaAfecta || '').toLowerCase() === 'area'){
                     const pairs = String(it.dataZonaAfecta || '').split('|').map(s => s.split(',').map(Number)).filter(a => a.length===2 && Number.isFinite(a[0]) && Number.isFinite(a[1]));
                     if(pairs.length >= 3){
+                        it.__rings.push(pairs);
                         L.polygon(pairs, sty).bindPopup(popup).addTo(targetLayer);
                     }
                     return;
@@ -6821,6 +6892,7 @@ try {
                         }
                         const coords = __dmcGetOfficialCoord(reg, 'regiones');
                         if(Array.isArray(coords) && coords.length){
+                            it.__rings.push(coords);
                             L.polygon(coords, sty).bindPopup(popup).addTo(targetLayer);
                         }
                     });
@@ -6832,6 +6904,7 @@ try {
                     zones.forEach(z=>{
                         const coords = __dmcGetOfficialCoord(z, 'zonas');
                         if(Array.isArray(coords) && coords.length){
+                            it.__rings.push(coords);
                             L.polygon(coords, sty).bindPopup(popup).addTo(targetLayer);
                         }
                     });
@@ -6869,6 +6942,61 @@ try {
 window.__dmcMapLayers = window.__dmcMapLayers || {};
 
 window.__dmcMapLayers.refreshAlerts = __dmcRefreshAlertsLayer;
+
+// Geometria de un aviso -> anillos [[lat,lng],...] (los mismos poligonos que dibuja el mapa)
+window.__dmcMapLayers.__itemRings = function(it){
+  try{
+    var rings = [];
+    var push = function(c){
+      if(!Array.isArray(c) || !c.length) return;
+      if(Array.isArray(c[0]) && typeof c[0][0] === 'number'){ rings.push(c); }
+      else if(Array.isArray(c[0]) && Array.isArray(c[0][0])){ c.forEach(function(r){ if(Array.isArray(r) && r.length) rings.push(r); }); }
+    };
+    var t = String(it && it.tipoZonaAfecta || '').toLowerCase();
+    if(t === 'area'){
+      var pairs = String(it.dataZonaAfecta||'').split('|').map(function(s){ return s.split(',').map(Number); }).filter(function(a){ return a.length===2 && isFinite(a[0]) && isFinite(a[1]); });
+      if(pairs.length >= 3) rings.push(pairs);
+    } else if(t === 'regiones'){
+      String(it.dataZonaAfecta||'').split(',').map(function(s){ return s.trim(); }).filter(Boolean).forEach(function(reg){
+        if(reg==='ip'||reg==='jf'||reg==='an') return;
+        push(__dmcGetOfficialCoord(reg,'regiones'));
+      });
+    } else if(t === 'zonas'){
+      __dmcExpandOfficialZones(it.dataZonaAfecta||'').forEach(function(z){ push(__dmcGetOfficialCoord(z,'zonas')); });
+    }
+    return rings;
+  }catch(_e){ return []; }
+};
+
+// true si (lat,lng) cae dentro del area del aviso; false si tiene geometria y NO cae; null si no hay geometria
+window.__dmcMapLayers.__pointInItem = function(it, lat, lng){
+  try{
+    if(!isFinite(lat) || !isFinite(lng)) return null;
+    var hasGeo = !!(it && ((it.tipoZonaAfecta && String(it.tipoZonaAfecta).trim()) || (it.dataZonaAfecta && String(it.dataZonaAfecta).trim())));
+    var src = (it && Array.isArray(it.__rings) && it.__rings.length) ? it.__rings : window.__dmcMapLayers.__itemRings(it);
+    var flat = [];
+    var collect = function(x){
+      if(!Array.isArray(x) || !x.length) return;
+      if(typeof x[0] === 'number') return;
+      if(Array.isArray(x[0]) && typeof x[0][0] === 'number'){ flat.push(x); return; }
+      x.forEach(collect);
+    };
+    collect(src);
+    if(!flat.length) return hasGeo ? 'unresolved' : null;
+    var inRing = function(ring){
+      var inside = false;
+      for(var i=0, j=ring.length-1; i<ring.length; j=i++){
+        var yi=Number(ring[i][0]), xi=Number(ring[i][1]), yj=Number(ring[j][0]), xj=Number(ring[j][1]);
+        var denom = (yj - yi) || 1e-12;
+        var hit = ((yi>lat)!==(yj>lat)) && (lng < (xj-xi)*(lat-yi)/denom + xi);
+        if(hit) inside = !inside;
+      }
+      return inside;
+    };
+    for(var k=0;k<flat.length;k++){ if(inRing(flat[k])) return true; }
+    return false;
+  }catch(_e){ return null; }
+};
 
 // ════════════════════//  CAPAS METEOROLÓGICAS — OpenWeatherMap (tiempo real) + RainViewer
 //  Sin API key: RainViewer radar lluvia
@@ -8132,10 +8260,7 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
             const nPrecip = (precipMm !== undefined && precipMm !== null && precipMm !== '' && !Number.isNaN(Number(precipMm))) ? Number(precipMm) : null;
 
             if (hasCode) {
-                if (nCode >= 51) return decodeWMO(nCode);
-                if (nHumidity !== null && nHumidity >= 95 && nCode <= 48) return "BRUMA / NIEBLA";
-                if (nCode <= 3 && nCloud !== null && nCloud < 50) return isDay ? "DESPEJADO (SOLEADO)" : "DESPEJADO";
-                if (nCode <= 3 && nCloud !== null && nCloud < 85) return "PARCIALMENTE NUBLADO";
+                // Respetar el codigo oficial DMC (weather_code); sin overrides de nubosidad/humedad
                 const decoded = decodeWMO(nCode);
                 if (decoded !== 'SIN DATOS') return decoded;
             }
@@ -8231,9 +8356,13 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
             }
             document.getElementById('valCloudBase').innerText = cbText;
 
-            let weatherDesc = calculateWeatherText(cur.weather_code, cur.cloud_cover, cur.relative_humidity_2m, cur.is_day);
+            // Condicion oficial DMC del dia (weather_code del pronostico WRF DMC); si no hay codigo, estimar desde observacion
+            const _dailyWcCur = (data.daily && Array.isArray(data.daily.weather_code)) ? data.daily.weather_code[todayIdx] : null;
+            const _hasDailyWcCur = _dailyWcCur !== undefined && _dailyWcCur !== null && _dailyWcCur !== '' && !Number.isNaN(Number(_dailyWcCur));
+            let weatherDesc = _hasDailyWcCur ? decodeWMO(Number(_dailyWcCur)) : calculateWeatherText(cur.weather_code, cur.cloud_cover, cur.relative_humidity_2m, cur.is_day);
             currentStatusText = weatherDesc;
             document.getElementById('valWeatherDesc').innerText = weatherDesc;
+            try { var _wi = document.getElementById('valWeatherIcon'); if(_wi){ _wi.textContent = condEmoji(weatherDesc, cur.weather_code, cur.cloud_cover, cur.is_day); _wi.title = weatherDesc; } } catch(_e){}
 
             const val = (id, v, u) => document.getElementById(id).innerText = (v !== undefined) ? v + u : "--";
             val('valTemp', Math.round(cur.temperature_2m), "°");
@@ -8435,10 +8564,12 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
 
                 let weatherText = '';
                 const dmcSummary = timelineSummaryText(daily, i);
-                if(offset === 0) {
-                    weatherText = dmcSummary || timelineOfficialValue(t, 'weather_text', null) || currentStatusText || calculateWeatherText(timelineOfficialValue(t, 'weather_code', daily.weather_code?.[i]), cloudAvg, humMax, 1, timelineOfficialValue(t, 'precipitation_sum', daily.precipitation_sum?.[i]));
-                } else {
-                    weatherText = dmcSummary || timelineOfficialValue(t, 'weather_text', null) || calculateWeatherText(timelineOfficialValue(t, 'weather_code', daily.weather_code?.[i]), cloudAvg, humMax, 1, timelineOfficialValue(t, 'precipitation_sum', daily.precipitation_sum?.[i]));
+                {
+                    // Unificado con el boletin: usar el codigo diario oficial DMC como fuente primaria; glosa solo si falta el codigo
+                    const _wcTL = timelineOfficialValue(t, 'weather_code', daily.weather_code?.[i]);
+                    const _hasWcTL = _wcTL !== undefined && _wcTL !== null && _wcTL !== '' && !Number.isNaN(Number(_wcTL));
+                    const _estTL = calculateWeatherText(_wcTL, cloudAvg, humMax, 1, timelineOfficialValue(t, 'precipitation_sum', daily.precipitation_sum?.[i]));
+                    weatherText = _hasWcTL ? _estTL : (dmcSummary || timelineOfficialValue(t, 'weather_text', null) || _estTL);
                 }
                 const shownWindMin = timelineWindMin(daily, i, minWind);
                 const shownGustMax = timelineGustMax(daily, hourly, i, daily.wind_speed_10m_max?.[i]);
@@ -8519,6 +8650,7 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
                 div.innerHTML = `
                     <div class="t-date">${dayStr}</div>
                     <div style="text-align:center;color:var(--muted);font-size:0.85em;border-bottom:1px solid var(--border);margin-bottom:4px;padding-bottom:2px;">${dateNum}</div>
+                    <div class="t-weather-icon" style="text-align:center;font-size:34px;line-height:1;margin:3px 0 2px;">${condEmoji(weatherText, timelineOfficialValue(t,'weather_code',daily.weather_code?.[i]), cloudAvg, 1)}</div>
                     <div class="t-weather-row">${weatherText}</div>
                     <div class="card-row"><span>T° MAX/MIN:</span> <span>${safeVal(daily.temperature_2m_max[i])}° / ${safeVal(daily.temperature_2m_min[i])}°</span></div>
                     <div class="card-row"><span>SENS MAX/MIN:</span> <span>${safeVal(daily.apparent_temperature_max[i])}° / ${safeVal(daily.apparent_temperature_min[i])}°</span></div>
@@ -8541,6 +8673,36 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
                 container.appendChild(div);
                 if(offset === 0) setTimeout(() => div.scrollIntoView({ inline: "center", behavior: "smooth", block: "nearest" }), 250);
             });
+        }
+
+        function wmoEmoji(code){
+            const c=Number(code);
+            if(!Number.isFinite(c)) return '';
+            if(c===0||c===1) return '☀️';
+            if(c===2) return '⛅';
+            if(c===3) return '☁️';
+            if(c===45||c===48) return '🌫️';
+            if(c>=51&&c<=57) return '🌦️';
+            if((c>=61&&c<=67)||(c>=80&&c<=82)) return '🌧️';
+            if((c>=71&&c<=77)||c===85||c===86) return '🌨️';
+            if(c>=95) return '⛈️';
+            return '';
+        }
+
+        function condEmoji(desc, code, cloud, isDay){
+            var night = (isDay === 0 || isDay === '0');
+            var d = String(desc||'').toUpperCase();
+            if(d.indexOf('TORMENTA')>=0) return '⛈️';
+            if(d.indexOf('NEVAD')>=0||d.indexOf('NIEVE')>=0) return '🌨️';
+            if(d.indexOf('CHUBASCO')>=0||d.indexOf('LLUVIA')>=0) return '🌧️';
+            if(d.indexOf('LLOVIZNA')>=0||d.indexOf('PRECIPITAC')>=0) return '🌦️';
+            if(d.indexOf('NIEBLA')>=0||d.indexOf('BRUMA')>=0) return '🌫️';
+            if(d.indexOf('PARCIAL')>=0) return night?'☁️':'⛅';
+            if(d.indexOf('NUBLADO')>=0||d.indexOf('CUBIERTO')>=0||d.indexOf('NUBOS')>=0) return '☁️';
+            if(d.indexOf('DESPEJADO')>=0||d.indexOf('SOLEADO')>=0||d.indexOf('DESPEJANDO')>=0) return night?'🌙':'☀️';
+            var e = wmoEmoji(code);
+            if(e) return e;
+            return '🌡️';
         }
 
         function decodeWMO(code) {
@@ -10558,7 +10720,7 @@ function applyDronePreset(){
 function _ua(d){return['↑','↗','→','↘','↓','↙','←','↖'][Math.round(d/45)%8];}
 function _uc(d){return['N','NE','E','SE','S','SO','O','NO'][Math.round(d/45)%8];}
 function _uw(c){if(c===0)return{i:'☀️',t:'Despejado'};if(c<=3)return{i:'🌤',t:'Parc. nublado'};if(c<=48)return{i:'🌫',t:'Niebla'};if(c<=57)return{i:'🌦',t:'Llovizna'};if(c<=67)return{i:'🌧',t:'Lluvia'};if(c<=77)return{i:'❄️',t:'Nieve'};if(c<=82)return{i:'🌧',t:'Chubascos'};return{i:'⛈',t:'Tormenta'};}
-function _uae(n,tx){const ic=parseInt(n)||0;if(ic<=5)return{i:'☀️',t:tx||'Soleado'};if(ic<=11)return{i:'🌤',t:tx||'Parc. nublado'};if(ic<=14)return{i:'🌦',t:tx||'Lluvia leve'};if(ic<=17)return{i:'🌩',t:tx||'Tormentas'};if(ic<=26)return{i:'❄️',t:tx||'Nieve'};if(ic<=31)return{i:'🌤',t:tx||'Parc. despejado'};if(ic<=40)return{i:'☁️',t:tx||'Nublado'};return{i:'⛈',t:tx||'Tormenta'};}
+function _uae(n,tx){const ic=parseInt(n)||0;if(ic<=5)return{i:'☀️',t:tx||'Soleado'};if(ic<=11)return{i:'🌤',t:tx||'Parc. nublado'};if(ic<=14)return{i:'🌦',t:tx||'Lluvia leve'};if(ic<=17)return{i:'🌩',t:tx||'Tormentas'};if(ic<=26)return{i:'❄️',t:tx||'Nieve'};if(ic<=31)return{i:'🌤',t:tx||'Parc. despejado'};if(ic<=40)return{i:'☁️',t:tx||'Nublado'};return{i:'⛈️',t:tx||'Tormenta'};}
 function _ubg(v,t,m){if(v===null||v===undefined||isNaN(v))return'#f0f0f0';const r=m==='max'?v/t:t/v;if(r<0.70)return'#5ae65a';if(r<=1.00)return'#ffe566';return'#ff5e5e';}
 function _us(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
 function _ub(id,c){const e=document.getElementById(id);if(e)e.style.background=c;}
@@ -10671,7 +10833,7 @@ async function _uDMAW(lat,lon){
   const cc  = pC?.data || null;
   const h12 = Array.isArray(pH?.data)?pH.data:Array.isArray(pH)?pH:[];
 
-  // ── TODOS LOS CAMPOS POSIBLES DE LA ESTACIÓN ──────────────────────────
+  // ── TODOS LOS CAMPOS POSIBLES DE LA ESTACIÓN ───────────────────────────
   // Helper: extrae número de cualquier campo con múltiples claves posibles
   const obsNum = (...keys) => {
     for(const k of keys){
@@ -12701,6 +12863,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div id="bulletinMenuPop" class="bulletin-menu-pop" role="menu" aria-hidden="true">
           <button type="button" class="bulletin-menu-btn" id="bulletinQuickBtn">BOLETÍN RÁPIDO</button>
           <button type="button" class="bulletin-menu-btn" id="bulletinFullBtn">BOLETÍN COMPLETO</button>
+          <button type="button" class="bulletin-menu-btn" id="bulletinStationsBtn">BOLETÍN POR ESTACIONES</button>
         </div>
         <div id="bulletinQuickModal" class="bulletin-modal" aria-hidden="true">
           <div class="bulletin-modal-card">
@@ -13071,6 +13234,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div id="bulletinMenuPop" class="bulletin-menu-pop" role="menu" aria-hidden="true">
           <button type="button" class="bulletin-menu-btn" id="bulletinQuickBtn">BOLETÍN RÁPIDO</button>
           <button type="button" class="bulletin-menu-btn" id="bulletinFullBtn">BOLETÍN COMPLETO</button>
+          <button type="button" class="bulletin-menu-btn" id="bulletinStationsBtn">BOLETÍN POR ESTACIONES</button>
         </div>`);
     }
     if(!byId('bulletinQuickModal')){
@@ -13235,7 +13399,7 @@ document.addEventListener('DOMContentLoaded', () => {
           #bulletinMenuPop3 .bm3-btn{width:100%;display:block;background:#f4f4f4;border:1px solid #b9b9b9;border-radius:10px;padding:14px 16px;margin:0 0 8px 0;text-align:left;font-family:Consolas,monospace;font-size:12px;font-weight:700;cursor:pointer;color:#111;}
           #bulletinMenuPop3 .bm3-btn:last-child{margin-bottom:0;}
         
-/* ── ADMIN PANEL ───────────────────────────────────────── */
+/* ── ADMIN PANEL ─────────────────────────────────────────── */
 #adminPanelBtn{position:absolute;top:8px;right:8px;display:block;background:var(--panel2);color:var(--text);border:1px solid var(--border);padding:4px 10px;font-family:Consolas,monospace;font-size:10px;font-weight:700;text-transform:uppercase;cursor:pointer;letter-spacing:1px;z-index:10;}
 #adminPanelBtn:hover{filter:brightness(0.96);}
 #adminPanelModal{position:fixed;inset:0;z-index:99998;background:rgba(0,0,0,0.55);display:none;align-items:center;justify-content:center;}
@@ -15835,7 +15999,7 @@ Fuente: DMC / AccuWeather`;
       if(_lowVis && _fogOrRain){ if(level==='BAJO') level='ALTO'; reasons.push('visibilidad reducida '+(vN/1000).toFixed(1)+' km (<1.5)'); }
       // Iluminacion lunar <= 15% (menor) — solo si hay dato
       // (evaluada si esta disponible via clN/luna, no implementada por falta de dato directo)
-      // ── AMARILLO (nivel 2) ──
+      // ── AMARILLO (nivel 2) ────
       // Temp. diurna 25-31°C (mayor)
       if(tN!==null&&Number.isFinite(tN)&&tN>=25&&tN<32){ if(level==='BAJO') level='MODERADO'; reasons.push('temp. maxima '+Math.round(tN)+'°C (>=25°C)'); }
       // Frio nocturno: sens. termica 0 a -29°C (menor)
@@ -16086,7 +16250,7 @@ Fuente: DMC / AccuWeather`;
       return days;
     }
 
-    // ── Helper: día corto en español ────────────────────────
+    // ── Helper: día corto en español ──────────────────────────
     function shortDay(isoDate){
       const d=new Date(isoDate+'T12:00:00Z');
       const ds=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
@@ -16094,7 +16258,7 @@ Fuente: DMC / AccuWeather`;
       return `${ds[d.getUTCDay()]} ${String(d.getUTCDate()).padStart(2,'0')} ${ms[d.getUTCMonth()]}`;
     }
 
-    // ── Helper: datos diarios para un ISO ───────────────────
+    // ── Helper: datos diarios para un ISO ─────────────────────
     function getDayData(isoDate){
       const dmcFxD = dmcDaily(bundle.dmcForecast||bundle.dmc||{}, isoDate);
       const tm  = dmcFxD.tmin;
@@ -16430,7 +16594,7 @@ Fuente: DMC / AccuWeather`; }
   function observeLinks(){ sanitizeAlertLinks(document); const target=byId('alertsList')||document.body; const mo=new MutationObserver(muts=>{ muts.forEach(m=>m.addedNodes.forEach(n=>{ if(n.nodeType===1) sanitizeAlertLinks(n); })); }); mo.observe(target,{childList:true,subtree:true}); }
   // Exponer para el script de anclaje final
   
-  // ── BOLETÍN WHATSAPP ────────────────────────────────────────────────────
+  // ── BOLETÍN WHATSAPP ──────────────────────────────────────────────────────
   function buildWhatsAppText(fullText, iso, isoTo, hhmm, hhmmFin){
     const isMultiDay  = isoTo && isoTo !== iso;
     const isTimeRange = !isMultiDay && hhmmFin && hhmmFin !== hhmm;
@@ -16572,7 +16736,7 @@ Fuente: DMC / AccuWeather`; }
 <!-- ═════════════     ANCLAJE DEFINITIVO DEL BOLETÍN RÁPIDO ESTRUCTURADO
      Garantiza que la versión mejorada se imponga sobre todos los
      listeners y timers previos, sin tocar nada fuera del boletín.
-═════════════════════════════════════════════════════════════════ -->
+══════════════════════════════════════════════════════════════════ -->
 <script id="quick-bulletin-final-anchor">
 (function(){
   var BTNS    = ['finalQuickGenerate','bulletinQuickGenerate','oaiBulletinGenerate'];
@@ -16583,7 +16747,7 @@ Fuente: DMC / AccuWeather`; }
     if(ev){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); }
     var d   = document;
     var isoRaw = (d.getElementById('finalQuickDate')||d.getElementById('bulletinQuickDate')||d.getElementById('oaiBulletinDate'))?.value;
-    // Leer hora del modal ACTIVO — oaiBulletinModal tiene prioridad si está visible
+    // Leer hora del modal ACTIVO ─── oaiBulletinModal tiene prioridad si está visible
     var _oaiM = d.getElementById('oaiBulletinModal');
     var _oaiOpen = _oaiM && _oaiM.classList.contains('show');
     var _tEl = _oaiOpen
@@ -17230,7 +17394,7 @@ window.closeBulletinMenu = function(){
 //  Solo visible para rol admin. Click derecho en mapa = fijar punto B.
 (function(){
 
-  // ── Estado ──────────────────────────────────────────────────────────────────
+  // ── Estado ───────────────────────────────────────────────────────────────────
   window.__cmpState = {
     active:   false,   // modo comparación encendido
     latB:     null,
@@ -19186,6 +19350,586 @@ if(typeof closeBulletinMenu === 'undefined'){
     }
   }, true);
 })();
+</script>
+
+<!-- BOLETIN-POR-ESTACIONES -->
+<script>
+/* ==== BOLETIN POR ESTACIONES (directo DMC) ==== */
+/* BOLETIN POR ESTACIONES (directo DMC) */
+(function(){
+  'use strict';
+  if (window.__stnBulletinInit) return;
+  window.__stnBulletinInit = true;
+
+  function byId(id){ return document.getElementById(id); }
+  function base(){ return (typeof window.WORKER_BASE_URL === 'string' ? window.WORKER_BASE_URL : '').replace(/\/$/,''); }
+
+  // Repara mojibake tipo "TARAPAC\u00c3\u00a1" -> "TARAPAC\u00c1"
+  function fixMoji(s){
+    s = String(s == null ? '' : s);
+    if (s.indexOf('\u00c3') < 0 && s.indexOf('\u00c2') < 0) return s;
+    try { return decodeURIComponent(escape(s)); } catch(e){ return s; }
+  }
+  // Normaliza para busqueda (sin tildes, mayusculas)
+  function norm(s){
+    s = String(s || '').toUpperCase();
+    try { return s.normalize('NFD').replace(/[\u0300-\u036f]/g,''); } catch(e){ return s; }
+  }
+
+  var CODE_LABEL = {0:'Despejado',1:'Mayormente despejado',2:'Nubosidad parcial',3:'Nublado',45:'Niebla',48:'Niebla escarchada',51:'Llovizna d\u00e9bil',53:'Llovizna',55:'Llovizna intensa',56:'Llovizna helada',57:'Llovizna helada',61:'Lluvia d\u00e9bil',63:'Lluvia',65:'Lluvia intensa',66:'Lluvia helada',67:'Lluvia helada',71:'Nieve d\u00e9bil',73:'Nieve',75:'Nieve intensa',77:'Granos de nieve',80:'Chubascos',81:'Chubascos',82:'Chubascos fuertes',85:'Chubascos de nieve',86:'Chubascos de nieve',95:'Tormenta',96:'Tormenta con granizo',99:'Tormenta fuerte'};
+  function codeLabel(c){ if(c===null||c===undefined||c==='') return 'N/D'; return CODE_LABEL[c] != null ? CODE_LABEL[c] : String(c); }
+  function emoji(c){ try { if (typeof window.wmoEmoji === 'function') return window.wmoEmoji(c) || ''; } catch(e){} return ''; }
+
+  // Formato numerico con coma decimal (es-CL)
+  function dec0(v, suf){ var n = Number(v); return Number.isFinite(n) ? (Math.round(n)+(suf||'')) : 'N/D'; }
+  function dec1(v, suf){ var n = Number(v); if(!Number.isFinite(n)) return 'N/D'; return (Math.round(n*10)/10).toFixed(1).replace('.',',')+(suf||''); }
+  function pick(){ for(var i=0;i<arguments.length;i++){ var v=arguments[i]; if(v!==null&&v!==undefined&&v!=='') return v; } return null; }
+
+  // Decodifica entidades HTML y elimina etiquetas (los avisos DMC vienen con &aacute; y <br>).
+  function deHtml(s){
+    s = String(s == null ? '' : s);
+    s = s.replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]+>/g, ' ');
+    s = s.replace(/&([a-zA-Z]+);/g, function(m, e){
+      var map = { aacute:'\u00e1', eacute:'\u00e9', iacute:'\u00ed', oacute:'\u00f3', uacute:'\u00fa', ntilde:'\u00f1', uuml:'\u00fc', auml:'\u00e4', ouml:'\u00f6', Aacute:'\u00c1', Eacute:'\u00c9', Iacute:'\u00cd', Oacute:'\u00d3', Uacute:'\u00da', Ntilde:'\u00d1', Uuml:'\u00dc', amp:'&', lt:'<', gt:'>', nbsp:' ', quot:'\"', ordf:'\u00aa', ordm:'\u00ba', deg:'\u00b0' };
+      return map[e] || m;
+    });
+    s = s.replace(/&#(\d+);/g, function(m, n){ var c = parseInt(n, 10); return Number.isFinite(c) ? String.fromCharCode(c) : m; });
+    return s.replace(/\s+/g, ' ').trim();
+  }
+
+  // Convierte un aviso oficial DMC (Meteochile) en una linea compacta: tipo + fenomeno + condicion + cobertura.
+  function alertLine(a){
+    if (!a) return null;
+    var tipo   = deHtml(a.tipo);
+    var titRaw = deHtml(a.titulo);
+    if (!tipo && !titRaw) return null;
+    var fen = titRaw;
+    var cut = fen.search(/\s+(EN\s+ZONA|EN\s+LAS?\s+REGION|EN\s+REGION|EN\s+SECTOR|PARA\s+(?:LA|LAS|EL|LOS))/i);
+    if (cut > 0) fen = fen.slice(0, cut);
+    fen = fen.replace(/[.,;:]+$/,'').trim();
+    var nivel = tipo ? (tipo.charAt(0).toUpperCase() + tipo.slice(1).toLowerCase()) : 'Aviso';
+    var cond = deHtml(a.condicionSinoptica || a.condicion_sinoptica || a.condicion);
+    if (/^(aviso|alerta|alarma|informaci)/i.test(cond)) cond = '';
+    var s = nivel;
+    if (fen) s += ' por ' + fen.toLowerCase();
+    if (cond) s += ' (' + cond.toLowerCase() + ')';
+    if (!fen && !cond && titRaw) s = nivel + ': ' + titRaw;
+    s = s.replace(/\.+$/,'') + '.';
+    var zonaRaw = deHtml(a.textoZonaAfecta || a.region).replace(/\)\s*(?=[^\s)])/g, '); ');
+    if (zonaRaw.length > 110) zonaRaw = zonaRaw.slice(0,108).replace(/[;,\s]+$/,'') + '\u2026';
+    if (zonaRaw){
+      var zc = zonaRaw.toLowerCase().split('; ').map(function(part){ return part ? part.charAt(0).toUpperCase() + part.slice(1) : part; }).join('; ');
+      s += ' Cobertura: ' + zc + '.';
+    }
+    return s;
+  }
+
+  function stName(p){ return fixMoji(String(p.ciudad || p.name || p.nombre || p.NOMBRE || '').trim()); }
+  function stRegion(p){ return fixMoji(String(p.region_name || p.region || p.region_code || '').trim()); }
+  function stIndice(p){ return String(p.indice || p.codigo || p.id || '').trim(); }
+  function stAlt(p){ var a = Number(p.altitud!=null?p.altitud:(p.altitude!=null?p.altitude:(p.alt!=null?p.alt:p.elevacion))); return Number.isFinite(a)?a:NaN; }
+
+  function dms(v, isLat){
+    v = Number(v);
+    if(!Number.isFinite(v)) return '';
+    var hemi = isLat ? (v>=0?'N':'S') : (v>=0?'E':'O');
+    var a=Math.abs(v), g=Math.floor(a), mf=(a-g)*60, m=Math.floor(mf), s=Math.round((mf-m)*60);
+    if(s===60){ s=0; m++; } if(m===60){ m=0; g++; }
+    function p2(n){ return (n<10?'0':'')+n; }
+    return g+'\u00b0'+p2(m)+"'"+p2(s)+'"'+hemi;
+  }
+  function coords(feat){
+    try {
+      var g = feat.geometry; if(!g || !g.coordinates) return '';
+      var la = dms(g.coordinates[1], true), lo = dms(g.coordinates[0], false);
+      return (la && lo) ? (la + ' ' + lo) : '';
+    } catch(e){ return ''; }
+  }
+
+  var DIAS  = ['dom','lun','mar','mi\u00e9','jue','vie','s\u00e1b'];
+  var MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  function p2(n){ return (n<10?'0':'')+n; }
+  function fechaLarga(d){ return p2(d.getDate())+'-'+p2(d.getMonth()+1)+'-'+d.getFullYear()+' '+p2(d.getHours())+':'+p2(d.getMinutes()); }
+  function diaCorto(iso){
+    var s = String(iso||'').slice(0,10);
+    var dt = new Date(s+'T12:00:00');
+    if(isNaN(dt.getTime())) return s;
+    return DIAS[dt.getDay()]+' '+p2(dt.getDate())+' '+MESES[dt.getMonth()];
+  }
+
+  var STATIONS = null;
+  var CURRENT = null;
+
+  var REGION_NAMES = {"01a":"Arica y Parinacota","01b":"Tarapac\u00e1","02":"Antofagasta","03":"Atacama","04":"Coquimbo","05":"Valpara\u00edso","05m":"Metropolitana de Santiago","06":"Libertador O'Higgins","07":"Maule","08a":"\u00d1uble","08b":"Biob\u00edo","09":"La Araucan\u00eda","10a":"Los R\u00edos","10b":"Los Lagos","11":"Ays\u00e9n","12":"Magallanes","ip":"Isla de Pascua","jf":"Juan Fern\u00e1ndez","an":"Ant\u00e1rtica Chilena"};
+  var DMC_LOCALITIES = [
+    { indice:"visviri", ciudad:"Visviri", reg:"01a", lat:-17.594, lon:-69.476 },
+    { indice:"arica", ciudad:"Arica", reg:"01a", lat:-18.478, lon:-70.312 },
+    { indice:"putre", ciudad:"Putre", reg:"01a", lat:-18.196, lon:-69.56 },
+    { indice:"colchane", ciudad:"Colchane", reg:"01b", lat:-19.277, lon:-68.639 },
+    { indice:"iquique", ciudad:"Iquique", reg:"01b", lat:-20.216, lon:-70.153 },
+    { indice:"pica", ciudad:"Pica", reg:"01b", lat:-20.491, lon:-69.329 },
+    { indice:"ollague", ciudad:"Ollag\u00fce", reg:"02", lat:-21.225, lon:-68.254 },
+    { indice:"tocopilla", ciudad:"Tocopilla", reg:"02", lat:-22.092, lon:-70.197 },
+    { indice:"calama", ciudad:"Calama", reg:"02", lat:-22.456, lon:-68.923 },
+    { indice:"snpedro", ciudad:"San Pedro de Atacama", reg:"02", lat:-22.911, lon:-68.201 },
+    { indice:"mejillones", ciudad:"Mejillones", reg:"02", lat:-23.1, lon:-70.45 },
+    { indice:"antofagasta", ciudad:"Antofagasta", reg:"02", lat:-23.65, lon:-70.4 },
+    { indice:"taltal", ciudad:"Taltal", reg:"02", lat:-25.408, lon:-70.485 },
+    { indice:"salvador", ciudad:"El Salvador", reg:"03", lat:-26.314, lon:-69.544 },
+    { indice:"chanaral", ciudad:"Cha\u00f1aral", reg:"03", lat:-26.348, lon:-70.623 },
+    { indice:"caldera", ciudad:"Caldera", reg:"03", lat:-27.067, lon:-70.825 },
+    { indice:"copiapo", ciudad:"Copiap\u00f3", reg:"03", lat:-27.366, lon:-70.332 },
+    { indice:"huasco", ciudad:"Huasco", reg:"03", lat:-28.464, lon:-71.218 },
+    { indice:"vallenar", ciudad:"Vallenar", reg:"03", lat:-28.576, lon:-70.759 },
+    { indice:"serena", ciudad:"La Serena", reg:"04", lat:-29.902, lon:-71.251 },
+    { indice:"vicuna", ciudad:"Vicu\u00f1a", reg:"04", lat:-30.031, lon:-70.708 },
+    { indice:"ovalle", ciudad:"Ovalle", reg:"04", lat:-30.598, lon:-71.2 },
+    { indice:"illapel", ciudad:"Illapel", reg:"04", lat:-31.633, lon:-71.17 },
+    { indice:"vilos", ciudad:"Los Vilos", reg:"04", lat:-31.908, lon:-71.507 },
+    { indice:"papudo", ciudad:"Papudo", reg:"05", lat:-32.507, lon:-71.441 },
+    { indice:"valpo", ciudad:"Valpara\u00edso", reg:"05", lat:-33.047, lon:-71.613 },
+    { indice:"vdelmar", ciudad:"Vi\u00f1a del Mar", reg:"05", lat:-33.024, lon:-71.552 },
+    { indice:"snantonio", ciudad:"San Antonio", reg:"05", lat:-33.593, lon:-71.607 },
+    { indice:"stgoo", ciudad:"Santiago Oriente", reg:"05m", lat:-33.437, lon:-70.65 },
+    { indice:"stgoc", ciudad:"Santiago Centro", reg:"05m", lat:-33.448, lon:-70.669 },
+    { indice:"stgon", ciudad:"Santiago Norte", reg:"05m", lat:-33.366, lon:-70.676 },
+    { indice:"stgos", ciudad:"Santiago Sur", reg:"05m", lat:-33.537, lon:-70.676 },
+    { indice:"stgop", ciudad:"Santiago Poniente", reg:"05m", lat:-33.456, lon:-70.751 },
+    { indice:"melipilla", ciudad:"Melipilla", reg:"05m", lat:-33.69, lon:-71.215 },
+    { indice:"rancagua", ciudad:"Rancagua", reg:"06", lat:-34.17, lon:-70.74 },
+    { indice:"snfernando", ciudad:"San Fernando", reg:"06", lat:-34.586, lon:-70.989 },
+    { indice:"stacruz", ciudad:"Santa Cruz", reg:"06", lat:-34.638, lon:-71.365 },
+    { indice:"pichilemu", ciudad:"Pichilemu", reg:"06", lat:-34.392, lon:-72.006 },
+    { indice:"curico", ciudad:"Curic\u00f3", reg:"07", lat:-34.982, lon:-71.239 },
+    { indice:"talca", ciudad:"Talca", reg:"07", lat:-35.426, lon:-71.655 },
+    { indice:"constitucion", ciudad:"Constituci\u00f3n", reg:"07", lat:-35.333, lon:-72.417 },
+    { indice:"linares", ciudad:"Linares", reg:"07", lat:-35.846, lon:-71.593 },
+    { indice:"chillan", ciudad:"Chill\u00e1n", reg:"08a", lat:-36.606, lon:-72.103 },
+    { indice:"concepcion", ciudad:"Concepci\u00f3n", reg:"08b", lat:-36.827, lon:-73.05 },
+    { indice:"angeles", ciudad:"Los \u00c1ngeles", reg:"08b", lat:-37.469, lon:-72.353 },
+    { indice:"angol", ciudad:"Angol", reg:"09", lat:-37.798, lon:-72.716 },
+    { indice:"temuco", ciudad:"Temuco", reg:"09", lat:-38.739, lon:-72.598 },
+    { indice:"villarica", ciudad:"Villarrica", reg:"09", lat:-39.285, lon:-72.227 },
+    { indice:"valdivia", ciudad:"Valdivia", reg:"10a", lat:-39.814, lon:-73.245 },
+    { indice:"osorno", ciudad:"Osorno", reg:"10b", lat:-40.574, lon:-73.133 },
+    { indice:"pmontt", ciudad:"Puerto Montt", reg:"10b", lat:-41.469, lon:-72.942 },
+    { indice:"ancud", ciudad:"Ancud", reg:"10b", lat:-41.87, lon:-73.82 },
+    { indice:"castro", ciudad:"Castro", reg:"10b", lat:-42.482, lon:-73.764 },
+    { indice:"chaiten", ciudad:"Chait\u00e9n", reg:"10b", lat:-42.915, lon:-72.707 },
+    { indice:"coyhaique", ciudad:"Coyhaique", reg:"11", lat:-45.571, lon:-72.068 },
+    { indice:"balmaceda", ciudad:"Balmaceda", reg:"11", lat:-45.915, lon:-71.689 },
+    { indice:"cochrane", ciudad:"Cochrane", reg:"11", lat:-47.255, lon:-72.573 },
+    { indice:"natales", ciudad:"Puerto Natales", reg:"12", lat:-51.726, lon:-72.506 },
+    { indice:"parenas", ciudad:"Punta Arenas", reg:"12", lat:-53.163, lon:-70.917 },
+    { indice:"porvenir", ciudad:"Porvenir", reg:"12", lat:-53.296, lon:-70.366 },
+    { indice:"pwilliams", ciudad:"Puerto Williams", reg:"12", lat:-54.935, lon:-67.605 },
+    { indice:"rapanui", ciudad:"Rapa Nui", reg:"ip", lat:-27.112, lon:-109.349 },
+    { indice:"jfernandez", ciudad:"Juan Fern\u00e1ndez", reg:"jf", lat:-33.639, lon:-78.829 },
+    { indice:"antartica", ciudad:"Ant\u00e1rtica", reg:"an", lat:-62.19, lon:-58.986 }
+  ];
+  function localityFeatures(){
+    return DMC_LOCALITIES.map(function(x){
+      return { type:'Feature', geometry:{ type:'Point', coordinates:[x.lon, x.lat] },
+        properties:{ indice:x.indice, ciudad:x.ciudad, region_code:x.reg, region_name:(REGION_NAMES[x.reg]||x.reg), source:'DMC', official:true } };
+    });
+  }
+  function loadStations(){
+    if (STATIONS) return Promise.resolve(STATIONS);
+    STATIONS = localityFeatures();
+    return Promise.resolve(STATIONS);
+  }
+
+  function fetchCurrent(indice){
+    var b = base();
+    if (!b) return Promise.resolve(null);
+    return fetch(b + '/dmc/current?indice=' + encodeURIComponent(indice||''), { cache:'no-store' })
+      .then(function(r){ return r.ok ? r.json() : null; });
+  }
+
+  // Avisos oficiales DMC (Meteochile) — misma fuente Y geometria que la capa del mapa.
+  // Forzamos el render de alertas del mapa para que cada aviso lleve su poligono real (it.__rings).
+  function fetchAlerts(){
+    try {
+      var dmc = window.__dmcMapLayers;
+      var afterRender = function(){
+        if (window.__alertsState && Array.isArray(window.__alertsState.items) && window.__alertsState.items.length) return window.__alertsState.items;
+        if (Array.isArray(window.__dmcAlertsItems) && window.__dmcAlertsItems.length) return window.__dmcAlertsItems;
+        return null;
+      };
+      if (dmc && typeof dmc.refreshAlerts === 'function') {
+        return Promise.resolve(dmc.refreshAlerts()).then(afterRender).catch(afterRender);
+      }
+      return Promise.resolve(afterRender());
+    } catch (_e) { return Promise.resolve(null); }
+  }
+
+  function buildText(feat, js, wa){
+    var p = feat.properties || {};
+    var c = js.current || {};
+    var t = js.today || {};
+    var preview = Array.isArray(js.forecast_preview) ? js.forecast_preview : [];
+    var now = new Date();
+    var todayStr = now.getFullYear() + '-' + p2(now.getMonth()+1) + '-' + p2(now.getDate());
+    var _fut = preview.filter(function(it){ return String(it.date||'').slice(0,10) > todayStr; });
+    function H(s){ return wa ? ('*'+s+'*') : s; }
+    var SEP = '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500';
+    var vis = Number(c.visibility);
+    var alt = stAlt(p);
+    var cc = coords(feat);
+    var wc = pick(t.weather_code, c.weather_code);
+    var L = [];
+    L.push(H('BOLET\u00cdN METEOROL\u00d3GICO'));
+    L.push('Direcci\u00f3n Meteorol\u00f3gica de Chile (DMC)');
+    L.push('');
+    L.push('ESTACI\u00d3N: ' + (stName(p).toUpperCase() || '\u2014'));
+    if (stRegion(p)) L.push('REGI\u00d3N: ' + stRegion(p).toUpperCase());
+    if (cc) L.push('COORDENADAS: ' + cc);
+    if (Number.isFinite(alt)) L.push('ALTITUD: ' + Math.round(alt) + ' m s.n.m.');
+    L.push('EMITIDO: ' + fechaLarga(now) + ' hrs (hora local)');
+    L.push('');
+    L.push(H('PRON\u00d3STICO PARA HOY (' + diaCorto(todayStr) + ')'));
+    L.push('\u2022 Tiempo: ' + codeLabel(wc) + (emoji(wc) ? (' ' + emoji(wc)) : ''));
+    var _tmin = Number(t.tmin), _tmax = Number(t.tmax);
+    if (Number.isFinite(_tmin) && Number.isFinite(_tmax)) L.push('\u2022 Temperatura: m\u00ednima ' + dec0(t.tmin,'\u00b0') + ' / m\u00e1xima ' + dec0(t.tmax,'\u00b0C'));
+    else if (Number.isFinite(_tmax)) L.push('\u2022 Temperatura m\u00e1xima: ' + dec0(t.tmax,'\u00b0C'));
+    else if (Number.isFinite(_tmin)) L.push('\u2022 Temperatura m\u00ednima: ' + dec0(t.tmin,'\u00b0C'));
+    if (Number.isFinite(Number(t.precip_mm))) L.push('\u2022 Precipitaci\u00f3n: ' + dec1(t.precip_mm) + ' mm');
+    if (Number.isFinite(Number(t.wind_max_kmh))) L.push('\u2022 Viento m\u00e1ximo: ' + dec0(t.wind_max_kmh,' km/h'));
+    if (Number.isFinite(Number(c.relative_humidity_2m))) L.push('\u2022 Humedad relativa: ' + dec0(c.relative_humidity_2m,' %'));
+    if (Number.isFinite(Number(c.cloud_cover))) L.push('\u2022 Nubosidad: ' + dec0(c.cloud_cover,' %'));
+    if (Number.isFinite(vis)) { var _vkm = Math.round(vis/1000); L.push('\u2022 Visibilidad: ' + (_vkm < 1 ? 'menos de 1' : _vkm) + ' km'); }
+    if (_fut.length){
+      L.push('');
+      L.push(H('PRON\u00d3STICO EXTENDIDO (' + Math.min(_fut.length,7) + ' d\u00edas)'));
+      _fut.slice(0,7).forEach(function(it){
+        var cond = (it.weather_code!=null) ? codeLabel(it.weather_code) : '';
+        L.push('\u2022 ' + diaCorto(it.date) + ': m\u00edn ' + dec0(it.tmin,'\u00b0') + ' / m\u00e1x ' + dec0(it.tmax,'\u00b0C')
+          + ' \u00b7 viento ' + dec0(it.wind_max_kmh,' km/h')
+          + ' \u00b7 ' + (Number.isFinite(Number(it.precip_mm)) ? (dec1(it.precip_mm)+' mm') : 'N/D')
+          + (cond ? (' \u00b7 ' + cond) : ''));
+      });
+    }
+    var _alerts = Array.isArray(js._alerts) ? js._alerts : null;
+    if (_alerts){
+      var _toks = norm(stRegion(p)).split(/[^A-Z]+/).filter(function(w){ return w.length >= 4; });
+      var _g = (feat && feat.geometry && feat.geometry.coordinates) ? feat.geometry.coordinates : null;
+      var _lat = _g ? Number(_g[1]) : NaN, _lng = _g ? Number(_g[0]) : NaN;
+      var _pin = !!(window.__dmcMapLayers && typeof window.__dmcMapLayers.__pointInItem === 'function');
+      var _mine = _alerts.filter(function(a){
+        if (_pin){
+          var geo = window.__dmcMapLayers.__pointInItem(a, _lat, _lng);
+          if (geo === true) return true;
+          if (geo === false) return false;
+          if (geo === 'unresolved') return false;
+        }
+        // Sin geometria disponible: respaldo por nombre de region
+        var hay = norm((a.titulo||'') + ' ' + (a.textoZonaAfecta||'') + ' ' + (a.region||'') + ' ' + (a.contenido||''));
+        return _toks.some(function(w){ return hay.indexOf(w) >= 0; });
+      });
+      var _lines = [];
+      _mine.forEach(function(a){ var ln = alertLine(a); if (ln && _lines.indexOf(ln) < 0) _lines.push(ln); });
+      if (_lines.length){
+        L.push('');
+        L.push(H('ALERTAS VIGENTES'));
+        _lines.slice(0,5).forEach(function(ln){ L.push('\u2022 ' + ln); });
+      }
+    }
+    var _cond = codeLabel(wc);
+    var _r = [];
+    if (_cond && _cond !== 'N/D') _r.push('Condici\u00f3n prevista: ' + _cond.toLowerCase() + '.');
+    if (Number.isFinite(Number(t.tmin)) && Number.isFinite(Number(t.tmax))) _r.push('Temperaturas entre ' + dec0(t.tmin,'\u00b0') + ' y ' + dec0(t.tmax,'\u00b0C') + '.');
+    if (Number.isFinite(Number(t.wind_max_kmh))) _r.push('Viento m\u00e1ximo ' + dec0(t.wind_max_kmh,' km/h') + '.');
+    var _pmm = Number(t.precip_mm);
+    var _futRain = _fut.some(function(it){ var m = Number(it.precip_mm); return Number.isFinite(m) && m > 0; });
+    if (Number.isFinite(_pmm)) {
+      if (_pmm > 0) _r.push('Precipitaci\u00f3n estimada hoy ' + dec1(t.precip_mm) + ' mm.');
+      else if (_futRain) _r.push('Sin precipitaciones hoy; se esperan lluvias en los pr\u00f3ximos d\u00edas.');
+      else _r.push('Sin precipitaciones significativas.');
+    } else if (_futRain) { _r.push('Se esperan precipitaciones en los pr\u00f3ximos d\u00edas.'); }
+    if (_r.length){ L.push(''); L.push(H('RESUMEN')); L.push(_r.join(' ')); }
+    L.push('');
+    L.push('Fuente: Direcci\u00f3n Meteorol\u00f3gica de Chile \u00b7 Modelo WRF DMC.');
+    return L.join('\n');
+  }
+
+  function injectUI(){
+    if (byId('stnBulletinStyle')) return;
+    var st = document.createElement('style');
+    st.id = 'stnBulletinStyle';
+    st.textContent = `
+      #stnBulletinModal{z-index:2147483000 !important}
+      #stnBulletinModal .stn-tools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+      #stnBulletinModal .stn-tools input,#stnBulletinModal .stn-tools select{height:34px;border:1px solid #bdbdbd;border-radius:7px;font-family:Consolas,monospace;font-size:12px;padding:0 10px;background:#fff;color:#111;box-sizing:border-box}
+      #stnBulletinModal .stn-list{max-height:300px;overflow:auto;border:1px solid #ddd;border-radius:8px;background:#fff}
+      #stnBulletinModal .stn-row{padding:9px 12px;border-bottom:1px solid #eee;cursor:pointer;font:600 12px Consolas,monospace;display:flex;justify-content:space-between;gap:12px;align-items:center}
+      #stnBulletinModal .stn-row:last-child{border-bottom:none}
+      #stnBulletinModal .stn-row:hover{background:#effcfa}
+      #stnBulletinModal .stn-row .reg{color:#64748b;font-weight:500;font-size:10px;white-space:nowrap}
+      #stnBulletinModal .stn-empty{padding:18px;text-align:center;color:#64748b;font:12px Consolas,monospace}
+      #stnBulletinModal .stn-out{display:none}
+      #stnBulletinModal .stn-out.show{display:block}
+      #stnBulletinModal .stn-out textarea{width:100%;min-height:280px;box-sizing:border-box;border:1px solid #bdbdbd;border-radius:8px;padding:10px 12px;font:12px/1.55 Consolas,monospace;color:#111;background:#fff;resize:vertical;text-transform:none}
+    `;
+    document.head.appendChild(st);
+
+    var html = ''
+      + '<div id="stnBulletinModal" class="bulletin-modal" aria-hidden="true">'
+      +   '<div class="bulletin-modal-card" style="width:min(680px,96vw)">'
+      +     '<div class="bulletin-modal-head">'
+      +       '<div class="bulletin-modal-title">BOLET\u00cdN POR ESTACIONES \u00b7 DMC</div>'
+      +       '<button type="button" class="bulletin-modal-close" id="stnClose">CERRAR</button>'
+      +     '</div>'
+      +     '<div style="padding:14px;">'
+      +       '<div id="stnListView">'
+      +         '<div class="stn-tools">'
+      +           '<input type="text" id="stnSearch" placeholder="Buscar estaci\u00f3n\u2026" style="flex:1 1 200px;">'
+      +           '<select id="stnRegion" style="flex:0 0 auto;"></select>'
+      +         '</div>'
+      +         '<div id="stnList" class="stn-list"><div class="stn-empty">Cargando localidades DMC\u2026</div></div>'
+      +       '</div>'
+      +       '<div id="stnOut" class="stn-out">'
+      +         '<div class="quick-output-head">'
+      +           '<div class="quick-output-title" id="stnOutTitle">BOLET\u00cdN</div>'
+      +           '<div class="quick-output-actions">'
+      +             '<button type="button" id="stnBack">\u2190 VOLVER</button>'
+      +             '<button type="button" id="stnCopy">COPIAR TEXTO</button>'
+      +             '<button type="button" id="stnCopyWa">COPIAR WHATSAPP</button>'
+      +           '</div>'
+      +         '</div>'
+      +         '<div class="quick-output-body"><textarea id="stnText" spellcheck="false"></textarea></div>'
+      +       '</div>'
+      +     '</div>'
+      +   '</div>'
+      + '</div>';
+    document.body.insertAdjacentHTML('beforeend', html);
+
+    byId('stnClose').addEventListener('click', closeStationModal);
+    byId('stnBulletinModal').addEventListener('click', function(ev){ if (ev.target === this) closeStationModal(); });
+    byId('stnBack').addEventListener('click', showListView);
+    byId('stnSearch').addEventListener('input', renderList);
+    byId('stnRegion').addEventListener('change', renderList);
+    byId('stnCopy').addEventListener('click', function(){ doCopy(false, this); });
+    byId('stnCopyWa').addEventListener('click', function(){ doCopy(true, this); });
+    document.addEventListener('keydown', function(ev){ if (ev.key === 'Escape') closeStationModal(); });
+  }
+
+  function doCopy(wa, btn){
+    if (!CURRENT) return;
+    var txt = buildText(CURRENT.feat, CURRENT.js, wa);
+    try {
+      navigator.clipboard.writeText(txt).then(function(){ flash(btn); }, function(){ legacyCopy(txt); flash(btn); });
+    } catch(e){ legacyCopy(txt); flash(btn); }
+  }
+  function legacyCopy(txt){ try { var ta = byId('stnText'); ta.value = txt; ta.select(); document.execCommand('copy'); } catch(e){} }
+  function flash(btn){ if(!btn) return; var o = btn.textContent; btn.textContent = 'COPIADO \u2713'; setTimeout(function(){ btn.textContent = o; }, 1400); }
+
+  function showListView(){ byId('stnOut').classList.remove('show'); byId('stnListView').style.display = ''; }
+  function showOutView(){ byId('stnListView').style.display = 'none'; byId('stnOut').classList.add('show'); }
+
+  function openStationModal(){
+    injectUI();
+    var m = byId('stnBulletinModal');
+    if (!m) return;
+    m.classList.add('show');
+    m.setAttribute('aria-hidden','false');
+    showListView();
+    if (!base()){
+      byId('stnList').innerHTML = '<div class="stn-empty">No hay conexi\u00f3n con el servidor DMC configurada.</div>';
+      return;
+    }
+    byId('stnList').innerHTML = '<div class="stn-empty">Cargando localidades DMC\u2026</div>';
+    loadStations().then(function(){ populateRegions(); renderList(); });
+  }
+  function closeStationModal(){
+    var m = byId('stnBulletinModal');
+    if (m){ m.classList.remove('show'); m.setAttribute('aria-hidden','true'); }
+    // No restauramos los menus ocultos: la app los reabre sola con display:block al pulsar el boton.
+    // Restaurarlos hacia reaparecer el backdrop y bloqueaba los clics (impedia reabrir).
+    _stnHidden = [];
+  }
+
+  function populateRegions(){
+    var sel = byId('stnRegion');
+    if (!sel || sel.dataset.filled) { return; }
+    var regs = {};
+    (STATIONS||[]).forEach(function(f){ var r = stRegion(f.properties||{}); if (r) regs[r.toUpperCase()] = r; });
+    var keys = Object.keys(regs).sort();
+    var opts = ['<option value="__ALL__">TODAS LAS REGIONES</option>'];
+    keys.forEach(function(k){ opts.push('<option value="'+escapeHtml(k)+'">'+escapeHtml(regs[k].toUpperCase())+'</option>'); });
+    sel.innerHTML = opts.join('');
+    sel.value = '__ALL__';
+    sel.dataset.filled = '1';
+  }
+
+  function renderList(){
+    var cont = byId('stnList');
+    if (!cont) return;
+    var q = norm(byId('stnSearch').value || '');
+    var reg = (byId('stnRegion').value || '__ALL__');
+    var rows = (STATIONS||[]).filter(function(f){
+      var p = f.properties||{};
+      var nm = stName(p);
+      var rg = stRegion(p);
+      if (reg !== '__ALL__' && rg.toUpperCase() !== reg) return false;
+      if (q && norm(nm).indexOf(q) < 0 && norm(rg).indexOf(q) < 0) return false;
+      return !!nm;
+    });
+    rows.sort(function(a,b){ return stName(a.properties||{}).localeCompare(stName(b.properties||{}), 'es'); });
+    if (!rows.length){ cont.innerHTML = '<div class="stn-empty">Sin estaciones para el filtro actual.</div>'; return; }
+    var shown = rows.slice(0,500);
+    cont.innerHTML = shown.map(function(f, i){
+      var p = f.properties||{};
+      return '<div class="stn-row" data-i="'+i+'"><span>'+escapeHtml(stName(p).toUpperCase())+'</span><span class="reg">'+escapeHtml(stRegion(p).toUpperCase())+'</span></div>';
+    }).join('');
+    Array.prototype.forEach.call(cont.querySelectorAll('.stn-row'), function(el){
+      el.addEventListener('click', function(){ selectStation(shown[parseInt(el.dataset.i,10)]); });
+    });
+  }
+
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, function(m){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]; }); }
+
+  function selectStation(feat){
+    if (!feat) return;
+    var p = feat.properties||{};
+    showOutView();
+    byId('stnOutTitle').textContent = (stName(p).toUpperCase() || 'ESTACI\u00d3N');
+    byId('stnText').value = 'Consultando datos oficiales DMC\u2026';
+    CURRENT = null;
+    Promise.all([fetchCurrent(stIndice(p)), fetchAlerts()]).then(function(res){
+      var js = res[0], al = res[1];
+      if (!js){ byId('stnText').value = 'No se pudieron obtener datos DMC para esta estaci\u00f3n en este momento.'; return; }
+      js._alerts = al;
+      CURRENT = { feat:feat, js:js };
+      byId('stnText').value = buildText(feat, js, false);
+    }).catch(function(){ byId('stnText').value = 'Error al consultar la estaci\u00f3n. Intente nuevamente.'; });
+  }
+
+  function makeStationsBtnLike(ref){
+    var b = document.createElement(ref && ref.tagName ? ref.tagName : 'button');
+    if (b.tagName === 'BUTTON') b.type = 'button';
+    b.id = 'bulletinStationsBtn';
+    b.setAttribute('data-stn','1');
+    if (ref) {
+      if (ref.className) b.className = ref.className;
+      var stl = ref.getAttribute && ref.getAttribute('style');
+      if (stl) b.setAttribute('style', stl);
+    }
+    b.textContent = 'BOLET\u00cdN POR ESTACIONES';
+    return b;
+  }
+
+  function ensureAllMenus(){
+    try {
+      var els = document.querySelectorAll('button, a, [role="button"]');
+      Array.prototype.forEach.call(els, function(el){
+        if (el.querySelector && el.querySelector('button, a, [role="button"]')) return;
+        var txt = (el.textContent || '').replace(/\s+/g,' ').trim().toUpperCase();
+        if (txt.indexOf('COMPLETO') < 0) return;
+        if (txt.indexOf('R\u00c1PIDO') >= 0 || txt.indexOf('RAPIDO') >= 0) return;
+        if (txt.indexOf('ESTACIONES') >= 0) return;
+        if (txt.length > 30) return;
+        var parent = el.parentNode;
+        if (!parent) return;
+        var dup = Array.prototype.some.call(parent.children, function(ch){
+          return /POR\s+ESTACIONES/i.test(ch.textContent || '');
+        });
+        if (dup) return;
+        parent.insertBefore(makeStationsBtnLike(el), el.nextSibling);
+      });
+    } catch(e){}
+  }
+
+  // Oculta temporalmente y guarda el estado para restaurarlo al cerrar (evita que el menu quede bloqueado).
+  var _stnHidden = [];
+  function _hide(el){
+    if (!el || el.nodeType !== 1) return;
+    try {
+      _stnHidden.push({ el: el, d: el.style.display });
+      el.style.display = 'none';
+      if (el.classList){ el.classList.remove('show'); el.classList.remove('open'); }
+    } catch(e){}
+  }
+  function _restoreHidden(){
+    try {
+      _stnHidden.forEach(function(rec){
+        try { rec.el.style.display = rec.d || ''; if (rec.el.classList){ rec.el.classList.remove('show'); rec.el.classList.remove('open'); } } catch(e){}
+      });
+    } catch(e){}
+    _stnHidden = [];
+  }
+  // Cierra el menu que contiene al boton (subiendo por el DOM) y cualquier menu conocido.
+  function hideMenuOf(node){
+    try {
+      var el = node;
+      while (el && el !== document.body && el.nodeType === 1){
+        var id = el.id || '';
+        var cls = (typeof el.className === 'string') ? el.className : '';
+        if (/menu|pop|backdrop|final/i.test(id) || /menu|pop|backdrop/i.test(cls)){
+          _hide(el);
+        }
+        el = el.parentNode;
+      }
+    } catch(e){}
+  }
+  function hideAllMenus(){
+    try {
+      var sel = '#bulletinMenu,#bulletinMenuPop,#bulletinMenuPop2,#bulletinMenuPop3,#finalBulletinMenu,.bulletin-menu-pop,.final-menu,.bulletin-backdrop,.final-bk,[id*="ackdrop"]';
+      Array.prototype.forEach.call(document.querySelectorAll(sel), function(e){
+        _hide(e);
+      });
+      if (typeof window.closeBulletinMenu === 'function'){ try{ window.closeBulletinMenu(); }catch(_e){} }
+    } catch(e){}
+  }
+
+  ensureAllMenus();
+  document.addEventListener('DOMContentLoaded', ensureAllMenus);
+  window.addEventListener('load', ensureAllMenus);
+
+  try {
+    var _mo = new MutationObserver(function(){
+      if (window.__stnEnsureQueued) return;
+      window.__stnEnsureQueued = true;
+      setTimeout(function(){ window.__stnEnsureQueued = false; ensureAllMenus(); }, 50);
+    });
+    _mo.observe(document.documentElement || document.body, { childList:true, subtree:true });
+  } catch(e){}
+
+  var _stnTries = 0;
+  var _stnIv = setInterval(function(){ ensureAllMenus(); if(++_stnTries > 40) clearInterval(_stnIv); }, 500);
+
+  // Cierra el menu de la app usando SU PROPIO mecanismo (funcion global + clase + tecla Escape),
+  // sin dejar display:none en linea (eso anulaba la clase con la que la app reabre el menu).
+  function closeAppMenus(){
+    try { if (typeof window.closeBulletinMenu === 'function') window.closeBulletinMenu(); } catch(e){}
+    try { if (typeof window.closeQuickBulletinModal === 'function') window.closeQuickBulletinModal(); } catch(e){}
+    try {
+      var sel = '#bulletinMenuPop,#bulletinMenuPop2,#bulletinMenuPop3,#bulletinMenuBackdrop,#bulletinMenuBackdrop2,#bulletinMenuBackdrop3,#finalBulletinMenu,#finalBulletinBackdrop,#oaiBulletinMenu,#oaiBulletinBackdrop,.bulletin-menu-pop,.final-menu,.final-bk';
+      Array.prototype.forEach.call(document.querySelectorAll(sel), function(e){
+        if (e && e.classList){ e.classList.remove('show'); e.classList.remove('open'); }
+      });
+    } catch(e){}
+    try {
+      var esc = new KeyboardEvent('keydown', { key:'Escape', code:'Escape', keyCode:27, which:27, bubbles:true });
+      document.dispatchEvent(esc);
+    } catch(e){}
+  }
+
+  document.addEventListener('click', function(ev){
+    var t = ev.target;
+    var node = t && ((t.id === 'bulletinStationsBtn') ? t : (t.closest ? t.closest('#bulletinStationsBtn') : null));
+    if (node) {
+      ev.preventDefault(); ev.stopPropagation();
+      if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+      closeAppMenus();
+      openStationModal();
+      return;
+    }
+    setTimeout(ensureAllMenus, 30);
+  }, true);
+
+  window.openStationBulletin = openStationModal;
+})();
+
 </script>
 </body>
 </html>
