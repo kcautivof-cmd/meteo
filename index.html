@@ -10844,24 +10844,28 @@ async function _uDMAW(lat,lon){
   };
 
   // VIENTO
-  const windObs = obsNum('velocidad_viento_kmh','viento_kmh','wind_speed_kmh','wind_speed','viento','wspd_kmh');
-  const gustObs = obsNum('rafaga_kmh','racha_kmh','gust_kmh','rafaga','racha','wgst_kmh');
-  const wDirObs = obsNum('direccion_viento','wind_direction','dir_viento','wdir');
+  // DMC entrega viento en NUDOS (kt): viento_prom_10m_kt (estandar aeronautico), rafaga_max_10m_kt, direccion_viento_deg. Convertir a km/h.
+  const KT_TO_KMH = 1.852;
+  const windObsKt = obsNum('viento_prom_10m_kt','viento_prom_2m_kt','viento_kt');
+  const gustObsKt = obsNum('rafaga_max_10m_kt');
+  const windObs = Number.isFinite(windObsKt) ? Math.round(windObsKt * KT_TO_KMH) : NaN;
+  const gustObs = Number.isFinite(gustObsKt) ? Math.round(gustObsKt * KT_TO_KMH) : NaN;
+  const wDirObs = obsNum('direccion_viento_deg','direccion_viento','wind_direction','dir_viento','wdir');
 
   // TEMPERATURA
   const obsTemp = obsNum('temperatura_c','temp_c','temperatura','temp','air_temp','t2m','ta');
 
   // HUMEDAD
-  const humObs  = obsNum('humedad_relativa','humedad','hr','humidity','rh','hr_pct');
+  const humObs  = obsNum('humedad_relativa_pct','humedad_relativa','humedad','hr','humidity','rh','hr_pct');
 
   // PUNTO DE ROCÍO
-  const dewObs  = obsNum('punto_rocio','dew_point','td','rocio','dewpoint');
+  const dewObs  = obsNum('punto_rocio_c','punto_rocio','dew_point','td','rocio','dewpoint');
 
   // PRESIÓN
-  const presObs = obsNum('presion_qff','presion_qfe','presion','pressure','qff','qfe','mslp_hpa');
+  const presObs = obsNum('presion_nivel_mar_hpa','presion_estacion_hpa','presion_qff','presion_qfe','presion','pressure','qff','qfe','mslp_hpa');
 
   // PRECIPITACIÓN (mm observados)
-  const precipMmObs = obsNum('precipitacion_mm','precip_mm','pp_mm','precipitacion','rain_mm','precip');
+  const precipMmObs = obsNum('precipitacion_1m_mm','precipitacion_6h_mm','precipitacion_24h_mm','precipitacion_mm','precip_mm','pp_mm','precipitacion','rain_mm','precip');
   const precipObsPct = Number.isFinite(precipMmObs) ? _uDmcPrecipPct(precipMmObs) : null;
 
   // NUBOSIDAD (octas → %)
@@ -10926,13 +10930,33 @@ async function _uDMAW(lat,lon){
   if(Number.isFinite(dewObs))  extras.push('Td '+dewObs.toFixed(1)+'°C');
   const extraStr = extras.length ? ' · '+extras.join(' · ') : '';
 
+  // ── ORIGEN POR VARIABLE (transparencia para decisión de vuelo) ──
+  const _src3 = (obs, wrf, accu) => Number.isFinite(obs) ? 'DMC-OBS' : (wrf!=null ? 'DMC-WRF' : (accu!=null ? 'AccuW' : '—'));
+  const provWind  = _src3(windObs, windWRF, cc?.Wind?.Speed?.Metric?.Value);
+  const provGust  = _src3(gustObs, gustWRF, cc?.WindGust?.Speed?.Metric?.Value);
+  const provWDir  = _src3(wDirObs, wDirWRF, cc?.Wind?.Direction?.Degrees);
+  const provTemp  = _src3(obsTemp, tempWRF, cc?.Temperature?.Metric?.Value);
+  const provCloud = Number.isFinite(cloudObs) ? 'DMC-OBS' : (cc?.CloudCover!=null ? 'AccuW' : (((Array.isArray(h?.cloud_cover)?h.cloud_cover[0]:cur?.cloud_cover)!=null) ? 'DMC-WRF' : '—'));
+  const provVis   = Number.isFinite(visObs) ? 'DMC-OBS' : (cc?.Visibility?.Metric?.Value!=null ? 'AccuW' : (cur?.visibility!=null ? 'DMC-WRF' : '—'));
+  const provPrecip= (precipObsPct!=null) ? 'DMC-OBS' : (h12?.[0]?.PrecipitationProbability!=null ? 'AccuW' : (((Array.isArray(day?.precipitation_sum)?day.precipitation_sum[0]:null)!=null) ? 'DMC-WRF' : 'AccuW'));
+  const provFeels = cc?.RealFeelTemperature?.Metric?.Value!=null ? 'AccuW' : (cur?.apparent_temperature!=null ? 'DMC-WRF' : '—');
+  const _dmcVars=[], _accuVars=[];
+  const _tag=(name,prov)=>{ if(prov==='DMC-OBS'||prov==='DMC-WRF') _dmcVars.push(name); else if(prov==='AccuW') _accuVars.push(name); };
+  _tag('viento',provWind); _tag('ráfagas',provGust); _tag('dirección',provWDir); _tag('temp',provTemp);
+  _tag('sensación',provFeels); _tag('nubosidad',provCloud); _tag('visibilidad',provVis); _tag('prob.lluvia',provPrecip);
+  const _srcParts=[
+    _dmcVars.length ? 'DMC ('+_dmcVars.join(', ')+')' : '',
+    _accuVars.length ? 'AccuWeather ('+_accuVars.join(', ')+')' : '',
+    'condición: DMC-WRF', 'Kp: NOAA', 'amanecer/atardecer: astronómico'
+  ].filter(Boolean);
+
   return{
     wind, gusts, wDir,
     precip, cloud, visKm,
     feels, temp,
     wx:_uTextToWx(firstSummary, cur?.weather_code),
     sunrise:sun.sr, sunset:sun.ss,
-    src:`DMC Estaciones + AccuWeather + NOAA Kp · ${stName}${horaObs}${extraStr}`
+    src:`${stName}${horaObs} · ${_srcParts.join(' · ')}${extraStr}`
   };
 }
 async function _uDMCObs(lat,lon){
