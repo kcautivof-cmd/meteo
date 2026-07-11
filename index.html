@@ -12373,140 +12373,275 @@ async function excelCopiarPronostico(btn) {
     return;
   }
 
+  const dmcPack = window.__dmcCurrentData || {};
+  const officialDaily = dmcPack.daily || {};
+  const officialHourly = dmcPack.hourly || {};
+  const officialPreview = Array.isArray(dmcPack.forecast_preview) ? dmcPack.forecast_preview : [];
+
+  // Datos del panel en pantalla (linea de tiempo). Con fuente DMC/WRF esto ES la DMC.
   const baseData =
     window.__temp7dForecast ||
     window.__forecastJson ||
     window.__meteoData ||
     window.globalData ||
     {};
-
-  const dmcPack = window.__dmcCurrentData || {};
   const baseDaily = baseData.daily || {};
   const baseHourly = baseData.hourly || {};
-  const officialDaily = dmcPack.daily || {};
-  const officialHourly = dmcPack.hourly || {};
-  const officialPreview = Array.isArray(dmcPack.forecast_preview) ? dmcPack.forecast_preview : [];
 
-  const useOfficial = ['dmc', 'dmc_accu', 'wrf_dmc'].includes(sourceSel);
-  const activeDaily = useOfficial && Array.isArray(officialDaily.time) && officialDaily.time.length ? officialDaily : baseDaily;
-  const activeHourly = useOfficial && Object.keys(officialHourly).length ? officialHourly : baseHourly;
-  const times = Array.isArray(activeDaily.time) ? activeDaily.time : [];
-
-  if (!times.length && !officialPreview.length) {
-    __notify('⚠️ No hay datos diarios DMC/AccuWeather disponibles para exportar.');
-    return;
-  }
-
-  const rango = await _pedirRangoFechas();
-  if (!rango) return;
-
+  // Coordenadas
   let lat = -20.214, lon = -70.152;
   try {
     if (typeof lastLat === 'number' && lastLat !== null) {
-      lat = lastLat;
-      lon = lastLon;
+      lat = lastLat; lon = lastLon;
     } else {
       const pLat = parseDMS(document.getElementById('latDms')?.value || '', 'lat');
       const pLon = parseDMS(document.getElementById('lonDms')?.value || '', 'lon');
-      if (Number.isFinite(pLat) && Number.isFinite(pLon)) {
-        lat = pLat;
-        lon = pLon;
-      }
+      if (Number.isFinite(pLat) && Number.isFinite(pLon)) { lat = pLat; lon = pLon; }
     }
   } catch(e) {}
 
+  const rango = await _pedirRangoFechas();
+  if (!rango) return;
   const requestedDays = _rangeDateList(rango.from, rango.to, 31);
-  const indexByIso = Object.fromEntries((times || []).map((t, idx) => [String(t).slice(0,10), idx]));
-  const previewByIso = Object.fromEntries(officialPreview.map((it) => [String(it?.date || '').slice(0,10), it || {}]));
-  const R = Array.from({ length: 11 }, () => []);
 
-  function pickRaw(officialArr, baseArr, i) {
-    const vo = Array.isArray(officialArr) ? officialArr[i] : undefined;
-    if (vo !== undefined && vo !== null && vo !== '') return vo;
-    return Array.isArray(baseArr) ? baseArr[i] : undefined;
-  }
-  function pickFmt(officialArr, baseArr, i, dec = false) {
-    const v = pickRaw(officialArr, baseArr, i);
-    return dec ? _dec1(v) : _rnd(v);
-  }
-  function previewVal(iso, keys, fallback) {
-    const item = previewByIso[String(iso).slice(0,10)];
-    if (item) {
-      for (const k of keys) {
-        const v = item?.[k];
-        if (v !== undefined && v !== null && v !== '') return v;
-      }
+  // ============================================================
+  //  FUENTE PRINCIPAL = panel DMC en pantalla (misma linea de
+  //  tiempo que ve el usuario). Relleno de huecos, en orden:
+  //  1) panel DMC  2) DMC preview oficial  3) AccuWeather  4) Open-Meteo.
+  //  Nubosidad SIEMPRE en palabras DMC y COHERENTE con la lluvia.
+  // ============================================================
+
+  // Respaldo Open-Meteo directo (solo para huecos)
+  let omDaily = {}, omHourly = {};
+  try {
+    const _omUrl = 'https://api.open-meteo.com/v1/forecast'
+      + '?latitude=' + lat + '&longitude=' + lon
+      + '&daily=temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max,uv_index_max,weather_code,relative_humidity_2m_mean'
+      + '&hourly=relative_humidity_2m,pressure_msl,wind_speed_10m,wind_gusts_10m,cloud_cover,weather_code'
+      + '&past_days=7&forecast_days=16&timezone=auto';
+    const _omRes = await fetch(_omUrl);
+    if (_omRes.ok) { const _j = await _omRes.json(); omDaily = _j.daily || {}; omHourly = _j.hourly || {}; }
+  } catch(_e) {}
+
+  // AccuWeather diario (solo para huecos)
+  let accuDays = [];
+  try {
+    const _b = String(window.WORKER_BASE_URL || '').replace(/\/+$/, '');
+    if (_b) {
+      let _ad = null;
+      try { _ad = await workerFetchJSON(_b + '/accu/daily5?lat=' + encodeURIComponent(lat) + '&lon=' + encodeURIComponent(lon)); } catch(_e) {}
+      if (!_ad) { try { _ad = await workerFetchJSON(_b + '/accu/daily15?lat=' + encodeURIComponent(lat) + '&lon=' + encodeURIComponent(lon)); } catch(_e) {} }
+      const _d = _ad?.data || _ad || {};
+      accuDays = _d.DailyForecasts || _d.dailyForecasts || [];
     }
-    return fallback;
+  } catch(_e) {}
+
+  // Indexado por fecha ISO
+  const baseIdxByIso = Object.fromEntries((Array.isArray(baseDaily.time) ? baseDaily.time : []).map((t, idx) => [String(t).slice(0,10), idx]));
+  const dmcIdxByIso = Object.fromEntries((Array.isArray(officialDaily.time) ? officialDaily.time : []).map((t, idx) => [String(t).slice(0,10), idx]));
+  const dmcPreviewByIso = Object.fromEntries(officialPreview.map((it) => [String(it?.date || '').slice(0,10), it || {}]));
+  const omIdxByIso = Object.fromEntries((Array.isArray(omDaily.time) ? omDaily.time : []).map((t, idx) => [String(t).slice(0,10), idx]));
+  const accuByIso = {};
+  accuDays.forEach((it) => { const d = it?.Date ? String(it.Date).slice(0,10) : null; if (d) accuByIso[d] = it; });
+
+  const _hayDatos = Object.keys(baseIdxByIso).length || Object.keys(dmcIdxByIso).length || Object.keys(dmcPreviewByIso).length || Object.keys(accuByIso).length || Object.keys(omIdxByIso).length;
+  if (!_hayDatos) {
+    __notify('\u26A0\uFE0F No hay datos disponibles para exportar.');
+    return;
   }
+
+  const R = Array.from({ length: 11 }, () => []);
+  const _n = (v) => { if (v === undefined || v === null || v === '') return null; const x = Number(String(v).replace(',', '.')); return Number.isFinite(x) ? x : null; };
+
+  // Panel DMC en pantalla (fuente principal). Usa las MISMAS funciones que la
+  // linea de tiempo (timelineOfficialValue / timelineGustMax) para que el Excel
+  // muestre exactamente lo mismo que las tarjetas en pantalla (valor oficial DMC).
+  function baseVar(iso, key) {
+    const i = baseIdxByIso[iso]; if (i == null) return null;
+    const fb = (k) => Array.isArray(baseDaily[k]) ? baseDaily[k][i] : undefined;
+    switch (key) {
+      case 'tmax':    return _n(timelineOfficialValue(iso, 'temperature_2m_max', fb('temperature_2m_max')));
+      case 'tmin':    return _n(timelineOfficialValue(iso, 'temperature_2m_min', fb('temperature_2m_min')));
+      case 'appMax':  return _n(timelineOfficialValue(iso, 'apparent_temperature_max', fb('apparent_temperature_max')));
+      case 'appMin':  return _n(fb('apparent_temperature_min'));
+      case 'windMax': return _n(timelineOfficialValue(iso, 'wind_speed_10m_max', fb('wind_speed_10m_max')));
+      case 'gustMax': return _n(timelineGustMax(baseDaily, baseHourly, i, fb('wind_gusts_10m_max')));
+      case 'precip':  return _n(timelineOfficialValue(iso, 'precipitation_sum', fb('precipitation_sum')));
+      case 'uv':      return _n(fb('uv_index_max'));
+      case 'wcode':   return _n(timelineOfficialValue(iso, 'weather_code', fb('weather_code')));
+      default:        return null;
+    }
+  }
+
+  // DMC preview oficial (meteochile)
+  function dmcVar(iso, key) {
+    const it = dmcPreviewByIso[iso];
+    const di = dmcIdxByIso[iso];
+    const prev = (k) => (it && it[k] !== undefined && it[k] !== null && it[k] !== '') ? it[k] : undefined;
+    const day  = (k) => (di != null && Array.isArray(officialDaily[k])) ? officialDaily[k][di] : undefined;
+    switch (key) {
+      case 'tmax':    return _n(prev('tmax') !== undefined ? prev('tmax') : day('temperature_2m_max'));
+      case 'tmin':    return _n(prev('tmin') !== undefined ? prev('tmin') : day('temperature_2m_min'));
+      case 'appMax':  return _n(prev('feelslike_max_c') !== undefined ? prev('feelslike_max_c') : day('apparent_temperature_max'));
+      case 'appMin':  return _n(day('apparent_temperature_min'));
+      case 'windMax': return _n(prev('wind_max_kmh') !== undefined ? prev('wind_max_kmh') : day('wind_speed_10m_max'));
+      case 'gustMax': return _n(prev('gust_max_kmh') !== undefined ? prev('gust_max_kmh') : day('wind_gusts_10m_max'));
+      case 'precip':  return _n(prev('precip_mm') !== undefined ? prev('precip_mm') : day('precipitation_sum'));
+      case 'uv':      return _n(day('uv_index_max'));
+      case 'hum':     return _n(day('relative_humidity_2m_mean'));
+      default:        return null;
+    }
+  }
+
+  // AccuWeather (daily5)
+  function accuVar(iso, key) {
+    const it = accuByIso[iso]; if (!it) return null;
+    switch (key) {
+      case 'tmax':    return _n(it?.Temperature?.Maximum?.Value);
+      case 'tmin':    return _n(it?.Temperature?.Minimum?.Value);
+      case 'appMax':  return _n(it?.RealFeelTemperature?.Maximum?.Value);
+      case 'appMin':  return _n(it?.RealFeelTemperature?.Minimum?.Value);
+      case 'windMax': return _n(it?.Day?.Wind?.Speed?.Value);
+      case 'gustMax': return _n(it?.Day?.WindGust?.Speed?.Value);
+      case 'precip':  return _n((it?.Day?.TotalLiquid?.Value !== undefined && it?.Day?.TotalLiquid?.Value !== null) ? it?.Day?.TotalLiquid?.Value : it?.Day?.Rain?.Value);
+      case 'uv': { const a = Array.isArray(it?.AirAndPollen) ? it.AirAndPollen.find((x) => x && x.Name === 'UVIndex') : null; return a ? _n(a.Value) : null; }
+      case 'cond':    return (it?.Day?.IconPhrase || it?.Day?.LongPhrase || it?.Day?.ShortPhrase || '') || null;
+      default:        return null;
+    }
+  }
+
+  // Open-Meteo
+  function omVar(iso, key) {
+    const i = omIdxByIso[iso]; if (i == null) return null;
+    switch (key) {
+      case 'tmax':    return _n(omDaily.temperature_2m_max?.[i]);
+      case 'tmin':    return _n(omDaily.temperature_2m_min?.[i]);
+      case 'appMax':  return _n(omDaily.apparent_temperature_max?.[i]);
+      case 'appMin':  return _n(omDaily.apparent_temperature_min?.[i]);
+      case 'windMax': return _n(omDaily.wind_speed_10m_max?.[i]);
+      case 'gustMax': return _n(omDaily.wind_gusts_10m_max?.[i]);
+      case 'precip':  return _n(omDaily.precipitation_sum?.[i]);
+      case 'uv':      return _n(omDaily.uv_index_max?.[i]);
+      case 'hum':     return _n(omDaily.relative_humidity_2m_mean?.[i]);
+      case 'wcode':   return _n(omDaily.weather_code?.[i]);
+      default:        return null;
+    }
+  }
+
+  function firstNonNull(iso, key, fns) { for (const f of fns) { const v = f(iso, key); if (v !== null && v !== undefined) return v; } return null; }
+  function pick(iso, key) { return firstNonNull(iso, key, [baseVar, dmcVar, accuVar, omVar]); }
+
+  function pickGust(iso) {
+    let v = baseVar(iso, 'gustMax'); if (v != null) return v;
+    v = dmcVar(iso, 'gustMax'); if (v != null) return v;
+    v = accuVar(iso, 'gustMax'); if (v != null) return v;
+    v = omVar(iso, 'gustMax'); if (v != null) return v;
+    const so = _hStats(omHourly, iso); return so.gMax > 0 ? so.gMax : null;
+  }
+
+  function pickHum(iso) {
+    const sb = _hStats(baseHourly, iso); if (sb.humMedia !== '-') return _n(sb.humMedia);
+    let v = dmcVar(iso, 'hum'); if (v != null) return v;
+    const sd = _hStats(officialHourly, iso); if (sd.humMedia !== '-') return _n(sd.humMedia);
+    v = omVar(iso, 'hum'); if (v != null) return v;
+    const so = _hStats(omHourly, iso); return so.humMedia !== '-' ? _n(so.humMedia) : null;
+  }
+
+  function pickPres(iso) {
+    let s = _hStats(baseHourly, iso); if (s.presionMedia !== '-') return _n(s.presionMedia);
+    s = _hStats(officialHourly, iso); if (s.presionMedia !== '-') return _n(s.presionMedia);
+    s = _hStats(omHourly, iso); return s.presionMedia !== '-' ? _n(s.presionMedia) : null;
+  }
+
+  // Nubosidad SIEMPRE en palabras del catalogo de iconos del boletin.
+  function _nubDMC(txt, omCode) {
+    const s = String(txt || '').toLowerCase().trim();
+    if (s) {
+      if (/torment|thunder|tronad/.test(s)) return 'Tormenta';
+      if (/nieve|snow|nevada/.test(s)) return 'Nieve';
+      if (/llovizna|drizzle/.test(s)) return 'Llovizna';
+      if (/precipitaci[oó]n\s+d[eé]bil/.test(s)) return 'Precipitación débil';
+      if (/lluvia|rain|chubasc|shower/.test(s)) return 'Lluvia';
+      if (/precipitaci|precip/.test(s)) return 'Lluvia';
+      if (/niebla|neblina|bruma|fog|mist|haze|hazy|escarchad/.test(s)) return 'Bruma / niebla';
+      if (/parcial|partly|intervals/.test(s)) return 'Parcialmente nublado';
+      if (/estimad/.test(s) && /despejad/.test(s)) return 'Despejado (estimado)';
+      if (/cubierto|overcast/.test(s)) return 'Nublado';
+      if (/nublado|cloudy|clouds|nubes|nuboso|nubosidad/.test(s)) return 'Nublado';
+      if (/despejado|despejada|clear|sunny|soleado/.test(s)) return 'Despejado (soleado)';
+      return 'Nublado';
+    }
+    const c = Number(omCode);
+    if (Number.isFinite(c)) {
+      if (c === 0 || c === 1) return 'Despejado (soleado)';
+      if (c === 2) return 'Parcialmente nublado';
+      if (c === 3) return 'Nublado';
+      if (c === 45 || c === 48) return 'Nublado';
+      if (c >= 51 && c <= 57) return 'Llovizna';
+      if ((c >= 61 && c <= 67) || (c >= 80 && c <= 82)) return 'Lluvia';
+      if (c >= 71 && c <= 77) return 'Nieve';
+      if (c >= 95) return 'Tormenta';
+    }
+    return '--';
+  }
+
+  function _implicaLluvia(w) { return w === 'Llovizna' || w === 'Lluvia' || w === 'Tormenta'; }
+
+  // Replica EXACTAMENTE la condicion que muestra la tarjeta de la linea de tiempo:
+  // weather_code oficial DMC -> calculateWeatherText/decodeWMO; glosa solo si falta.
+  function pickNub(iso, precipVal) {
+    const i = baseIdxByIso[iso];
+    let word = null;
+    if (i != null) {
+      let cloudAvg = null, humMax = null;
+      try { const st = hourlyStatsForDate(baseHourly, iso); if (st) { cloudAvg = st.cloudAvg; humMax = st.humMax; } } catch(_e) {}
+      const wc = timelineOfficialValue(iso, 'weather_code', baseDaily.weather_code?.[i]);
+      const hasWc = wc !== undefined && wc !== null && wc !== '' && !Number.isNaN(Number(wc));
+      let text = '';
+      try { text = calculateWeatherText(wc, cloudAvg, humMax, 1, precipVal); } catch(_e) {}
+      if (!hasWc) {
+        const summary = timelineSummaryText(baseDaily, i);
+        text = summary || timelineOfficialValue(iso, 'weather_text', null) || text;
+      }
+      word = _nubDMC(text, hasWc ? wc : null);
+    }
+    if (!word || word === '--') { const av = accuVar(iso, 'cond'); if (av) word = _nubDMC(av, null); }
+    if (!word || word === '--') { word = _nubDMC('', omVar(iso, 'wcode')); }
+    const pv = _n(precipVal);
+    if (_implicaLluvia(word) && (pv == null || pv < 0.1)) word = 'Nublado';
+    return word && word !== '--' ? word : 'Nublado';
+  }
+
+  const r0 = (v) => (v == null ? '-' : _rnd(v));
+  const r1 = (v) => (v == null ? '-' : _dec1(v));
 
   for (const iso of requestedDays) {
-    const i = indexByIso[iso] != null ? indexByIso[iso] : -1;
-    const hasPreview = !!previewByIso[iso];
+    const has = (baseIdxByIso[iso] != null) || (dmcIdxByIso[iso] != null) || !!dmcPreviewByIso[iso] || !!accuByIso[iso] || (omIdxByIso[iso] != null);
+    if (!has) { R.forEach((row) => row.push('-')); continue; }
 
-    if (i < 0 && !hasPreview) {
-      R.forEach(row => row.push('-'));
-      continue;
-    }
+    const tmax = pick(iso, 'tmax');
+    const tmin = pick(iso, 'tmin');
+    const appMax = pick(iso, 'appMax');
+    const appMin = pick(iso, 'appMin');
+    const uvMax = pick(iso, 'uv');
+    const precip = pick(iso, 'precip');
+    const windMax = pick(iso, 'windMax');
+    const gustMax = pickGust(iso);
+    const hum = pickHum(iso);
+    const pres = pickPres(iso);
+    const nub = pickNub(iso, precip);
 
-    const st = _hStats(activeHourly, iso);
-    const moon = _moon(iso);
-    const astro = _astro(iso, lat, lon);
-
-    const windMaxRaw = previewVal(iso, ['wind_max_kmh', 'wind_speed_10m_max'], i >= 0 ? pickRaw(activeDaily.wind_speed_10m_max, baseDaily.wind_speed_10m_max, i) : undefined);
-    const windMax = _rnd(windMaxRaw);
-
-    const windMin = i >= 0 ? _windMin(activeDaily, i, st.wMin) : st.wMin;
-
-    const gustMaxRaw = previewVal(iso, ['gust_max_kmh', 'wind_gusts_10m_max'], i >= 0 ? pickRaw(activeDaily.wind_gusts_10m_max, baseDaily.wind_gusts_10m_max, i) : undefined);
-    const gustMax = (gustMaxRaw !== undefined && gustMaxRaw !== null && gustMaxRaw !== '')
-      ? Math.round(Number(gustMaxRaw))
-      : _hStats(activeHourly, iso).gMax;
-    const gustMin = st.gMin;
-
-    const humOfficial = i >= 0 ? pickRaw(activeDaily.relative_humidity_2m_mean, baseDaily.relative_humidity_2m_mean, i) : undefined;
-
-    let nubTxt = '';
-    if (hasPreview) {
-      nubTxt = String(previewVal(iso, ['summary', 'weather_text', 'weather'], '') || '').trim().toLowerCase();
-    }
-    if (!nubTxt && i >= 0) {
-      const rawOfficialSummary = Array.isArray(activeDaily.__summary_text) ? activeDaily.__summary_text[i] : null;
-      if (rawOfficialSummary) {
-        const arr = Array.isArray(rawOfficialSummary) ? rawOfficialSummary : [rawOfficialSummary];
-        const seen = new Set();
-        const out = [];
-        arr.forEach(t => {
-          const c = String(t || '').trim().toLowerCase();
-          if (c && !seen.has(c)) {
-            seen.add(c);
-            out.push(c);
-          }
-        });
-        nubTxt = out.join(', ');
-      }
-    }
-    if (!nubTxt && i >= 0) nubTxt = _nubosidad(activeDaily, activeHourly, i, iso);
-    if (!nubTxt) nubTxt = '--';
-
-    const tmax = previewVal(iso, ['tmax', 'temperature_2m_max'], i >= 0 ? pickRaw(activeDaily.temperature_2m_max, baseDaily.temperature_2m_max, i) : undefined);
-    const tmin = previewVal(iso, ['tmin', 'temperature_2m_min'], i >= 0 ? pickRaw(activeDaily.temperature_2m_min, baseDaily.temperature_2m_min, i) : undefined);
-    const appMax = previewVal(iso, ['feelslike_max_c', 'apparent_temperature_max'], i >= 0 ? pickRaw(activeDaily.apparent_temperature_max, baseDaily.apparent_temperature_max, i) : undefined);
-    const appMin = i >= 0 ? pickRaw(activeDaily.apparent_temperature_min, baseDaily.apparent_temperature_min, i) : undefined;
-    const uvMax = i >= 0 ? pickRaw(activeDaily.uv_index_max, baseDaily.uv_index_max, i) : undefined;
-    const precip = previewVal(iso, ['precip_mm', 'precipitation_sum'], i >= 0 ? pickRaw(activeDaily.precipitation_sum, baseDaily.precipitation_sum, i) : undefined);
-
-    R[0].push(_rnd(tmax));
-    R[1].push(_rnd(tmin));
-    R[2].push(_rnd(appMax));
-    R[3].push(_rnd(appMin));
-    R[4].push(nubTxt);
-    R[5].push(_rnd(uvMax));
-    R[6].push(_dec1(precip));
-    R[7].push((humOfficial !== undefined && humOfficial !== null && humOfficial !== '') ? _rnd(humOfficial) : st.humMedia);
-    R[8].push(windMax);
-    R[9].push(gustMax);
-    R[10].push(st.presionMedia);
+    R[0].push(r0(tmax));
+    R[1].push(r0(tmin));
+    R[2].push(r0(appMax));
+    R[3].push(r0(appMin));
+    R[4].push(nub || '--');
+    R[5].push(r0(uvMax));
+    R[6].push(r1(precip));
+    R[7].push(r0(hum));
+    R[8].push(r0(windMax));
+    R[9].push(r0(gustMax));
+    R[10].push(pres == null ? '-' : pres.toFixed(1));
   }
 
   const _htmlEsc = (s) => String(s == null ? '' : s)
