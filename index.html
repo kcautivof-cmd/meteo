@@ -2163,6 +2163,7 @@ window.__parseDate = function(raw){
 
     <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.14.2/dist/leaflet-geoman.css"/>
     <script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.14.2/dist/leaflet-geoman.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
 
 
@@ -4393,6 +4394,11 @@ body.role-user #cmpPanel { display:block !important; }
               </div>
             </div>
             <div class="map-hint">CLICK EN EL MAPA PARA ACTUALIZAR LA UBICACIÓN (ACTIVA COORD. MANUALES GMS Y EJECUTA ACTUALIZACIÓN) &nbsp;|&nbsp; CLICK DERECHO: FIJAR PUNTO B (COMPARACION)</div>
+            <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
+              <button id="btnQuickForecast" type="button" onclick="quickDmcForecast()" style="align-self:flex-start;font-size:11px;font-weight:700;letter-spacing:.6px;padding:7px 16px;cursor:pointer;background:#0f766e;border:1px solid #0f766e;color:#fff;border-radius:3px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.25);">FORECAST DMC · PRÓXIMOS DÍAS</button>
+              <div id="quickForecastMsg" style="font-size:9px;color:var(--muted);"></div>
+              <div id="quickForecastOut" style="overflow-x:auto;"></div>
+            </div>
         
         <div class="fullwidth-panel" id="dataQueryWrap" style="display:none;">
             <span class="panel-title">DATOS CONSULTADOS</span>
@@ -7505,6 +7511,131 @@ function __dqDailyMinFromHourly(js, field){
             setTimeout(()=>{ wrap.scrollIntoView({behavior:'smooth', block:'start'}); }, 50);
         }
 
+        async function quickDmcForecast(){
+            const msg = document.getElementById('quickForecastMsg');
+            const out = document.getElementById('quickForecastOut');
+            const setMsg = (t)=>{ if(msg) msg.textContent = t; };
+            const lat = lastLat ?? parseDMS(document.getElementById('latDms')?.value || '', 'lat') ?? -20.214;
+            const lon = lastLon ?? parseDMS(document.getElementById('lonDms')?.value || '', 'lon') ?? -70.152;
+            setMsg('CONSULTANDO PRONÓSTICO DMC…');
+            if(out) out.innerHTML = '';
+            try{
+                const base = (typeof WORKER_BASE_URL === 'string' ? WORKER_BASE_URL : '').replace(/\/$/, '');
+                if(!base) throw new Error('WORKER_BASE_URL no definida');
+                const q = 'lat=' + encodeURIComponent(lat) + '&lon=' + encodeURIComponent(lon);
+                const [raw, curRaw] = await Promise.all([
+                    workerFetchJSON(base + '/dmc/forecast?' + q),
+                    workerFetchJSON(base + '/dmc/current?' + q).catch(()=>null)
+                ]);
+                const js = (raw && !raw.daily && raw.dmc) ? raw.dmc : raw;
+                const d = js && js.daily;
+                if(!d || !Array.isArray(d.time) || !d.time.length) throw new Error('sin datos');
+                const cur = (curRaw && !curRaw.official_station && curRaw.dmc) ? curRaw.dmc : curRaw;
+                const station = cur && cur.official_station ? cur.official_station : null;
+                const _loc = (js && js.__dmc) ? js.__dmc : {};
+                const _locName = [_loc.locality, _loc.region_name].filter(Boolean).join(', ');
+                const stationName = (station && station.ciudad) ? String(station.ciudad) : (_locName || '');
+                const headerLabel = stationName ? ('Estación: ' + stationName.toUpperCase()) : ('LAT ' + Number(lat).toFixed(3) + ', LON ' + Number(lon).toFixed(3));
+                const CODE = {0:'Despejado',1:'Mayormente despejado',2:'Parcialmente nublado',3:'Nublado',45:'Niebla',48:'Niebla escarchada',51:'Llovizna débil',53:'Llovizna',55:'Llovizna intensa',61:'Lluvia débil',63:'Lluvia',65:'Lluvia intensa',71:'Nieve débil',73:'Nieve',75:'Nieve intensa',80:'Chubascos',81:'Chubascos',82:'Chubascos fuertes',95:'Tormenta'};
+                const EMO = {0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌦️',55:'🌧️',61:'🌦️',63:'🌧️',65:'🌧️',71:'🌨️',73:'🌨️',75:'❄️',80:'🌦️',81:'🌧️',82:'⛈️',95:'⛈️'};
+                const wd = ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'];
+                const val = (arr,i)=> (arr && arr[i]!==null && arr[i]!==undefined) ? arr[i] : null;
+                const fmt = (v,suf)=> (v===null) ? '--' : (Math.round(v*10)/10)+(suf||'');
+                const humArr = __dqDailyMeanFromHourly(js, 'relative_humidity_2m');
+                const presArr = __dqDailyMeanFromHourly(js, 'pressure_msl');
+                const cloudArr = __dqDailyMeanFromHourly(js, 'cloud_cover');
+                const windMinArr = __dqDailyMinFromHourly(js, 'wind_speed_10m');
+                const BRD='#d0d5dd';
+                const C='border:1px solid '+BRD+';padding:6px 9px;';
+                const CC=C+'text-align:center;';
+                const TH='border:1px solid '+BRD+';padding:7px 9px;background:#f1f5f9;font-weight:700;';
+                const n = Math.min(7, d.time.length);
+                let rows = '';
+                for(let i=0;i<n;i++){
+                    const parts = String(d.time[i]).split('-');
+                    const dObj = new Date(Number(parts[0]), Number(parts[1])-1, Number(parts[2]));
+                    const dow = wd[dObj.getDay()] || '';
+                    const dd = parts[2]+'/'+parts[1];
+                    const wc = val(d.weather_code,i);
+                    const emo = (wc!==null && EMO[wc]) ? EMO[wc] : '';
+                    const cond = (wc!==null) ? (CODE[wc]||('cód '+wc)) : '--';
+                    const tmax = val(d.temperature_2m_max,i);
+                    const tmin = val(d.temperature_2m_min,i);
+                    const smax = val(d.apparent_temperature_max,i);
+                    const smin = val(d.apparent_temperature_min,i);
+                    const nub  = val(cloudArr,i);
+                    const precip = val(d.precipitation_sum,i);
+                    const hum  = val(humArr,i);
+                    const wmax = val(d.wind_speed_10m_max,i);
+                    const wmin = val(windMinArr,i);
+                    const pres = val(presArr,i);
+                    rows += '<tr>'
+                      + '<td style="'+C+'font-weight:700;white-space:nowrap;">'+dow+' '+dd+'</td>'
+                      + '<td style="'+C+'white-space:nowrap;">'+emo+' '+cond+'</td>'
+                      + '<td style="'+CC+'"><b>'+fmt(tmax,'°')+'</b></td>'
+                      + '<td style="'+CC+'">'+fmt(tmin,'°')+'</td>'
+                      + '<td style="'+CC+'">'+fmt(smax,'°')+'</td>'
+                      + '<td style="'+CC+'">'+fmt(smin,'°')+'</td>'
+                      + '<td style="'+CC+'">'+fmt(nub,'%')+'</td>'
+                      + '<td style="'+CC+'">'+fmt(precip,' mm')+'</td>'
+                      + '<td style="'+CC+'">'+fmt(hum,'%')+'</td>'
+                      + '<td style="'+CC+'">'+fmt(wmax,' km/h')+'</td>'
+                      + '<td style="'+CC+'">'+fmt(wmin,' km/h')+'</td>'
+                      + '<td style="'+CC+'">'+fmt(pres,' hPa')+'</td>'
+                      + '</tr>';
+                }
+                const thead = '<thead><tr>'
+                  + '<th style="'+TH+'text-align:left;">DÍA</th>'
+                  + '<th style="'+TH+'text-align:left;">CONDICIÓN</th>'
+                  + '<th style="'+TH+'">T. MÁX</th>'
+                  + '<th style="'+TH+'">T. MÍN</th>'
+                  + '<th style="'+TH+'">SENS. MÁX</th>'
+                  + '<th style="'+TH+'">SENS. MÍN</th>'
+                  + '<th style="'+TH+'">NUBOS.</th>'
+                  + '<th style="'+TH+'">PRECIP</th>'
+                  + '<th style="'+TH+'">HUMEDAD</th>'
+                  + '<th style="'+TH+'">VIENTO MÁX</th>'
+                  + '<th style="'+TH+'">VIENTO MÍN</th>'
+                  + '<th style="'+TH+'">PRESIÓN</th>'
+                  + '</tr></thead>';
+                const nowD = new Date();
+                const genStr = nowD.toLocaleDateString('es-CL') + ' ' + nowD.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'});
+                const html = '<div style="margin:0 0 8px;"><button type="button" onclick="saveForecastImage()" style="cursor:pointer;font-family:inherit;padding:7px 12px;border:1px solid '+BRD+';border-radius:6px;background:#0f766e;color:#fff;font-weight:700;font-size:11px;">GUARDAR IMAGEN</button></div>'
+                  + '<div id="forecastCard" style="display:inline-block;background:#ffffff;color:#111827;padding:16px 18px;border:1px solid '+BRD+';border-radius:10px;font-family:Consolas,monospace;">'
+                  +   '<div style="font-size:15px;font-weight:800;color:#0f766e;margin-bottom:2px;letter-spacing:.3px;">FORECAST · '+headerLabel+'</div>'
+                  +   '<div style="font-size:10px;color:#64748b;margin-bottom:10px;">Pronóstico próximos días · Fuente: Dirección Meteorológica de Chile (modelo WRF)</div>'
+                  +   '<table style="border-collapse:collapse;background:#ffffff;color:#111827;font-size:11px;">' + thead + '<tbody>'+rows+'</tbody></table>'
+                  +   '<div style="font-size:9px;color:#94a3b8;margin-top:8px;">Generado '+genStr+'</div>'
+                  + '</div>';
+                if(out) out.innerHTML = html;
+                setMsg('');
+            }catch(e){
+                console.error(e);
+                setMsg('No se pudo obtener el pronóstico DMC. Verifique la ubicación en el mapa y la conexión.');
+            }
+        }
+
+        async function saveForecastImage(){
+            const node = document.getElementById('forecastCard');
+            if(!node){ return; }
+            if(typeof html2canvas === 'undefined'){
+                alert('No se pudo generar la imagen (librería no cargada). Reintente con conexión a internet.');
+                return;
+            }
+            try{
+                const canvas = await html2canvas(node, { backgroundColor:'#ffffff', scale:2, useCORS:true });
+                const a = document.createElement('a');
+                a.download = 'forecast_dmc.png';
+                a.href = canvas.toDataURL('image/png');
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            }catch(err){
+                console.error(err);
+                alert('No se pudo generar la imagen.');
+            }
+        }
+
         async function runDataQuery(){
             __dqSetMsg("CONSULTANDO...");
             const agg = document.getElementById('dqAgg')?.value || 'yearly';
@@ -7606,81 +7737,32 @@ function __dqDailyMinFromHourly(js, field){
                 const dailyPressMean = __dqDailyMeanFromHourly(js, "pressure_msl");
                 const dailyCloudMean = __dqDailyMeanFromHourly(js, "cloud_cover");
 
-                for(const v of vars){
-                    if(v==='temp'){
-                        const agMax = __dqAggSeries(dates, dailyTempMax, agg, 'mean');
-                        const agMin = __dqAggSeries(dates, dailyTempMin, agg, 'mean');
-                        if(!aggKeys.length) aggKeys = agMax.keys.length ? agMax.keys : agMin.keys;
-                        const out = [];
-                        const n = Math.max(agMax.out?.length||0, agMin.out?.length||0);
-                        for(let i=0;i<n;i++){
-                            const mn = (agMin.out && agMin.out[i]!==null && agMin.out[i]!==undefined) ? agMin.out[i] : null;
-                            const mx = (agMax.out && agMax.out[i]!==null && agMax.out[i]!==undefined) ? agMax.out[i] : null;
-                            if(mn===null && mx===null) out.push(null);
-                            else if(mn!==null && mx!==null) out.push(`${mn}–${mx}`);
-                            else if(mn!==null) out.push(`${mn}`);
-                            else out.push(`${mx}`);
-                        }
-                        addCol(v, "TEMPERATURA (MIN–MAX)", "°C", out);
-                    }
-                    if(v==='sens'){
-                        const agMax = __dqAggSeries(dates, dailySensMax, agg, 'mean');
-                        const agMin = __dqAggSeries(dates, dailySensMin, agg, 'mean');
-                        if(!aggKeys.length) aggKeys = agMax.keys.length ? agMax.keys : agMin.keys;
-                        const out = [];
-                        const n = Math.max(agMax.out?.length||0, agMin.out?.length||0);
-                        for(let i=0;i<n;i++){
-                            const mn = (agMin.out && agMin.out[i]!==null && agMin.out[i]!==undefined) ? agMin.out[i] : null;
-                            const mx = (agMax.out && agMax.out[i]!==null && agMax.out[i]!==undefined) ? agMax.out[i] : null;
-                            if(mn===null && mx===null) out.push(null);
-                            else if(mn!==null && mx!==null) out.push(`${mn}–${mx}`);
-                            else if(mn!==null) out.push(`${mn}`);
-                            else out.push(`${mx}`);
-                        }
-                        addCol(v, "SENSACIÓN (MIN–MAX)", "°C", out);
-                    }
-                    if(v==='precip'){
-                        const ag = __dqAggSeries(dates, dailyPrecipSum, agg, 'sum');
-                        if(!aggKeys.length) aggKeys = ag.keys;
-                        addCol(v, "PRECIPITACIÓN", "MM", ag.out);
-                    }
-                    if(v==='snow'){
-                        const ag = __dqAggSeries(dates, dailySnowSum, agg, 'sum');
-                        if(!aggKeys.length) aggKeys = ag.keys;
-                        addCol(v, "NIEVE", "CM", ag.out);
-                    }
-                    if(v==='humidity'){
-                        const ag = __dqAggSeries(dates, dailyHumMean, agg, 'mean');
-                        if(!aggKeys.length) aggKeys = ag.keys;
-                        addCol(v, "HUMEDAD", "%", ag.out);
-                    }
-                    if(v==='wind'){
-                        const agMax = __dqAggSeries(dates, dailyWindMax, agg, 'mean');
-                        const agMin = __dqAggSeries(dates, dailyWindMin, agg, 'mean');
-                        if(!aggKeys.length) aggKeys = agMax.keys.length ? agMax.keys : agMin.keys;
-                        const out = [];
-                        const n = Math.max(agMax.out?.length||0, agMin.out?.length||0);
-                        for(let i=0;i<n;i++){
-                            const mn = (agMin.out && agMin.out[i]!==null && agMin.out[i]!==undefined) ? agMin.out[i] : null;
-                            const mx = (agMax.out && agMax.out[i]!==null && agMax.out[i]!==undefined) ? agMax.out[i] : null;
-                            if(mn===null && mx===null) out.push(null);
-                            else if(mn!==null && mx!==null) out.push(`${mn}–${mx}`);
-                            else if(mn!==null) out.push(`${mn}`);
-                            else out.push(`${mx}`);
-                        }
-                        addCol(v, "VIENTO (MIN–MAX)", "KM/H", out);
-                    }
-                    if(v==='pressure'){
-                        const ag = __dqAggSeries(dates, dailyPressMean, agg, 'mean');
-                        if(!aggKeys.length) aggKeys = ag.keys;
-                        addCol(v, "PRESIÓN", "HPA", ag.out);
-                    }
-                    if(v==='clouds'){
-                        const ag = __dqAggSeries(dates, dailyCloudMean, agg, 'mean');
-                        if(!aggKeys.length) aggKeys = ag.keys;
-                        addCol(v, "NUBOSIDAD", "%", ag.out);
-                    }
+                const _has = (x)=>vars.includes(x);
+                const _cd = {};
+                const _agg1 = (series,how)=>__dqAggSeries(dates, series, agg, how);
+                const _setKeys = (a)=>{ if(!aggKeys.length && a && a.keys && a.keys.length) aggKeys = a.keys; };
+                if(_has('temp')){
+                    const aMax=_agg1(dailyTempMax,'mean'), aMin=_agg1(dailyTempMin,'mean'); _setKeys(aMax); _setKeys(aMin);
+                    _cd.tempMax={label:"TEMP. MÁX", unit:"°C", values:aMax.out};
+                    _cd.tempMin={label:"TEMP. MÍN", unit:"°C", values:aMin.out};
                 }
+                if(_has('sens')){
+                    const aMax=_agg1(dailySensMax,'mean'), aMin=_agg1(dailySensMin,'mean'); _setKeys(aMax); _setKeys(aMin);
+                    _cd.sensMax={label:"SENSACIÓN MÁX", unit:"°C", values:aMax.out};
+                    _cd.sensMin={label:"SENSACIÓN MÍN", unit:"°C", values:aMin.out};
+                }
+                if(_has('clouds')){ const a=_agg1(dailyCloudMean,'mean'); _setKeys(a); _cd.clouds={label:"NUBOSIDAD", unit:"%", values:a.out}; }
+                if(_has('precip')){ const a=_agg1(dailyPrecipSum,'sum'); _setKeys(a); _cd.precip={label:"PRECIPITACIÓN", unit:"MM", values:a.out}; }
+                if(_has('snow')){ const a=_agg1(dailySnowSum,'sum'); _setKeys(a); _cd.snow={label:"NIEVE", unit:"CM", values:a.out}; }
+                if(_has('humidity')){ const a=_agg1(dailyHumMean,'mean'); _setKeys(a); _cd.humidity={label:"HUMEDAD", unit:"%", values:a.out}; }
+                if(_has('wind')){
+                    const aMax=_agg1(dailyWindMax,'mean'), aMin=_agg1(dailyWindMin,'mean'); _setKeys(aMax); _setKeys(aMin);
+                    _cd.windMax={label:"VIENTO MÁX", unit:"KM/H", values:aMax.out};
+                    _cd.windMin={label:"VIENTO MÍN", unit:"KM/H", values:aMin.out};
+                }
+                if(_has('pressure')){ const a=_agg1(dailyPressMean,'mean'); _setKeys(a); _cd.pressure={label:"PRESIÓN", unit:"HPA", values:a.out}; }
+                const _ORDER = ['tempMax','tempMin','sensMax','sensMin','clouds','precip','snow','humidity','windMax','windMin','pressure'];
+                for(const slot of _ORDER){ if(_cd[slot]) cols.push({key:slot, label:_cd[slot].label, unit:_cd[slot].unit, values:_cd[slot].values}); }
 
                 __dqRenderTable(aggKeys, cols);
                 __dqSetMsg("LISTO");
