@@ -4972,7 +4972,7 @@ function __alertsRender(){
                 </div>
                 ${contenido ? `<div style="font-size:10px; color: var(--muted); line-height:1.3;">${contenido}</div>` : ``}
                 <div style="display:flex; gap:8px; align-items:center; margin-top:4px;">
-                    ${href ? `<div class="alert-link" onclick="window.open('${href}','_blank')">VER DETALLE ↗</div>` : ``}
+                    <div class="alert-link" onclick="window.open('${/^https?:\/\//i.test(href) ? href : 'https://senapred.cl/informate/eventos'}','_blank')">${/^https?:\/\//i.test(href) ? 'VER INFORME ↗' : 'FUENTE: SENAPRED ↗'}</div>
                     ${hasGeom ? `<div class="alert-link" onclick="__alertsDrawOnMap(__alertsState.filtered[${idx}])">VER EN MAPA ⤢</div>` : ``}
                 </div>
             </div>`;
@@ -5228,7 +5228,7 @@ function __alertsRenderDMC(){
                 <span>${desde ? 'DESDE: '+desde : ''}${hasta ? ' · HASTA: '+hasta : ''}</span>
                 <span>DMC OFICIAL</span>
             </div>
-            ${href ? `<div style="display:flex;gap:8px;margin-top:4px;"><div class="alert-link" onclick="window.open('${href}','_blank')">VER EN DMC ↗</div></div>` : ''}
+            <div style="display:flex;gap:8px;margin-top:4px;"><div class="alert-link" onclick="window.open('${/^https?:\/\//i.test(href) ? href : 'https://www.meteochile.gob.cl/'}','_blank')">${/^https?:\/\//i.test(href) ? 'VER EN DMC ↗' : 'FUENTE: DMC ↗'}</div></div>
         </div>`;
     }).join('');
 }
@@ -5313,7 +5313,7 @@ function __alertsRenderDMC(){
                             <span>${area || "—"}</span>
                             <span>${date}${time?` ${time}`:""}</span>
                         </div>
-                        ${href ? `<div class="alert-link" onclick="window.open('${href}','_blank')">VER DETALLE ↗</div>` : ``}
+                        <div class="alert-link" onclick="window.open('${/^https?:\/\//i.test(href) ? href : 'https://senapred.cl/informate/eventos'}','_blank')">${/^https?:\/\//i.test(href) ? 'VER INFORME ↗' : 'FUENTE: SENAPRED ↗'}</div>
                     </div>`;
                 }).join('');
             }catch(e){
@@ -6016,7 +6016,7 @@ try {
         }).join('');
         var btnUrl = (group && group.alerts && group.alerts[0] && group.alerts[0].official_url) || 'https://senamhi.gob.bo/index.php/alertas';
         return '<div style="min-width:300px;max-width:520px">'
-            + '<div style="font:700 14px Consolas,monospace;color:'+col+'">🇧🇴 BOLIVIA · ALERTAS OFICIALES</div>'
+            + '<div style="font:700 14px Consolas,monospace;color:'+col+'">🇧🇴 BOLIVIA    ALERTAS OFICIALES</div>'
             + '<hr style="margin:7px 0">'
             + items
             + '<div style="margin-top:6px"><a href="' + esc(btnUrl) + '" target="_blank" rel="noopener" style="display:inline-block;border:1px solid #777;background:#fff;padding:5px 8px;cursor:pointer;font:700 11px Consolas,monospace;color:#111;text-decoration:none">ABRIR LISTADO OFICIAL</a></div>'
@@ -11068,7 +11068,7 @@ async function _uDMAW(lat,lon){
   const extraStr = extras.length ? ' · '+extras.join(' · ') : '';
 
   // ── ORIGEN POR VARIABLE (transparencia para decisión de vuelo) ──
-  const _src3 = (obs, wrf, accu) => Number.isFinite(obs) ? 'DMC-OBS' : (wrf!=null ? 'DMC-WRF' : (accu!=null ? 'AccuW' : '—'));
+  const _src3 = (obs, wrf, accu) => Number.isFinite(obs) ? 'DMC-OBS' : (wrf!=null ? 'DMC-WRF' : (accu!=null ? 'AccuW' : '   '));
   const provWind  = _src3(windObs, windWRF, cc?.Wind?.Speed?.Metric?.Value);
   const provGust  = _src3(gustObs, gustWRF, cc?.WindGust?.Speed?.Metric?.Value);
   const provWDir  = _src3(wDirObs, wDirWRF, cc?.Wind?.Direction?.Degrees);
@@ -14600,7 +14600,7 @@ Presión: 1013 hPa
 Punto rocío: 13,1°C
 Índice UV: 4 (moderado)
 
-*Conclusión*
+*Conclusi  n*
 Cielo despejado. Temp entre 17°C y 21°C.
 Viento débil, con rachas hasta 22 km/h.
 Tendencia: estable. Riesgo: bajo.
@@ -18471,7 +18471,7 @@ window.closeBulletinMenu = function(){
     }
   }
 
-  /* ── Init ─────────────────────────────────────────────   ──────── */
+  /* ── Init ─────────────────────────────────────────────   ──────  ─ */
   var _iv=setInterval(function(){
     if(window.__pickMap&&window.__cmpState){ clearInterval(_iv); _attachClick(); setTimeout(_patchBtn,600); }
   },300);
