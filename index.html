@@ -7731,13 +7731,9 @@ function __dqDailyMinFromHourly(js, field){
                             ['UV', (cc.UVIndex!=null)?(String(cc.UVIndex) + (cc.UVIndexText?(' · '+cc.UVIndexText):'')):'--'],
                             ['LLUVIA 24H', fmt(mv(cc.PrecipitationSummary && cc.PrecipitationSummary.Past24Hours),' mm')]
                         ];
-                        let chHead = '';
-                        let chBody = '';
-                        for(const c of chips){ chHead += '<th style="'+TH+'">'+c[0]+'</th>'; chBody += '<td style="'+CC+'font-weight:700;">'+c[1]+'</td>'; }
-                        curBlock = '<div style="border:1px solid '+BRD+';border-radius:8px 8px 0 0;border-bottom:0;overflow:hidden;margin:0;">'
-                          + '<div style="font-weight:700;color:#ea6a1e;font-size:11px;padding:9px 10px 7px;background:#fff4ec;">CONDICIONES ACTUALES</div>'
-                          + '<table style="border-collapse:collapse;background:#ffffff;color:#111827;font-size:11px;width:100%;"><thead><tr>'+chHead+'</tr></thead><tbody><tr>'+chBody+'</tr></tbody></table>'
-                          + '</div>';
+                        let ch = '';
+                        for(const c of chips){ ch += '<div style="border:1px solid '+BRD+';border-radius:6px;padding:6px 9px;min-width:86px;background:#fafafa;"><div style="font-size:8px;color:#94a3b8;letter-spacing:.5px;">'+c[0]+'</div><div style="font-size:12px;font-weight:700;color:#111827;">'+c[1]+'</div></div>'; }
+                        curBlock = '<div style="margin:0 0 10px;"><div style="font-weight:700;color:#ea6a1e;font-size:11px;margin-bottom:6px;">CONDICIONES ACTUALES · AHORA</div><div style="display:flex;flex-wrap:wrap;gap:6px;max-width:1000px;border:1px solid '+BRD+';border-radius:8px;padding:10px;background:#fcfcfd;">'+ch+'</div></div>';
                     }
                 }catch(_e){}
                 let rows = '';
@@ -7836,7 +7832,7 @@ function __dqDailyMinFromHourly(js, field){
                   +   '<div style="font-size:15px;font-weight:800;color:#ea6a1e;margin-bottom:2px;letter-spacing:.3px;">FORECAST ACCUWEATHER · '+headerLabel+'</div>'
                   +   '<div style="font-size:10px;color:#64748b;margin-bottom:10px;">Pronóstico 5 días · Fuente: AccuWeather (Core)</div>'
                   +   curBlock
-                  +   '<div style="border:1px solid '+BRD+';border-radius:0 0 8px 8px;overflow:hidden;"><table style="border-collapse:collapse;background:#ffffff;color:#111827;font-size:11px;">' + thead + '<tbody>'+rows+'</tbody></table></div>'
+                  +   '<table style="border-collapse:collapse;background:#ffffff;color:#111827;font-size:11px;">' + thead + '<tbody>'+rows+'</tbody></table>'
                   +   '<div style="font-size:9px;color:#94a3b8;margin-top:8px;">Generado '+genStr+'</div>'
                   + '</div>';
                 if(out) out.innerHTML = html;
@@ -11753,6 +11749,18 @@ async function abrirMetarTaf(){
       </div>
     </div>
     </div>
+    <div class="m-card" id="mAccuCard">
+      <div class="m-secTitle">REPORTE ACCUWEATHER</div>
+      <div class="m-sub" style="margin-bottom:8px;">Pronóstico 5 días + condiciones actuales · 100% AccuWeather</div>
+      <button class="m-btn" id="mBtnAccu" type="button" style="width:100%;">GENERAR REPORTE</button>
+      <div id="mAccuMsg" class="m-sub" style="margin-top:8px;"></div>
+      <div id="mAccuOut" style="margin-top:10px; overflow-x:auto; -webkit-overflow-scrolling:touch;"></div>
+      <div id="mAccuActions" style="display:none; gap:8px; margin-top:10px;">
+        <button class="m-btn" id="mBtnAccuShare" type="button" style="flex:1;">COMPARTIR / REENVIAR</button>
+        <button class="m-btn" id="mBtnAccuImg" type="button" style="flex:1;">GUARDAR IMAGEN</button>
+      </div>
+    </div>
+
 <div class="m-card" id="mDaily">
       <div class="m-secTitle">PRONÓSTICO (DÍAS)</div>
       <div id="mDailyInner"></div>
@@ -12114,7 +12122,76 @@ async function abrirMetarTaf(){
     }catch(e){}
   }
 
+  async function mGenAccu(){
+    const msg=document.getElementById('mAccuMsg');
+    const out=document.getElementById('mAccuOut');
+    const actions=document.getElementById('mAccuActions');
+    if(msg) msg.textContent='Generando reporte AccuWeather...';
+    if(out) out.innerHTML='';
+    if(actions) actions.style.display='none';
+    try{
+      if(typeof window.quickAccuForecast!=='function'){ if(msg) msg.textContent='Reporte no disponible.'; return; }
+      await window.quickAccuForecast();
+      const srcOut=document.getElementById('quickForecastAccuOut');
+      let h=srcOut?srcOut.innerHTML:'';
+      const start=h.indexOf('<div id="forecastCardAccu"');
+      if(start>=0){
+        h=h.slice(start).replace('id="forecastCardAccu"','id="forecastCardAccuM"');
+        if(out) out.innerHTML=h;
+        if(msg) msg.textContent='';
+        if(actions) actions.style.display='flex';
+      } else {
+        const em=document.getElementById('quickForecastAccuMsg');
+        if(msg) msg.textContent=(em&&em.textContent)?em.textContent:'No se pudo generar el reporte. Actualiza los datos e intenta de nuevo.';
+      }
+    }catch(e){ if(msg) msg.textContent='Error al generar el reporte AccuWeather.'; }
+  }
+
+  async function mAccuCanvas(){
+    const node=document.getElementById('forecastCardAccuM');
+    if(!node) return null;
+    if(typeof html2canvas==='undefined'){ alert('No se pudo generar la imagen (libreria no cargada). Reintenta con conexion a internet.'); return null; }
+    return await html2canvas(node,{backgroundColor:'#ffffff',scale:2,useCORS:true});
+  }
+
+  async function mAccuSave(){
+    try{
+      const c=await mAccuCanvas(); if(!c) return;
+      const a=document.createElement('a'); a.href=c.toDataURL('image/png'); a.download='forecast_accuweather.png';
+      document.body.appendChild(a); a.click(); a.remove();
+    }catch(e){}
+  }
+
+  async function mAccuShare(){
+    try{
+      const c=await mAccuCanvas(); if(!c) return;
+      c.toBlob(async function(blob){
+        if(!blob) return;
+        const file=new File([blob],'forecast_accuweather.png',{type:'image/png'});
+        try{
+          if(navigator.canShare && navigator.canShare({files:[file]})){
+            await navigator.share({files:[file], title:'Forecast AccuWeather', text:'Pronostico AccuWeather - 5 dias'});
+            return;
+          }
+        }catch(e){}
+        const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='forecast_accuweather.png';
+        document.body.appendChild(a); a.click(); a.remove();
+        alert('Tu navegador no permite compartir directo. Guarde la imagen para reenviarla manualmente.');
+      }, 'image/png');
+    }catch(e){}
+  }
+
+  function hookAccu(){
+    const b=document.getElementById('mBtnAccu');
+    if(b && !b.getAttribute('data-hook')){ b.addEventListener('click', mGenAccu); b.setAttribute('data-hook','1'); }
+    const s=document.getElementById('mBtnAccuShare');
+    if(s && !s.getAttribute('data-hook')){ s.addEventListener('click', mAccuShare); s.setAttribute('data-hook','1'); }
+    const i=document.getElementById('mBtnAccuImg');
+    if(i && !i.getAttribute('data-hook')){ i.addEventListener('click', mAccuSave); i.setAttribute('data-hook','1'); }
+  }
+
   function hookRefresh(){
+    hookAccu();
     const btn = document.getElementById('mBtnRefresh');
     if(btn && !btn.getAttribute('data-hook')){
       btn.addEventListener('click', function(){
@@ -12372,7 +12449,7 @@ function excelActualizarHint(txt) {
     : '▸ rango exportado';
 }
 
-/* ── Helpers ���─ */
+/* ── Helpers ── */
 const _rnd  = v => {
   const n = Number(v);
   return Number.isFinite(n) ? Math.round(n) : '-';
@@ -18430,7 +18507,7 @@ window.closeBulletinMenu = function(){
     const awH12Vis     = _num(h12first?.Visibility?.Value);
     const ceilFinal    = _pick(awCeiling, awH12Ceil);
 
-    // ── Combinar: obs > WRF > AccuWeather ──
+    // ─��� Combinar: obs > WRF > AccuWeather ──
     const wDir   = _pick(wDirObs, wDirWRF, awWDir, awH12WDir);
     const wDirTx = wDirText || awWDirTxt || (wDir!=null?_degToCard(wDir):null);
     const condTx = awWText || condObs || null;
