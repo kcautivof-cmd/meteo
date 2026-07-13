@@ -7473,6 +7473,25 @@ function __dqDailyMinFromHourly(js, field){
     return out;
 }
 
+        function __dqDailyMaxFromHourly(js, field){
+            const dates = js.daily?.time || [];
+            const H = js.hourly || {};
+            const arr = H[field];
+            const out = new Array(dates.length).fill(null);
+            if(!arr || !Array.isArray(arr)) return out;
+            for(let d=0; d<dates.length; d++){
+                let maxv = null;
+                const base = d*24;
+                for(let h=0; h<24; h++){
+                    const v = arr[base+h];
+                    if(v===null || v===undefined || Number.isNaN(v)) continue;
+                    if(maxv===null || v > maxv) maxv = v;
+                }
+                out[d] = (maxv===null) ? null : Math.round(maxv*10)/10;
+            }
+            return out;
+        }
+
         function __dqRenderTable(aggKeys, cols){
             // cols: [{key, label, unit, values}]
             const wrap = document.getElementById('dataQueryWrap');
@@ -7523,9 +7542,10 @@ function __dqDailyMinFromHourly(js, field){
                 const base = (typeof WORKER_BASE_URL === 'string' ? WORKER_BASE_URL : '').replace(/\/$/, '');
                 if(!base) throw new Error('WORKER_BASE_URL no definida');
                 const q = 'lat=' + encodeURIComponent(lat) + '&lon=' + encodeURIComponent(lon);
-                const [raw, curRaw] = await Promise.all([
+                const [raw, curRaw, accuRaw] = await Promise.all([
                     workerFetchJSON(base + '/dmc/forecast?' + q),
-                    workerFetchJSON(base + '/dmc/current?' + q).catch(()=>null)
+                    workerFetchJSON(base + '/dmc/current?' + q).catch(()=>null),
+                    workerFetchJSON(base + '/accu/daily5?' + q).catch(()=>null)
                 ]);
                 const js = (raw && !raw.daily && raw.dmc) ? raw.dmc : raw;
                 const d = js && js.daily;
@@ -7545,11 +7565,30 @@ function __dqDailyMinFromHourly(js, field){
                 const presArr = __dqDailyMeanFromHourly(js, 'pressure_msl');
                 const cloudArr = __dqDailyMeanFromHourly(js, 'cloud_cover');
                 const windMinArr = __dqDailyMinFromHourly(js, 'wind_speed_10m');
+                const gustArr = __dqDailyMaxFromHourly(js, 'wind_gusts_10m');
+                const accuWind = {};
+                const accuArr = [];
+                try{
+                    const _adata = (accuRaw && accuRaw.data) ? accuRaw.data : accuRaw;
+                    const _adf = (_adata && Array.isArray(_adata.DailyForecasts)) ? _adata.DailyForecasts : [];
+                    for(const f of _adf){
+                        const _dW = (f.Day && f.Day.Wind && f.Day.Wind.Speed && f.Day.Wind.Speed.Value!=null) ? f.Day.Wind.Speed.Value : null;
+                        const _nW = (f.Night && f.Night.Wind && f.Night.Wind.Speed && f.Night.Wind.Speed.Value!=null) ? f.Night.Wind.Speed.Value : null;
+                        const _dG = (f.Day && f.Day.WindGust && f.Day.WindGust.Speed && f.Day.WindGust.Speed.Value!=null) ? f.Day.WindGust.Speed.Value : null;
+                        const _nG = (f.Night && f.Night.WindGust && f.Night.WindGust.Speed && f.Night.WindGust.Speed.Value!=null) ? f.Night.WindGust.Speed.Value : null;
+                        const _ws = [_dW,_nW].filter(v=>v!=null);
+                        const _gs = [_dG,_nG].filter(v=>v!=null);
+                        const _rec = { wmax: _ws.length ? Math.max.apply(null,_ws) : null, wmin: _ws.length ? Math.min.apply(null,_ws) : null, gust: _gs.length ? Math.max.apply(null,_gs) : null };
+                        accuArr.push(_rec);
+                        const _ds = String(f.Date || '').slice(0,10);
+                        if(_ds) accuWind[_ds] = _rec;
+                    }
+                }catch(_e){}
                 const BRD='#d0d5dd';
                 const C='border:1px solid '+BRD+';padding:6px 9px;';
                 const CC=C+'text-align:center;';
                 const TH='border:1px solid '+BRD+';padding:7px 9px;background:#f1f5f9;font-weight:700;';
-                const n = Math.min(7, d.time.length);
+                const n = Math.min(5, d.time.length);
                 let rows = '';
                 for(let i=0;i<n;i++){
                     const parts = String(d.time[i]).split('-');
@@ -7566,9 +7605,12 @@ function __dqDailyMinFromHourly(js, field){
                     const nub  = val(cloudArr,i);
                     const precip = val(d.precipitation_sum,i);
                     const hum  = val(humArr,i);
-                    const wmax = val(d.wind_speed_10m_max,i);
-                    const wmin = val(windMinArr,i);
+                    const _aw = accuWind[String(d.time[i]).slice(0,10)] || accuArr[i] || null;
+                    const wmax = _aw ? _aw.wmax : null;
+                    const wmin = _aw ? _aw.wmin : null;
                     const pres = val(presArr,i);
+                    const gust = _aw ? _aw.gust : null;
+                    const uv = val(d.uv_index_max,i);
                     rows += '<tr>'
                       + '<td style="'+C+'font-weight:700;white-space:nowrap;">'+dow+' '+dd+'</td>'
                       + '<td style="'+C+'white-space:nowrap;">'+emo+' '+cond+'</td>'
@@ -7581,7 +7623,9 @@ function __dqDailyMinFromHourly(js, field){
                       + '<td style="'+CC+'">'+fmt(hum,'%')+'</td>'
                       + '<td style="'+CC+'">'+fmt(wmax,' km/h')+'</td>'
                       + '<td style="'+CC+'">'+fmt(wmin,' km/h')+'</td>'
+                      + '<td style="'+CC+'">'+fmt(gust,' km/h')+'</td>'
                       + '<td style="'+CC+'">'+fmt(pres,' hPa')+'</td>'
+                      + '<td style="'+CC+'">'+fmt(uv,'')+'</td>'
                       + '</tr>';
                 }
                 const thead = '<thead><tr>'
@@ -7596,14 +7640,25 @@ function __dqDailyMinFromHourly(js, field){
                   + '<th style="'+TH+'">HUMEDAD</th>'
                   + '<th style="'+TH+'">VIENTO MÁX</th>'
                   + '<th style="'+TH+'">VIENTO MÍN</th>'
+                  + '<th style="'+TH+'">RÁFAGA</th>'
                   + '<th style="'+TH+'">PRESIÓN</th>'
+                  + '<th style="'+TH+'">UV</th>'
                   + '</tr></thead>';
                 const nowD = new Date();
                 const genStr = nowD.toLocaleDateString('es-CL') + ' ' + nowD.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'});
+                const _pstat = String(js.__parse_status || '');
+                const _tail = String(js.__tail_source || '');
+                const _modelLbl = js.__model_label || js.__source_label || 'WRF DMC';
+                const _fuentes = [];
+                if(/dmc/i.test(String(js.__source_actual||js.__source||'')) || /dmc/i.test(_pstat)) _fuentes.push('WRF-DMC');
+                if(/accuweather/i.test(_pstat) || /accuweather/i.test(_tail)) _fuentes.push('AccuWeather');
+                if(/open[-_ ]?meteo/i.test(_pstat) || /open[-_ ]?meteo/i.test(_tail)) _fuentes.push('GFS/ECMWF');
+                if(!_fuentes.length && js.__source_label) _fuentes.push(String(js.__source_label));
+                const srcLine = 'Modelos: ' + (_fuentes.length ? _fuentes.join(', ') : (js.__model_label || 'WRF-DMC'));
                 const html = '<div style="margin:0 0 8px;"><button type="button" onclick="saveForecastImage()" style="cursor:pointer;font-family:inherit;padding:7px 12px;border:1px solid '+BRD+';border-radius:6px;background:#0f766e;color:#fff;font-weight:700;font-size:11px;">GUARDAR IMAGEN</button></div>'
                   + '<div id="forecastCard" style="display:inline-block;background:#ffffff;color:#111827;padding:16px 18px;border:1px solid '+BRD+';border-radius:10px;font-family:Consolas,monospace;">'
                   +   '<div style="font-size:15px;font-weight:800;color:#0f766e;margin-bottom:2px;letter-spacing:.3px;">FORECAST · '+headerLabel+'</div>'
-                  +   '<div style="font-size:10px;color:#64748b;margin-bottom:10px;">Pronóstico próximos días · Fuente: Dirección Meteorológica de Chile (modelo WRF)</div>'
+                  +   '<div style="font-size:10px;color:#64748b;margin-bottom:10px;">Pronóstico próximos días · '+srcLine+'</div>'
                   +   '<table style="border-collapse:collapse;background:#ffffff;color:#111827;font-size:11px;">' + thead + '<tbody>'+rows+'</tbody></table>'
                   +   '<div style="font-size:9px;color:#94a3b8;margin-top:8px;">Generado '+genStr+'</div>'
                   + '</div>';
@@ -8714,7 +8769,7 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
                         dmcCardHtml = `
                     <div style="border-top:1px solid var(--border);margin:5px 0 3px;padding-top:3px;">
                       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">
-                        <span style="color:var(--muted);font-size:0.58em;letter-spacing:0.7px;font-weight:700;">▸ PRONÓSTICO DMC</span>
+                        <span style="color:var(--muted);font-size:0.58em;letter-spacing:0.7px;font-weight:700;">   PRONÓSTICO DMC</span>
                         <span style="font-size:0.58em;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%;">${_st}</span>
                       </div>
                       <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;border:1px solid var(--border);">
@@ -8779,7 +8834,7 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
             if(d.indexOf('CHUBASCO')>=0||d.indexOf('LLUVIA')>=0) return '🌧️';
             if(d.indexOf('LLOVIZNA')>=0||d.indexOf('PRECIPITAC')>=0) return '🌦️';
             if(d.indexOf('NIEBLA')>=0||d.indexOf('BRUMA')>=0) return '🌫️';
-            if(d.indexOf('PARCIAL')>=0) return night?'☁️':'⛅';
+            if(d.indexOf('PARCIAL')>=0) return night?'☁   ':'⛅';
             if(d.indexOf('NUBLADO')>=0||d.indexOf('CUBIERTO')>=0||d.indexOf('NUBOS')>=0) return '☁️';
             if(d.indexOf('DESPEJADO')>=0||d.indexOf('SOLEADO')>=0||d.indexOf('DESPEJANDO')>=0) return night?'🌙':'☀️';
             var e = wmoEmoji(code);
@@ -9330,7 +9385,7 @@ function __updateAnalysisPanel(variableKey, rawLabels, rawSeries, yLabelText){
             else tags.push("Variabilidad baja");
         }
 
-        // Concentración (Top 10%) — solo si se calculó
+        // Concentraci  n (Top 10%) — solo si se calculó
         if(share10 !== null && Number.isFinite(share10)){
             if(share10 >= 30) tags.push("Concentración alta");
             else if(share10 >= 20) tags.push("Concentración moderada");
@@ -17647,7 +17702,7 @@ window.closeBulletinMenu = function(){
     loading:  false,
   };
 
-  // ── Helpers ──────────────────────────────────────────────────────────────────
+  // ── Helpers ─────────────────  ────────────────────────────────────────────────
   function isAdmin(){
     return (window.AUTH_ROLE || localStorage.getItem('auth_role') || '') === 'admin';
   }
@@ -18382,7 +18437,7 @@ window.closeBulletinMenu = function(){
     });
   }
 
-  /*    ─ Botón COMPARAR PUNTO B ──────────────────────────────────── */
+  /*    ─ Botón COMPARAR PUNTO B ─────────────────────   ────────────── */
   function _patchBtn(){
     const btn=document.getElementById('uavCmpToggle');
     if(!btn||btn._v3patched) return;
@@ -18416,7 +18471,7 @@ window.closeBulletinMenu = function(){
     }
   }
 
-  /* ── Init ────────────────────────────────────────────────────── */
+  /* ── Init ─────────────────────────────────────────────   ──────── */
   var _iv=setInterval(function(){
     if(window.__pickMap&&window.__cmpState){ clearInterval(_iv); _attachClick(); setTimeout(_patchBtn,600); }
   },300);
