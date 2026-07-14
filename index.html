@@ -6019,7 +6019,7 @@ try {
         }).join('');
         var btnUrl = (group && group.alerts && group.alerts[0] && group.alerts[0].official_url) || 'https://senamhi.gob.bo/index.php/alertas';
         return '<div style="min-width:300px;max-width:520px">'
-            + '<div style="font:700 14px Consolas,monospace;color:'+col+'">🇧🇴 BOLIVIA �� ALERTAS OFICIALES</div>'
+            + '<div style="font:700 14px Consolas,monospace;color:'+col+'">🇧🇴 BOLIVIA    ALERTAS OFICIALES</div>'
             + '<hr style="margin:7px 0">'
             + items
             + '<div style="margin-top:6px"><a href="' + esc(btnUrl) + '" target="_blank" rel="noopener" style="display:inline-block;border:1px solid #777;background:#fff;padding:5px 8px;cursor:pointer;font:700 11px Consolas,monospace;color:#111;text-decoration:none">ABRIR LISTADO OFICIAL</a></div>'
@@ -7708,7 +7708,7 @@ function __dqDailyMinFromHourly(js, field){
                 const TH='border:1px solid '+BRD+';padding:7px 9px;background:#fff4ec;font-weight:700;';
                 let curBlock = '';
                 try{
-                    const cc = (curRaw && curRaw.data) ? curRaw.data : null;
+                    const cc = (curRaw && curRaw.data) ? curRaw.data : {};
                     if(cc){
                         const mv = (o)=> (o && o.Metric && o.Metric.Value!=null) ? o.Metric.Value : null;
                         const _tend = (cc.PressureTendency && cc.PressureTendency.LocalizedText) ? String(cc.PressureTendency.LocalizedText) : '';
@@ -7732,8 +7732,8 @@ function __dqDailyMinFromHourly(js, field){
                             ['LLUVIA 24H', fmt(mv(cc.PrecipitationSummary && cc.PrecipitationSummary.Past24Hours),' mm')]
                         ];
                         let ch = '';
-                        for(const c of chips){ ch += '<div style="border:1px solid '+BRD+';border-radius:6px;padding:6px 9px;min-width:86px;background:#fafafa;"><div style="font-size:8px;color:#94a3b8;letter-spacing:.5px;">'+c[0]+'</div><div style="font-size:12px;font-weight:700;color:#111827;">'+c[1]+'</div></div>'; }
-                        curBlock = '<div style="margin:0 0 10px;"><div style="font-weight:700;color:#ea6a1e;font-size:11px;margin-bottom:6px;">CONDICIONES ACTUALES · AHORA</div><div style="display:flex;flex-wrap:wrap;gap:6px;max-width:1000px;border:1px solid '+BRD+';border-radius:8px;padding:10px;background:#fcfcfd;">'+ch+'</div></div>';
+                        for(let i=0;i<chips.length;i++){ if(i%5===0){ ch += (i===0?'':'</tr>')+'<tr>'; } ch += '<td style="border:1px solid '+BRD+';padding:5px 9px;background:#fafafa;vertical-align:top;"><div style="font-size:8px;color:#94a3b8;letter-spacing:.5px;">'+chips[i][0]+'</div><div style="font-size:12px;font-weight:700;color:#111827;white-space:nowrap;">'+chips[i][1]+'</div></td>'; } ch += '</tr>';
+                        curBlock = '<div style="font-weight:700;color:#ea6a1e;font-size:11px;margin-bottom:6px;">CONDICIONES ACTUALES</div><table style="border-collapse:collapse;width:100%;background:#fcfcfd;margin-bottom:0;"><tbody>'+ch+'</tbody></table>';
                     }
                 }catch(_e){}
                 let rows = '';
@@ -8965,7 +8965,7 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
                         dmcCardHtml = `
                     <div style="border-top:1px solid var(--border);margin:5px 0 3px;padding-top:3px;">
                       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">
-                        <span style="color:var(--muted);font-size:0.58em;letter-spacing:0.7px;font-weight:700;">�� PRONÓSTICO DMC</span>
+                        <span style="color:var(--muted);font-size:0.58em;letter-spacing:0.7px;font-weight:700;">   PRONÓSTICO DMC</span>
                         <span style="font-size:0.58em;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%;">${_st}</span>
                       </div>
                       <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;border:1px solid var(--border);">
@@ -9030,7 +9030,7 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
             if(d.indexOf('CHUBASCO')>=0||d.indexOf('LLUVIA')>=0) return '🌧️';
             if(d.indexOf('LLOVIZNA')>=0||d.indexOf('PRECIPITAC')>=0) return '🌦️';
             if(d.indexOf('NIEBLA')>=0||d.indexOf('BRUMA')>=0) return '🌫️';
-            if(d.indexOf('PARCIAL')>=0) return night?'☁���':'⛅';
+            if(d.indexOf('PARCIAL')>=0) return night?'☁   ':'⛅';
             if(d.indexOf('NUBLADO')>=0||d.indexOf('CUBIERTO')>=0||d.indexOf('NUBOS')>=0) return '☁️';
             if(d.indexOf('DESPEJADO')>=0||d.indexOf('SOLEADO')>=0||d.indexOf('DESPEJANDO')>=0) return night?'🌙':'☀️';
             var e = wmoEmoji(code);
@@ -9581,7 +9581,7 @@ function __updateAnalysisPanel(variableKey, rawLabels, rawSeries, yLabelText){
             else tags.push("Variabilidad baja");
         }
 
-        // Concentraci��n (Top 10%) — solo si se calculó
+        // Concentraci  n (Top 10%) — solo si se calculó
         if(share10 !== null && Number.isFinite(share10)){
             if(share10 >= 30) tags.push("Concentración alta");
             else if(share10 >= 20) tags.push("Concentración moderada");
@@ -11264,7 +11264,7 @@ async function _uDMAW(lat,lon){
   const extraStr = extras.length ? ' · '+extras.join(' · ') : '';
 
   // ── ORIGEN POR VARIABLE (transparencia para decisión de vuelo) ──
-  const _src3 = (obs, wrf, accu) => Number.isFinite(obs) ? 'DMC-OBS' : (wrf!=null ? 'DMC-WRF' : (accu!=null ? 'AccuW' : '���'));
+  const _src3 = (obs, wrf, accu) => Number.isFinite(obs) ? 'DMC-OBS' : (wrf!=null ? 'DMC-WRF' : (accu!=null ? 'AccuW' : '   '));
   const provWind  = _src3(windObs, windWRF, cc?.Wind?.Speed?.Metric?.Value);
   const provGust  = _src3(gustObs, gustWRF, cc?.WindGust?.Speed?.Metric?.Value);
   const provWDir  = _src3(wDirObs, wDirWRF, cc?.Wind?.Direction?.Degrees);
@@ -13045,11 +13045,11 @@ async function excelCopiarPronostico(btn) {
     const pres = pickPres(iso);
     const nub = pickNub(iso, precip);
 
-    R[0].push(r0(tmax));
-    R[1].push(r0(tmin));
-    R[2].push(r0(appMax));
-    R[3].push(r0(appMin));
-    R[4].push(nub || '--');
+    R[0].push(nub || '--');
+    R[1].push(r0(tmax));
+    R[2].push(r0(tmin));
+    R[3].push(r0(appMax));
+    R[4].push(r0(appMin));
     R[5].push(r0(uvMax));
     R[6].push(r1(precip));
     R[7].push(r0(hum));
@@ -14877,7 +14877,7 @@ Presión: 1013 hPa
 Punto rocío: 13,1°C
 Índice UV: 4 (moderado)
 
-*Conclusi��n*
+*Conclusi  n*
 Cielo despejado. Temp entre 17°C y 21°C.
 Viento débil, con rachas hasta 22 km/h.
 Tendencia: estable. Riesgo: bajo.
@@ -17979,7 +17979,7 @@ window.closeBulletinMenu = function(){
     loading:  false,
   };
 
-  // ── Helpers ─────────────────��────────────────────────────────────────────────
+  // ── Helpers ─────────────────  ────────────────────────────────────────────────
   function isAdmin(){
     return (window.AUTH_ROLE || localStorage.getItem('auth_role') || '') === 'admin';
   }
@@ -18380,7 +18380,7 @@ window.closeBulletinMenu = function(){
 
 
 <script>
-/* ════════════   PUNTO B – Comparación EXCLUSIVA DMC + AccuWeather v3
+/* ═════════     ══   PUNTO B – Comparación EXCLUSIVA DMC + AccuWeather v3
    Rellena TODOS los campos disponibles en ambas fuentes
    ════════════════════════   ═════════════════════════════════════ */
 (function(){
@@ -18507,7 +18507,7 @@ window.closeBulletinMenu = function(){
     const awH12Vis     = _num(h12first?.Visibility?.Value);
     const ceilFinal    = _pick(awCeiling, awH12Ceil);
 
-    // ─��� Combinar: obs > WRF > AccuWeather ──
+    // ─    Combinar: obs > WRF > AccuWeather ──
     const wDir   = _pick(wDirObs, wDirWRF, awWDir, awH12WDir);
     const wDirTx = wDirText || awWDirTxt || (wDir!=null?_degToCard(wDir):null);
     const condTx = awWText || condObs || null;
@@ -18714,7 +18714,7 @@ window.closeBulletinMenu = function(){
     });
   }
 
-  /*    ─ Botón COMPARAR PUNTO B ─────────────────────���────────────── */
+  /*    ─ Botón COMPARAR PUNTO B ─────────────────────   ────────────── */
   function _patchBtn(){
     const btn=document.getElementById('uavCmpToggle');
     if(!btn||btn._v3patched) return;
@@ -18748,7 +18748,7 @@ window.closeBulletinMenu = function(){
     }
   }
 
-  /* ── Init ─────────────────────────────────────────────���──────��─ */
+  /* ── Init ─────────────────────────────────────────────   ──────  ─ */
   var _iv=setInterval(function(){
     if(window.__pickMap&&window.__cmpState){ clearInterval(_iv); _attachClick(); setTimeout(_patchBtn,600); }
   },300);
