@@ -638,7 +638,7 @@ window.__parseDate = function(raw){
       viento: 'CDI terreno: 0-1 calma; 2-5 ventolina; 6-11 flojito; 12-19 flojo; 20-28 bonancible; 29-38 fresquito; 39-49 fresco; 50-61 frescachón; 62-74 temporal; 75-88 temporal duro; 89-102 temporal muy duro; 103-117 temporal huracanado; >= 118 huracán.',
       rafagas: 'No existe banda doctrinaria separada para ráfagas en los textos; se aplica como criterio conservador la misma escala del viento superficial, tratando la racha máxima como pulso limitante.',
       direccion: 'CDI: registrar la dirección desde donde proviene el viento con apoyo de brújula, GPS o puntos cardinales reconocidos en terreno.',
-      precipitacion: 'CDI: 1 mm equivale a 1 L/m². MDI: lluvia sensible alrededor de 20 mm en 1 a 12 h; nieve sensible desde 3 mm en 1 h o 50 mm en 12 h; cobertura nival > 5 cm en 12 h o 15 cm acumulados afecta transitabilidad y acciones tácticas.',
+      precipitacion: 'CDI: 1 mm equivale a 1 L/m². MDI: lluvia sensible alrededor de 20 mm en 1 a 12 h; nieve sensible desde 3 mm en 1 h o 50 mm en 12 h; cobertura nival > 5 cm en 12 h o 15 cm acumulados afecta transitabilidad y acciones t  cticas.',
       nubosidad: 'CDI octas: 0/8 despejado; 1/8 escasa nubosidad; 2/8 a 4/8 nubosidad parcial; 5/8 a 7/8 nublado; 8/8 cubierto; 9 cielo no observable.',
       visibilidad: 'CDI: niebla <= 1 km; neblina entre 1 y 5 km. RDI: el umbral favorable/marginal/crítico depende del sistema evaluado y de la misión.',
       presion: 'CDI/MDI: debe interpretarse por tendencia en sitio fijo. En altura, complementar con consideración de aclimatación y efecto sobre el personal.',
@@ -1106,7 +1106,7 @@ window.__parseDate = function(raw){
     notes.push('Desde el punto de vista sinóptico y mesoescala, el comportamiento del periodo fue evaluado a partir de presión, nubosidad, humedad, precipitación, visibilidad, viento y evolución térmica sobre el punto seleccionado, buscando compatibilidad con patrones atmosféricos regionales de mayor escala.');
 
     if(farNorthInterior && [12,1,2,3].includes(month) && ((Number.isFinite(humMax) && humMax >= 60) || (Number.isFinite(precip) && precip >= 1) || (Number.isFinite(cloudMax) && cloudMax >= 65))){
-      notes.push('La señal dominante resulta compatible con influencia de la Alta de Bolivia y circulación húmeda de componente continental sobre el altiplano, favoreciendo advección húmeda, incremento de nubosidad convectiva y probabilidad de chubascos o tormentas aisladas en horas de la tarde y primera parte de la noche.');
+      notes.push('La se  al dominante resulta compatible con influencia de la Alta de Bolivia y circulación húmeda de componente continental sobre el altiplano, favoreciendo advección húmeda, incremento de nubosidad convectiva y probabilidad de chubascos o tormentas aisladas en horas de la tarde y primera parte de la noche.');
     }
     if(coastalNorth && Number.isFinite(hum) && hum >= 70 && Number.isFinite(visMinKm) && visMinKm <= 8 && ((Number.isFinite(cloudBase) && cloudBase <= 900) || (Number.isFinite(cloud) && cloud >= 55)) && (!Number.isFinite(precip) || precip < 1.5)){
       notes.push('En el borde costero y sectores inmediatamente adyacentes, la combinación de humedad elevada, visibilidad reducida y techo bajo es consistente con configuración de vaguada costera o su influencia indirecta, con estratificación baja, nubosidad de tipo estratiforme y eventuales restricciones matinales de visibilidad.');
@@ -4652,6 +4652,52 @@ function buildWorkerUrlPath(path, params){
     return qs.toString() ? (url + "?" + qs.toString()) : url;
 }
 
+/* === Reparador universal de acentos (mojibake UTF-8->Latin1) === */
+function __fixEnc(s){
+    s = String(s == null ? "" : s);
+    for (var _i = 0; _i < 3; _i++){
+        if (!/[\u00c3\u00c2]|\u00e2\u20ac/.test(s)) break;
+        try{
+            var _r = decodeURIComponent(escape(s));
+            if (!_r || _r === s || _r.indexOf("\ufffd") >= 0) break;
+            s = _r;
+        }catch(_e){ break; }
+    }
+    return s.replace(/\ufffd/g, "").replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, " ");
+}
+function __fixEncDeep(v){
+    if (typeof v === "string") return __fixEnc(v);
+    if (Array.isArray(v)){ for (var i=0;i<v.length;i++) v[i]=__fixEncDeep(v[i]); return v; }
+    if (v && typeof v === "object"){ for (var k in v){ if (Object.prototype.hasOwnProperty.call(v,k)) v[k]=__fixEncDeep(v[k]); } return v; }
+    return v;
+}
+try{ window.__fixEnc = __fixEnc; window.__fixEncDeep = __fixEncDeep; }catch(_e){}
+/* Intercepta fetch: repara acentos en TODAS las respuestas (JSON y texto) */
+try{
+  if (!window.__fetchEncPatched && typeof window.fetch === "function"){
+    window.__fetchEncPatched = true;
+    var __origFetch = window.fetch.bind(window);
+    window.fetch = function(){
+      return __origFetch.apply(null, arguments).then(function(resp){
+        try{
+          var __txt = resp.text.bind(resp);
+          resp.text = function(){ return __txt().then(function(t){ return __fixEnc(t); }); };
+          resp.json = function(){ return __txt().then(function(t){ try{ return __fixEncDeep(JSON.parse(__fixEnc(t))); }catch(e){ return JSON.parse(t); } }); };
+        }catch(_e){}
+        return resp;
+      });
+    };
+  }
+}catch(_e){}
+/* Intercepta JSON.parse por si algun dato se parsea desde texto */
+try{
+  if (!window.__jsonEncPatched){
+    window.__jsonEncPatched = true;
+    var __origParse = JSON.parse;
+    JSON.parse = function(txt, reviver){ return __fixEncDeep(__origParse(typeof txt === "string" ? __fixEnc(txt) : txt, reviver)); };
+  }
+}catch(_e){}
+
 function clean(input){
     // Quita HTML y deja texto limpio (sin "HTML sucio")
     if (input === null || input === undefined) return "";
@@ -4659,9 +4705,9 @@ function clean(input){
         const s = String(input);
         const doc = new DOMParser().parseFromString(s, "text/html");
         const txt = (doc.body && doc.body.textContent) ? doc.body.textContent : s;
-        return txt.replace(/\s+/g, " ").trim();
+        return __fixEnc(txt).replace(/\s+/g, " ").trim();
     }catch(e){
-        return String(input).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+        return __fixEnc(String(input)).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
     }
 }
 
@@ -7715,7 +7761,7 @@ function __dqDailyMinFromHourly(js, field){
                         const _tc = (cc.PressureTendency && cc.PressureTendency.Code) ? String(cc.PressureTendency.Code).toUpperCase() : '';
                         const _arr = _tc==='R' ? ' ↑' : (_tc==='F' ? ' ↓' : (_tc==='S' ? ' →' : ''));
                         const chips = [
-                            ['CONDICIÓN', cc.WeatherText ? String(cc.WeatherText) : '--'],
+                            ['CONDICIÓN', cc.WeatherText ? window.__fixEnc(String(cc.WeatherText)) : '--'],
                             ['TEMP', fmt(mv(cc.Temperature),'°')],
                             ['REALFEEL', fmt(mv(cc.RealFeelTemperature),'°')],
                             ['REALFEEL SOMBRA', fmt(mv(cc.RealFeelTemperatureShade),'°')],
@@ -7749,7 +7795,7 @@ function __dqDailyMinFromHourly(js, field){
                     const dd = (parts.length===3) ? (parts[2]+'/'+parts[1]) : '--';
                     const icon = num(day.Icon);
                     const emo = (icon!==null && EMO[icon]) ? EMO[icon] : '';
-                    const cond = day.IconPhrase ? String(day.IconPhrase) : '--';
+                    const cond = day.IconPhrase ? window.__fixEnc(String(day.IconPhrase)) : '--';
                     const tmax = num(f.Temperature && f.Temperature.Maximum && f.Temperature.Maximum.Value);
                     const tmin = num(f.Temperature && f.Temperature.Minimum && f.Temperature.Minimum.Value);
                     const rfmax = num(f.RealFeelTemperature && f.RealFeelTemperature.Maximum && f.RealFeelTemperature.Maximum.Value);
@@ -7778,7 +7824,7 @@ function __dqDailyMinFromHourly(js, field){
                     const sset = (f.Sun && f.Sun.Set) ? hhmm(f.Sun.Set) : '--';
                     const moonPh = (f.Moon && f.Moon.Phase) ? String(f.Moon.Phase) : '';
                     const moon = MOON[moonPh] ? (MOON[moonPh][1]+' '+MOON[moonPh][0]) : (moonPh||'--');
-                    const longP = day.LongPhrase ? String(day.LongPhrase) : (day.ShortPhrase ? String(day.ShortPhrase) : '');
+                    const longP = window.__fixEnc(day.LongPhrase ? String(day.LongPhrase) : (day.ShortPhrase ? String(day.ShortPhrase) : ''));
                     const precipCell = fmt(precip,' mm')+((ptypeEs!=='--')?(' · '+ptypeEs):'');
                     rows += '<tr>'
                       + '<td style="'+C+'font-weight:700;white-space:nowrap;">'+dow+' '+dd+'</td>'
