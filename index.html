@@ -20591,7 +20591,7 @@ if(typeof closeBulletinMenu === 'undefined'){
   const VF={V:lvlV,F:lvlF,U:lvlU,I:lvlI,H:lvlH};
   const EMOA={1:'☀️',2:'🌤️',3:'⛅',4:'⛅',5:'🌥️',6:'☁️',7:'☁️',8:'☁️',11:'🌫️',12:'🌦️',13:'🌦️',14:'🌦️',15:'⛈️',16:'⛈️',17:'⛈️',18:'🌧️',19:'🌨️',20:'🌨️',21:'🌨️',22:'❄️',23:'❄️',24:'🧊',25:'🌨️',26:'🌧️',29:'🌨️',30:'🥵',31:'🥶',32:'💨',33:'🌙',34:'🌙',35:'☁️',36:'☁️',37:'🌫️',38:'☁️',39:'🌧️',40:'🌧️',41:'⛈️',42:'⛈️',43:'🌨️',44:'❄️'};
   const EMOD={0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌦️',55:'🌧️',61:'🌦️',63:'🌧️',65:'🌧️',71:'🌨️',73:'🌨️',75:'❄️',80:'🌦️',81:'🌧️',82:'⛈️',95:'⛈️'};
-  function moonIllum(dt){const syn=29.530588853,ref=Date.UTC(2000,0,6,18,14)/86400000,dd=dt.getTime()/86400000;let a=(dd-ref)%syn;if(a<0)a+=syn;const p=a/syn;return (1-Math.cos(2*Math.PI*p))/2*100;}
+  function moonIllum(dt){const syn=29.530588853,ref=Date.UTC(2000,0,6,18,14)/86400000,dd=dt.getTime()/86400000;let a=(dd-ref)%syn;if(a<0)a+=syn;const p=a/syn;return (1-Math.cos(2*Math.PI*p))/2*100;}function _sunEv(lat,lon,dObj){var rad=Math.PI/180,deg=180/Math.PI;var tzMin=-dObj.getTimezoneOffset();var start=Date.UTC(dObj.getFullYear(),0,0);var doy=Math.floor((Date.UTC(dObj.getFullYear(),dObj.getMonth(),dObj.getDate())-start)/86400000);function calc(angle){var gamma=2*Math.PI/365*(doy-1+0.5);var eqtime=229.18*(0.000075+0.001868*Math.cos(gamma)-0.032077*Math.sin(gamma)-0.014615*Math.cos(2*gamma)-0.040849*Math.sin(2*gamma));var decl=0.006918-0.399912*Math.cos(gamma)+0.070257*Math.sin(gamma)-0.006758*Math.cos(2*gamma)+0.000907*Math.sin(2*gamma)-0.002697*Math.cos(3*gamma)+0.00148*Math.sin(3*gamma);var za=(90+angle)*rad;var cosH=(Math.cos(za)-Math.sin(lat*rad)*Math.sin(decl))/(Math.cos(lat*rad)*Math.cos(decl));if(cosH>1||cosH<-1)return{rise:null,set:null};var ha=Math.acos(cosH)*deg;return{rise:720-4*(lon+ha)-eqtime,set:720-4*(lon-ha)-eqtime};}function fmt(mUTC){if(mUTC==null)return'--';var m=mUTC+tzMin;m=((m%1440)+1440)%1440;var hh=Math.floor(m/60),mm=Math.round(m-hh*60);if(mm===60){mm=0;hh=(hh+1)%24;}return('0'+hh).slice(-2)+':'+('0'+mm).slice(-2);}var s=calc(0.833),n=calc(12);return{orto:fmt(s.rise),ocaso:fmt(s.set),bmnt:fmt(n.rise),eent:fmt(n.set)};}
   const num=v=>(v==null||v==='')?null:Number(v);
   function agg(H,field,i,isDay,mode){const arr=H&&H[field];if(!arr||!Array.isArray(arr))return null;const base=i*24;const hrs=isDay?[6,7,8,9,10,11,12,13,14,15,16,17]:[18,19,20,21,22,23,24,25,26,27,28,29];let s=0,c=0,ac=null;for(const hh of hrs){const v=arr[base+hh];if(v==null||Number.isNaN(v))continue;if(mode==='mean'){s+=v;c++;}else if(mode==='max'){ac=(ac==null||v>ac)?v:ac;}else{ac=(ac==null||v<ac)?v:ac;}}return mode==='mean'?(c?s/c:null):ac;}
   const cls=l=>l===2?'r':(l===1?'y':(l===0?'g':'nd'));
@@ -20611,7 +20611,7 @@ window.quickMatrizImpacto=async function(){
       const b=(typeof WORKER_BASE_URL==='string'?WORKER_BASE_URL:'').replace(/\/$/,'');
       if(!b)throw new Error('WORKER_BASE_URL no definida');
       const q='lat='+encodeURIComponent(lat)+'&lon='+encodeURIComponent(lon);
-      const [dmcRaw,accuRaw,curRaw]=await Promise.all([workerFetchJSON(b+'/dmc/forecast?'+q).catch(()=>null),workerFetchJSON(b+'/accu/daily5?'+q).catch(()=>null),workerFetchJSON(b+'/dmc/current?'+q).catch(()=>null)]);
+      const [dmcRaw,accuRaw,curRaw,omRaw]=await Promise.all([workerFetchJSON(b+'/dmc/forecast?'+q).catch(()=>null),workerFetchJSON(b+'/accu/daily5?'+q).catch(()=>null),workerFetchJSON(b+'/dmc/current?'+q).catch(()=>null),fetch('https://api.open-meteo.com/v1/forecast?latitude='+encodeURIComponent(lat)+'&longitude='+encodeURIComponent(lon)+'&hourly=visibility&forecast_days=6&timezone=auto').then(function(r){return r.json();}).catch(()=>null)]);
       const js=(dmcRaw&&!dmcRaw.daily&&dmcRaw.dmc)?dmcRaw.dmc:dmcRaw;
       const d=js&&js.daily;const H=(js&&js.hourly)||{};
       const _ad=(accuRaw&&accuRaw.data)?accuRaw.data:accuRaw;
@@ -20628,7 +20628,7 @@ window.quickMatrizImpacto=async function(){
       if(d&&Array.isArray(d.time)&&d.time.length){dates=d.time.slice(0,5).map((t,i)=>({t:String(t).slice(0,10),i:i}));}
       else{dates=df.slice(0,5).map((f)=>({t:String(f.Date||'').slice(0,10),i:-1,af:f}));}
       const wd=['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'];
-      const D=dates.map(rec=>{
+      var omH=(omRaw&&omRaw.hourly)?omRaw.hourly:null;function omVisAgg(ds,isDay){if(!omH||!Array.isArray(omH.time)||!Array.isArray(omH.visibility))return null;var hrs=isDay?[6,7,8,9,10,11,12,13,14,15,16,17]:[18,19,20,21,22,23];var s=0,c=0;for(var k=0;k<omH.time.length;k++){var t=String(omH.time[k]);if(t.slice(0,10)!==ds)continue;var hh=Number(t.slice(11,13));if(hrs.indexOf(hh)<0)continue;var v=Number(omH.visibility[k]);if(!isNaN(v)){s+=v;c++;}}return c?s/c:null;}const D=dates.map(rec=>{
         const i=rec.i;const ds=rec.t;const p=ds.split('-');
         const dObj=(p.length===3)?new Date(Number(p[0]),Number(p[1])-1,Number(p[2])):new Date();
         const af=accuBy[ds]||rec.af||null;
@@ -20654,7 +20654,7 @@ window.quickMatrizImpacto=async function(){
         if((!icD||!icN)&&i>=0&&d&&d.weather_code){const wc=d.weather_code[i];const im=__dmcIco(wc);if(im){if(!icD)icD=im;if(!icN)icN=im;}else{if(!icD)icD=(wc!=null)?EMOD[wc]:null;if(!icN)icN=icD;}}
         if(!icD&&af){icD=(day.Icon!=null)?EMOA[num(day.Icon)]:null;}
         if(!icN&&af){icN=(night.Icon!=null)?EMOA[num(night.Icon)]:null;}
-        return {ds:ds,dow:wd[dObj.getDay()]||'',dd:(p.length===3?p[2]+'/'+p[1]:'--'),tmax,tmin,smax,smin,uv,precip,gD,gN,hD,hN,illum,icD:icD||'',icN:icN||'',vD:{V:gD,F:smax,U:uv,I:illum,H:hD},vN:{V:gN,F:smin,U:0,I:illum,H:hN}};
+        return {ds:ds,dow:wd[dObj.getDay()]||'',dd:(p.length===3?p[2]+'/'+p[1]:'--'),tmax,tmin,smax,smin,uv,precip,gD,gN,hD,hN,illum,icD:icD||'',icN:icN||'',su:(function(){var _se=_sunEv(lat,lon,dObj);try{if(af&&af.Sun){if(af.Sun.Rise)_se.orto=String(af.Sun.Rise).slice(11,16);if(af.Sun.Set)_se.ocaso=String(af.Sun.Set).slice(11,16);}}catch(_e){}return _se;})(),visD:omVisAgg(ds,true),visN:omVisAgg(ds,false),vD:{V:gD,F:smax,U:uv,I:illum,H:hD},vN:{V:gN,F:smin,U:0,I:illum,H:hN}};
       });
       const f1=(v,s)=>(v==null||isNaN(v))?'--':(Math.round(v*10)/10)+(s||'');
       let h='';
@@ -20670,7 +20670,7 @@ window.quickMatrizImpacto=async function(){
       h+=rDN('Humedad (%)',x=>f1(x.hD),x=>f1(x.hN));
       h+=rD('Índice UV',x=>f1(x.uv));
       h+=rD('Precip (mm)',x=>f1(x.precip));
-      h+=rD('Iluminación lunar',x=>f1(x.illum,'%'));
+      h+=rD('Iluminación lunar',x=>f1(x.illum,'%'));h+=rDN('Visibilidad (km)',x=>(x.visD==null?'--':f1(x.visD/1000)),x=>(x.visN==null?'--':f1(x.visN/1000)));h+=rD('Salida sol (orto)',x=>x.su.orto);h+=rD('Puesta sol (ocaso)',x=>x.su.ocaso);h+=rD('Crepúsculo AM (BMNT)',x=>x.su.bmnt);h+=rD('Crepúsculo PM (EENT)',x=>x.su.eent);
       h+='<tr><td class="rl" style="background:#e9edf1;color:#0f172a;">OPERACIÓN</td>';D.forEach(()=>h+='<td class="sb">DÍA</td><td class="sb">NOCHE</td>');h+='</tr>';
       (window.__getMatrizOps?window.__getMatrizOps():OPS).forEach(op=>{let r='<tr><td class="op">'+op.n+'</td>';D.forEach(x=>{const cd=frj(op.d,x.vD),cn=frj(op.x,x.vN);r+='<td class="'+cls(cd.l)+'">'+cd.t+'</td><td class="'+cls(cn.l)+'">'+cn.t+'</td>';});h+=r+'</tr>';});h+='<tr><td class="rl">Hora local</td><td colspan="'+(D.length*2)+'" class="mono" style="border-left:none;border-right:none;padding:3px 0;font-size:13px;font-weight:700;letter-spacing:.5px;"><span style="display:flex;justify-content:space-between;">';for(var _di=0;_di<D.length;_di++){h+='<span>00</span><span>06</span><span>12</span><span>18</span>';}h+='<span>00</span></span></td></tr>';h+='<tr><td class="rl">Hora Zulú</td><td colspan="'+(D.length*2)+'" class="mono" style="border-left:none;border-right:none;padding:3px 0;font-size:13px;font-weight:700;letter-spacing:.5px;"><span style="display:flex;justify-content:space-between;">';var _zp=function(n){return ('0'+((Math.round(n)%24+24)%24)).slice(-2);};for(var _dj=0;_dj<D.length;_dj++){var _zo=4;try{_zo=new Date(D[_dj].ds+'T12:00:00').getTimezoneOffset()/60;}catch(_e){_zo=4;}h+='<span>'+_zp(0+_zo)+'</span><span>'+_zp(6+_zo)+'</span><span>'+_zp(12+_zo)+'</span><span>'+_zp(18+_zo)+'</span>';}var _zof=4;try{_zof=new Date(D[D.length-1].ds+'T12:00:00').getTimezoneOffset()/60;}catch(_e){_zof=4;}h+='<span>'+_zp(0+_zof)+'</span></span></td></tr>';
       const now=new Date();
