@@ -7614,10 +7614,12 @@ function __dqDailyMinFromHourly(js, field){
                 const base = (typeof WORKER_BASE_URL === 'string' ? WORKER_BASE_URL : '').replace(/\/$/, '');
                 if(!base) throw new Error('WORKER_BASE_URL no definida');
                 const q = 'lat=' + encodeURIComponent(lat) + '&lon=' + encodeURIComponent(lon);
-                const [raw, curRaw, accuRaw] = await Promise.all([
+                const _omU='https://api.open-meteo.com/v1/forecast?latitude='+encodeURIComponent(lat)+'&longitude='+encodeURIComponent(lon)+'&hourly=relative_humidity_2m,cloud_cover,uv_index,pressure_msl&forecast_days=6&timezone=auto';
+                const [raw, curRaw, accuRaw, omRaw] = await Promise.all([
                     workerFetchJSON(base + '/dmc/forecast?' + q),
                     workerFetchJSON(base + '/dmc/current?' + q).catch(()=>null),
-                    workerFetchJSON(base + '/accu/daily5?' + q).catch(()=>null)
+                    workerFetchJSON(base + '/accu/daily5?' + q).catch(()=>null),
+                    fetch(_omU).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;})
                 ]);
                 const js = (raw && !raw.daily && raw.dmc) ? raw.dmc : raw;
                 const d = js && js.daily;
@@ -7662,6 +7664,10 @@ function __dqDailyMinFromHourly(js, field){
                 const TH='border:1px solid '+BRD+';padding:7px 9px;background:#f1f5f9;font-weight:700;';
                 const n = Math.min(5, d.time.length);
                 let rows = '';
+                const _accuByDate={};(window.__accuDailyRaw||[]).forEach(function(f){var ds=String(f.Date||'').slice(0,10);if(!ds)return;var cc=null;try{var dc=(f.Day&&f.Day.CloudCover!=null)?f.Day.CloudCover:null;var nc=(f.Night&&f.Night.CloudCover!=null)?f.Night.CloudCover:null;var a=[dc,nc].filter(function(v){return v!=null;});cc=a.length?Math.round(a.reduce(function(x,y){return x+y;},0)/a.length):null;}catch(e){}var uu=null;try{var u=(f.AirAndPollen||[]).find(function(x){return /uv/i.test(String((x&&x.Name)||''));});if(u&&u.Value!=null)uu=u.Value;}catch(e){}var hh=null;try{var dh=(f.Day&&f.Day.RelativeHumidity!=null)?(typeof f.Day.RelativeHumidity==='object'?f.Day.RelativeHumidity.Average:f.Day.RelativeHumidity):null;var nh=(f.Night&&f.Night.RelativeHumidity!=null)?(typeof f.Night.RelativeHumidity==='object'?f.Night.RelativeHumidity.Average:f.Night.RelativeHumidity):null;var ha=[dh,nh].filter(function(v){return v!=null;});hh=ha.length?Math.round(ha.reduce(function(x,y){return x+y;},0)/ha.length):null;}catch(e){}_accuByDate[ds]={cloud:cc,uv:uu,hum:hh};});
+                var _omH=(omRaw&&omRaw.hourly)?omRaw.hourly:null;function _omAgg(ds,field,mode){if(!_omH||!Array.isArray(_omH.time)||!Array.isArray(_omH[field]))return null;var hrs=[6,7,8,9,10,11,12,13,14,15,16,17];var s=0,c=0,mx=-1e9;for(var k=0;k<_omH.time.length;k++){var t=String(_omH.time[k]);if(t.slice(0,10)!==ds)continue;var hh=Number(t.slice(11,13));if(hrs.indexOf(hh)<0)continue;var v=Number(_omH[field][k]);if(isNaN(v))continue;s+=v;c++;if(v>mx)mx=v;}if(!c)return null;return mode==='max'?mx:s/c;}function _fillArr(arr,key,omField,ommode){var out=[],last=null;for(var i=0;i<n;i++){var ds=String(d.time[i]).slice(0,10);var v=(arr&&arr[i]!=null)?arr[i]:null;if(v==null){var a=_accuByDate[ds];if(a&&a[key]!=null)v=a[key];}if(v==null&&omField){var ov=_omAgg(ds,omField,ommode||'mean');if(ov!=null)v=ov;}if(v!=null&&isFinite(v))last=v;else if(last!=null)v=last;out.push(v);}return out;}
+                function _cf(arr){var out=[],last=null;for(var i=0;i<n;i++){var v=(arr&&arr[i]!=null)?arr[i]:null;if(v!=null&&isFinite(v))last=v;else if(last!=null)v=last;out.push(v);}return out;}
+                var cloudF=_fillArr(cloudArr,'cloud','cloud_cover','mean');var uvF=_fillArr(d.uv_index_max,'uv','uv_index','max');var _humDmc=humArr.map(function(v,ii){if(v!=null)return v;var a=(Array.isArray(d.relative_humidity_2m_max)&&d.relative_humidity_2m_max[ii]!=null)?Number(d.relative_humidity_2m_max[ii]):null;var b=(Array.isArray(d.relative_humidity_2m_min)&&d.relative_humidity_2m_min[ii]!=null)?Number(d.relative_humidity_2m_min[ii]):null;if(a!=null&&b!=null&&isFinite(a)&&isFinite(b))return Math.round((a+b)/2);return (a!=null&&isFinite(a))?a:((b!=null&&isFinite(b))?b:null);});var humF=_fillArr(_humDmc,'hum','relative_humidity_2m','mean');var presF=_fillArr(presArr,'pres','pressure_msl','mean');
                 for(let i=0;i<n;i++){
                     const parts = String(d.time[i]).split('-');
                     const dObj = new Date(Number(parts[0]), Number(parts[1])-1, Number(parts[2]));
@@ -7674,15 +7680,15 @@ function __dqDailyMinFromHourly(js, field){
                     const tmin = val(d.temperature_2m_min,i);
                     const smax = val(d.apparent_temperature_max,i);
                     const smin = val(d.apparent_temperature_min,i);
-                    const nub  = val(cloudArr,i);
+                    const nub  = val(cloudF,i);
                     const _awp0 = accuWind[String(d.time[i]).slice(0,10)] || accuArr[i] || null; const precip = (typeof window.__worstPrecip==='function') ? window.__worstPrecip(val(d.precipitation_sum,i), (_awp0 ? _awp0.precip : null)) : val(d.precipitation_sum,i);
-                    const hum  = val(humArr,i);
+                    const hum  = val(humF,i);
                     const _aw = accuWind[String(d.time[i]).slice(0,10)] || accuArr[i] || null;
                     const wmax = _aw ? _aw.wmax : null;
                     const wmin = _aw ? _aw.wmin : null;
-                    const pres = val(presArr,i);
+                    const pres = val(presF,i);
                     const gust = _aw ? _aw.gust : null;
-                    const uv = val(d.uv_index_max,i);
+                    const uv = val(uvF,i);
                     rows += '<tr>'
                       + '<td style="'+C+'font-weight:700;white-space:nowrap;">'+dow+' '+dd+'</td>'
                       + '<td style="'+C+'white-space:nowrap;">'+emo+' '+cond+'</td>'
@@ -20666,7 +20672,7 @@ window.quickMatrizImpacto=async function(){
       const b=(typeof WORKER_BASE_URL==='string'?WORKER_BASE_URL:'').replace(/\/$/,'');
       if(!b)throw new Error('WORKER_BASE_URL no definida');
       const q='lat='+encodeURIComponent(lat)+'&lon='+encodeURIComponent(lon);
-      const [dmcRaw,accuRaw,curRaw,omRaw]=await Promise.all([workerFetchJSON(b+'/dmc/forecast?'+q).catch(()=>null),workerFetchJSON(b+'/accu/daily5?'+q).catch(()=>null),workerFetchJSON(b+'/dmc/current?'+q).catch(()=>null),fetch('https://api.open-meteo.com/v1/forecast?latitude='+encodeURIComponent(lat)+'&longitude='+encodeURIComponent(lon)+'&hourly=visibility,wind_gusts_10m&forecast_days=6&timezone=auto').then(function(r){return r.json();}).catch(()=>null)]);
+      const [dmcRaw,accuRaw,curRaw,omRaw]=await Promise.all([workerFetchJSON(b+'/dmc/forecast?'+q).catch(()=>null),workerFetchJSON(b+'/accu/daily5?'+q).catch(()=>null),workerFetchJSON(b+'/dmc/current?'+q).catch(()=>null),fetch('https://api.open-meteo.com/v1/forecast?latitude='+encodeURIComponent(lat)+'&longitude='+encodeURIComponent(lon)+'&hourly=visibility,wind_gusts_10m,relative_humidity_2m,cloud_cover,uv_index&forecast_days=6&timezone=auto').then(function(r){return r.json();}).catch(()=>null)]);
       const js=(dmcRaw&&!dmcRaw.daily&&dmcRaw.dmc)?dmcRaw.dmc:dmcRaw;
       const d=js&&js.daily;const H=(js&&js.hourly)||{};
       const _ad=(accuRaw&&accuRaw.data)?accuRaw.data:accuRaw;
@@ -20684,7 +20690,7 @@ window.quickMatrizImpacto=async function(){
       else{dates=df.slice(0,5).map((f)=>({t:String(f.Date||'').slice(0,10),i:-1,af:f}));}
       const wd=['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'];
       var omH=(omRaw&&omRaw.hourly)?omRaw.hourly:null;function omVisAgg(ds,isDay){if(!omH||!Array.isArray(omH.time)||!Array.isArray(omH.visibility))return null;var hrs=isDay?[6,7,8,9,10,11,12,13,14,15,16,17]:[18,19,20,21,22,23];var s=0,c=0;for(var k=0;k<omH.time.length;k++){var t=String(omH.time[k]);if(t.slice(0,10)!==ds)continue;var hh=Number(t.slice(11,13));if(hrs.indexOf(hh)<0)continue;var v=Number(omH.visibility[k]);if(!isNaN(v)){s+=v;c++;}}return c?s/c:null;}
-function omGustAgg(ds,isDay){if(!omH||!Array.isArray(omH.time)||!Array.isArray(omH.wind_gusts_10m))return null;var hrs=isDay?[6,7,8,9,10,11,12,13,14,15,16,17]:[18,19,20,21,22,23];var mx=null;for(var k=0;k<omH.time.length;k++){var t=String(omH.time[k]);if(t.slice(0,10)!==ds)continue;var hh=Number(t.slice(11,13));if(hrs.indexOf(hh)<0)continue;var v=Number(omH.wind_gusts_10m[k]);if(!isNaN(v)&&(mx===null||v>mx))mx=v;}return mx;}const D=dates.map(rec=>{
+function omGustAgg(ds,isDay){if(!omH||!Array.isArray(omH.time)||!Array.isArray(omH.wind_gusts_10m))return null;var hrs=isDay?[6,7,8,9,10,11,12,13,14,15,16,17]:[18,19,20,21,22,23];var mx=null;for(var k=0;k<omH.time.length;k++){var t=String(omH.time[k]);if(t.slice(0,10)!==ds)continue;var hh=Number(t.slice(11,13));if(hrs.indexOf(hh)<0)continue;var v=Number(omH.wind_gusts_10m[k]);if(!isNaN(v)&&(mx===null||v>mx))mx=v;}return mx;}function omAgg2(ds,isDay,field,mode){if(!omH||!Array.isArray(omH.time)||!Array.isArray(omH[field]))return null;var hrs=isDay?[6,7,8,9,10,11,12,13,14,15,16,17]:[18,19,20,21,22,23];var s=0,c=0,mx=null;for(var k=0;k<omH.time.length;k++){var t=String(omH.time[k]);if(t.slice(0,10)!==ds)continue;var hh=Number(t.slice(11,13));if(hrs.indexOf(hh)<0)continue;var v=Number(omH[field][k]);if(isNaN(v))continue;s+=v;c++;if(mx===null||v>mx)mx=v;}if(!c)return null;return mode==='max'?mx:s/c;}const D=dates.map(rec=>{
         const i=rec.i;const ds=rec.t;const p=ds.split('-');
         const dObj=(p.length===3)?new Date(Number(p[0]),Number(p[1])-1,Number(p[2])):new Date();
         const af=accuBy[ds]||rec.af||null;
@@ -20694,16 +20700,16 @@ function omGustAgg(ds,isDay){if(!omH||!Array.isArray(omH.time)||!Array.isArray(o
         const tmin=dv(d&&d.temperature_2m_min)??num(af&&af.Temperature&&af.Temperature.Minimum&&af.Temperature.Minimum.Value);
         const smax=dv(d&&d.apparent_temperature_max)??num(af&&af.RealFeelTemperature&&af.RealFeelTemperature.Maximum&&af.RealFeelTemperature.Maximum.Value);
         const smin=dv(d&&d.apparent_temperature_min)??num(af&&af.RealFeelTemperature&&af.RealFeelTemperature.Minimum&&af.RealFeelTemperature.Minimum.Value);
-        let uv=dv(d&&d.uv_index_max);if(uv==null&&af){try{const u=(af.AirAndPollen||[]).find(x=>/uv/i.test(String((x&&x.Name)||'')));if(u)uv=num(u.Value);}catch(_e){}}
+        let uv=dv(d&&d.uv_index_max);if(uv==null&&af){try{const u=(af.AirAndPollen||[]).find(x=>/uv/i.test(String((x&&x.Name)||'')));if(u)uv=num(u.Value);}catch(_e){}}if(uv==null)uv=omAgg2(ds,true,'uv_index','max');
         const precip=dv(d&&d.precipitation_sum)??num(day.TotalLiquid&&day.TotalLiquid.Value);
         let gDdmc=(i>=0)?agg(H,'wind_gusts_10m',i,true,'max'):null;let gNdmc=(i>=0)?agg(H,'wind_gusts_10m',i,false,'max'):null;
         const agD=(day.WindGust&&day.WindGust.Speed)?num(day.WindGust.Speed.Value):((day.Wind&&day.Wind.Speed)?num(day.Wind.Speed.Value):null);
         const agN=(night.WindGust&&night.WindGust.Speed)?num(night.WindGust.Speed.Value):((night.Wind&&night.Wind.Speed)?num(night.Wind.Speed.Value):null);
-        var gOmD=omGustAgg(ds,true);var gOmN=omGustAgg(ds,false);let gD=(agD!=null)?agD:(gOmD!=null?gOmD:gDdmc);let gN=(agN!=null)?agN:(gOmN!=null?gOmN:gNdmc);
+        let gD=(agD!=null)?agD:gDdmc;let gN=(agN!=null)?agN:gNdmc;
         let hD=(i>=0)?agg(H,'relative_humidity_2m',i,true,'mean'):null;let hN=(i>=0)?agg(H,'relative_humidity_2m',i,false,'mean'):null;
         const ahD=(day.RelativeHumidity!=null)?num(typeof day.RelativeHumidity==='object'?day.RelativeHumidity.Average:day.RelativeHumidity):null;
         const ahN=(night.RelativeHumidity!=null)?num(typeof night.RelativeHumidity==='object'?night.RelativeHumidity.Average:night.RelativeHumidity):null;
-        if(hD==null)hD=ahD;if(hN==null)hN=ahN;
+        var _hdmc=(function(){var a=(d&&Array.isArray(d.relative_humidity_2m_max)&&i>=0)?num(d.relative_humidity_2m_max[i]):null;var b=(d&&Array.isArray(d.relative_humidity_2m_min)&&i>=0)?num(d.relative_humidity_2m_min[i]):null;if(a!=null&&b!=null)return Math.round((a+b)/2);return a!=null?a:b;})();if(hD==null)hD=_hdmc;if(hN==null)hN=_hdmc;if(hD==null)hD=ahD;if(hN==null)hN=ahN;if(hD==null)hD=omAgg2(ds,true,'relative_humidity_2m','mean');if(hN==null)hN=omAgg2(ds,false,'relative_humidity_2m','mean');
         const illum=moonIllum(dObj);
         let icD=null,icN=null;
         try{var _sgM=(window.__dmcSegments)?window.__dmcSegments(H,ds):null;if(_sgM&&_sgM.length){var _sT=_sgM.find(function(x){return x.label==='Tarde';});var _sN=_sgM.find(function(x){return x.label==='Noche';});if(_sT&&_sT.cat)icD=window.__dmcIcoCat(_sT.cat,30)+window.__dmcTxt(_sT.cat);if(_sN&&_sN.cat)icN=window.__dmcIcoCat(_sN.cat,30)+window.__dmcTxt(_sN.cat);}}catch(_e){}
