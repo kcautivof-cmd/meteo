@@ -4228,6 +4228,14 @@ body.role-user #cmpPanel { display:block !important; }
       <div style="font-size:8px;font-weight:700;color:#444;letter-spacing:.5px;margin-bottom:2px;">TEMPERATURA</div>
       <div style="font-size:16px;font-weight:700;" id="uavTemp">--°C</div>
     </div>
+    <div id="uavGeoCell" style="background:#e0e7ff;padding:7px 4px;text-align:center;border-radius:3px;">
+      <div style="font-size:8px;font-weight:700;color:#444;letter-spacing:.5px;margin-bottom:2px;">GEO 500 hPa</div>
+      <div style="font-size:16px;font-weight:700;" id="uavGeo500">-- m</div>
+    </div>
+    <div id="uavJetCell" style="background:#e0e7ff;padding:7px 4px;text-align:center;border-radius:3px;">
+      <div style="font-size:8px;font-weight:700;color:#444;letter-spacing:.5px;margin-bottom:2px;">VIENTO 200 hPa</div>
+      <div style="font-size:16px;font-weight:700;" id="uavJet200">-- m/s</div>
+    </div>
   </div>
   <div id="uavSourceNote" style="text-align:center;padding:3px 8px;font-size:9px;color:var(--muted);border-top:1px solid var(--border);">📡 Sin TFRs ni NFZs · Fuente recomendada: DMC / AccuWeather · Pronóstico oficial base: WRF DMC</div>
   <div style="border-top:2px solid var(--border);padding:8px 10px;background:var(--panel);">
@@ -6494,10 +6502,12 @@ try {
         const map = {0:'Despejado',1:'Mayormente despejado',2:'Parcialmente nublado',3:'Nublado',45:'Niebla',48:'Niebla escarchada',51:'Llovizna débil',53:'Llovizna',55:'Llovizna intensa',61:'Lluvia débil',63:'Lluvia',65:'Lluvia intensa',71:'Nieve débil',73:'Nieve',75:'Nieve intensa',80:'Chubascos',81:'Chubascos',82:'Chubascos fuertes',95:'Tormenta'};
         return map[code] || String(code ?? '--');
     }
-    async function __dmcFetchCurrent(indice){
+    async function __dmcFetchCurrent(indice, lat, lon){
         const base = (typeof WORKER_BASE_URL === 'string' ? WORKER_BASE_URL : '').replace(/\/$/, '');
         if (!base) return null;
-        const r = await fetch(`${base}/dmc/current?indice=${encodeURIComponent(indice || '')}`, { cache: 'no-store' });
+        let __u = `${base}/dmc/current?indice=${encodeURIComponent(indice || '')}`;
+        if (Number.isFinite(+lat) && Number.isFinite(+lon)) __u += '&lat=' + encodeURIComponent(lat) + '&lon=' + encodeURIComponent(lon);
+        const r = await fetch(__u, { cache: 'no-store' });
         if (!r.ok) throw new Error('DMC current failed');
         return await r.json();
     }
@@ -6553,7 +6563,7 @@ try {
                         btn.__bound = true;
                     }
                     if (!el) return;
-                    const js = await __dmcFetchCurrent(p.indice || '');
+                    const js = await __dmcFetchCurrent(p.indice || '', feature?.geometry?.coordinates?.[1], feature?.geometry?.coordinates?.[0]);
                     const c = js?.current || {};
                     const t = js?.today || {};
                     const preview = Array.isArray(js?.forecast_preview) ? js.forecast_preview : [];
@@ -6575,15 +6585,22 @@ try {
                     lines.push(`<div>Visibilidad: <b>${Number.isFinite(c.visibility)?Math.round(c.visibility/1000)+' km':'--'}</b></div>`);
                     lines.push(`<div>Nubosidad: <b>${__dmcFmt(c.cloud_cover,'%')}</b></div>`);
                     lines.push(`<div>Hoy Tmin/Tmax: <b>${__dmcFmt(t.tmin,'°')} / ${__dmcFmt(t.tmax,'°')}</b></div>`);
-                    lines.push(`<div>Precipitación: <b>${Number.isFinite(t.precip_mm)?t.precip_mm+' mm':'--'}</b></div>`);
+                    lines.push(`<div>Precipitación: <b>${Number.isFinite(t.precip_mm)?t.precip_mm+' mm':'--'}</b> <span style="color:#0f766e;font-size:.8em;">(oficial WRF · peor caso)</span></div>`);
                     lines.push(`<div>Viento máx.: <b>${__dmcFmt(t.wind_max_kmh,' km/h')}</b></div>`);
+                    lines.push(`<div>Humedad máx/mín: <b>${__dmcFmt(t.humidity_max,'%')} / ${__dmcFmt(t.humidity_min,'%')}</b></div>`);
+                    if (t.wrf) {
+                        lines.push(`<div>Geopotencial 500 hPa: <b>${Number.isFinite(t.wrf.h500)?t.wrf.h500+' m':'--'}</b></div>`);
+                        lines.push(`<div>Viento 200 hPa (chorro): <b>${Number.isFinite(t.wrf.vv200_max)?t.wrf.vv200_max+' m/s':'--'}</b></div>`);
+                    }
                     lines.push(`<div>Tiempo: <b>${__dmcCodeLabel(t.weather_code)}</b></div>`);
                     lines.push(`<div>Horizonte: <b>${js?.horizon_days || '--'} días</b></div>`);
                     if (preview.length) {
                         lines.push('<div style="margin-top:6px; font-weight:700; color:#0f766e;">PREVIEW PRONÓSTICO</div>');
-                        preview.slice(0,3).forEach(it => {
+                        preview.slice(0,5).forEach(it => {
                             const d = String(it.date || '').slice(5);
-                            lines.push(`<div>${d}: <b>${__dmcFmt(it.tmin,'°')} / ${__dmcFmt(it.tmax,'°')}</b> · ${__dmcFmt(it.wind_max_kmh,' km/h')} · ${Number.isFinite(it.precip_mm)?it.precip_mm+' mm':'--'}</div>`);
+                            const hr = Number.isFinite(it.humidity_max) ? ` · HR ${it.humidity_max}%` : '';
+                            const gp = (it.wrf && Number.isFinite(it.wrf.h500)) ? ` · H500 ${it.wrf.h500}m` : '';
+                            lines.push(`<div>${d}: <b>${__dmcFmt(it.tmin,'°')} / ${__dmcFmt(it.tmax,'°')}</b> · ${__dmcFmt(it.wind_max_kmh,' km/h')} · ${Number.isFinite(it.precip_mm)?it.precip_mm+' mm':'--'}${hr}${gp}</div>`);
                         });
                     }
                     const av = Array.isArray(js?.available_variables) ? js.available_variables : [];
@@ -7622,7 +7639,7 @@ function __dqDailyMinFromHourly(js, field){
                 const windMinArr = __dqDailyMinFromHourly(js, 'wind_speed_10m');
                 const gustArr = __dqDailyMaxFromHourly(js, 'wind_gusts_10m');
                 const accuWind = {};
-                const accuArr = [];
+                const accuArr = []; try{ var _ar0=((accuRaw&&accuRaw.data)?accuRaw.data:accuRaw); window.__accuDailyRaw=(_ar0&&Array.isArray(_ar0.DailyForecasts))?_ar0.DailyForecasts:[]; }catch(_e){ window.__accuDailyRaw=window.__accuDailyRaw||[]; }
                 try{
                     const _adata = (accuRaw && accuRaw.data) ? accuRaw.data : accuRaw;
                     const _adf = (_adata && Array.isArray(_adata.DailyForecasts)) ? _adata.DailyForecasts : [];
@@ -7633,7 +7650,7 @@ function __dqDailyMinFromHourly(js, field){
                         const _nG = (f.Night && f.Night.WindGust && f.Night.WindGust.Speed && f.Night.WindGust.Speed.Value!=null) ? f.Night.WindGust.Speed.Value : null;
                         const _ws = [_dW,_nW].filter(v=>v!=null);
                         const _gs = [_dG,_nG].filter(v=>v!=null);
-                        const _rec = { wmax: _ws.length ? Math.max.apply(null,_ws) : null, wmin: _ws.length ? Math.min.apply(null,_ws) : null, gust: _gs.length ? Math.max.apply(null,_gs) : null };
+                        const _dP = (f.Day && f.Day.TotalLiquid && f.Day.TotalLiquid.Value!=null) ? f.Day.TotalLiquid.Value : null; const _nP = (f.Night && f.Night.TotalLiquid && f.Night.TotalLiquid.Value!=null) ? f.Night.TotalLiquid.Value : null; const _pp = (_dP!=null||_nP!=null) ? ((_dP||0)+(_nP||0)) : null; const _rec = { wmax: _ws.length ? Math.max.apply(null,_ws) : null, wmin: _ws.length ? Math.min.apply(null,_ws) : null, gust: _gs.length ? Math.max.apply(null,_gs) : null, precip: _pp };
                         accuArr.push(_rec);
                         const _ds = String(f.Date || '').slice(0,10);
                         if(_ds) accuWind[_ds] = _rec;
@@ -7658,7 +7675,7 @@ function __dqDailyMinFromHourly(js, field){
                     const smax = val(d.apparent_temperature_max,i);
                     const smin = val(d.apparent_temperature_min,i);
                     const nub  = val(cloudArr,i);
-                    const precip = val(d.precipitation_sum,i);
+                    const _awp0 = accuWind[String(d.time[i]).slice(0,10)] || accuArr[i] || null; const precip = (typeof window.__worstPrecip==='function') ? window.__worstPrecip(val(d.precipitation_sum,i), (_awp0 ? _awp0.precip : null)) : val(d.precipitation_sum,i);
                     const hum  = val(humArr,i);
                     const _aw = accuWind[String(d.time[i]).slice(0,10)] || accuArr[i] || null;
                     const wmax = _aw ? _aw.wmax : null;
@@ -8557,6 +8574,30 @@ globalData = data;
                     }
                 } catch(_e) { window.__dmcCurrentData = null; }
 
+                // === UNIFICACION LAMINA: precip WRF + AccuWeather (peor caso) igual que la lamina ===
+                try {
+                    const _wbU = (WORKER_BASE_URL || '').replace(/\/$/, '');
+                    const _qU = 'lat=' + encodeURIComponent(latitude) + '&lon=' + encodeURIComponent(longitude);
+                    const [_fcU, _acU] = await Promise.all([
+                        fetch(_wbU + '/dmc/forecast?' + _qU, { cache:'no-store' }).then(r=>r.ok?r.json():null).catch(()=>null),
+                        fetch(_wbU + '/accu/daily5?' + _qU, { cache:'no-store' }).then(r=>r.ok?r.json():null).catch(()=>null)
+                    ]);
+                    window.__wrfPrecipByDate = {};
+                    try {
+                        const _jsU = (_fcU && !_fcU.daily && _fcU.dmc) ? _fcU.dmc : _fcU;
+                        const _dU = _jsU && _jsU.daily;
+                        if (_dU && Array.isArray(_dU.time)) {
+                            _dU.time.forEach((dd, ii) => {
+                                const v = Number(_dU.precipitation_sum ? _dU.precipitation_sum[ii] : NaN);
+                                if (Number.isFinite(v)) window.__wrfPrecipByDate[String(dd).slice(0,10)] = v;
+                            });
+                        }
+                    } catch(_e1) {}
+                    try {
+                        const _ar0 = (_acU && _acU.data) ? _acU.data : _acU;
+                        if (_ar0 && Array.isArray(_ar0.DailyForecasts)) window.__accuDailyRaw = _ar0.DailyForecasts;
+                    } catch(_e2) {}
+                } catch(_eU) {}
                 renderHeader(name, country, usedModel, latitude, longitude);
                 renderCurrent(data, latitude, longitude);
                 renderTimeline(data, latitude, longitude);
@@ -8841,6 +8882,8 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
                 return arr.find(it => String(it?.date || '').slice(0,10) === String(iso || '').slice(0,10)) || null;
             }catch(_e){ return null; }
         }
+        window.__worstPrecip = window.__worstPrecip || function(a,b){ var fa=Number.isFinite(a), fb=Number.isFinite(b); if(fa&&fb) return Math.max(a,b); if(fa) return a; if(fb) return b; return null; };
+        window.__accuPrecipMm = window.__accuPrecipMm || function(iso){ try{ var arr=window.__accuDailyRaw||[]; var target=String(iso||'').slice(0,10); for(var k=0;k<arr.length;k++){ var x=arr[k]; var dd=String((x&&x.Date)||'').slice(0,10); if(dd===target){ var dp=(x.Day&&x.Day.TotalLiquid&&x.Day.TotalLiquid.Value!=null)?Number(x.Day.TotalLiquid.Value):null; var np=(x.Night&&x.Night.TotalLiquid&&x.Night.TotalLiquid.Value!=null)?Number(x.Night.TotalLiquid.Value):null; if(dp==null&&np==null) return null; return (dp||0)+(np||0); } } }catch(_e){} return null; };
         function timelineOfficialValue(iso, key, fallbackVal){
             const it = timelineOfficialPreviewForDate(iso);
             if (!it) return fallbackVal;
@@ -8854,6 +8897,7 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
                 weather_text: ['summary','weather_text','weather'],
                 weather_code: ['weather_code']
             };
+            if(key==='precipitation_sum'){ var _mk=['precip_mm','precipitation_sum']; var _dmcP=null; for(var _j=0;_j<_mk.length;_j++){ var _vv=it && it[_mk[_j]]; if(_vv!==undefined&&_vv!==null&&_vv!==''){ _dmcP=Number(_vv); break; } } if((_dmcP===null||!Number.isFinite(_dmcP))&&fallbackVal!=null&&fallbackVal!=='') _dmcP=Number(fallbackVal); var _accP=(typeof window.__accuPrecipMm==='function')?window.__accuPrecipMm(iso):null; var _wp=(typeof window.__worstPrecip==='function')?window.__worstPrecip(_dmcP,_accP):_dmcP; return (_wp===null||_wp===undefined)?fallbackVal:_wp; }
             const keys = map[key] || [key];
             for (const k of keys){
                 const v = it?.[k];
@@ -8983,6 +9027,11 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
                         }
                         const _windObsStr = Number.isFinite(Number(_obsB.obsWind)) ? Math.round(Number(_obsB.obsWind))+' km/h' : '--';
                         const _gustObsStr = Number.isFinite(Number(_obsB.obsGust)) ? Math.round(Number(_obsB.obsGust))+' km/h' : '--';
+                        const _pWrfT = (window.__wrfPrecipByDate && Number.isFinite(Number(window.__wrfPrecipByDate[String(t).slice(0,10)]))) ? Number(window.__wrfPrecipByDate[String(t).slice(0,10)]) : NaN;
+                        const _pAccuT = (typeof window.__accuPrecipMm==='function') ? Number(window.__accuPrecipMm(t)) : NaN;
+                        let _pFT = (typeof window.__worstPrecip==='function') ? Number(window.__worstPrecip(Number.isFinite(_pWrfT)?_pWrfT:null, Number.isFinite(_pAccuT)?_pAccuT:null)) : (Number.isFinite(_pWrfT)?_pWrfT:_pAccuT);
+                        if(!Number.isFinite(_pFT)){ const _pdT=Number(daily && daily.precipitation_sum ? daily.precipitation_sum[i] : NaN); if(Number.isFinite(_pdT)) _pFT=_pdT; }
+                        const _precipTodayStr = Number.isFinite(_pFT) ? _pFT.toFixed(1)+' mm' : '0 mm';
                         dmcCardHtml = `
                     <div style="border-top:1px solid var(--border);margin:5px 0 3px;padding-top:3px;">
                       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;">
@@ -8999,6 +9048,7 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
                         <div style="padding:2px 5px;border-right:1px solid var(--border);"><span class="sc-lbl">VTO OBS</span><span class="sc-val">${_windObsStr}</span></div>
                         <div style="padding:2px 5px;"><span class="sc-lbl">RÁF OBS</span><span class="sc-val">${_gustObsStr}</span></div>
                       </div>
+                      <div style="padding:2px 5px;border:1px solid var(--border);border-top:none;"><span class="sc-lbl">PRECIP.</span><span class="sc-val">${_precipTodayStr}</span></div>
                     </div>`;
                     } else {
                         // Tarjetas FUTURAS: pronóstico completo (temp, viento, humedad, ráfagas)
@@ -9006,7 +9056,10 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
                         const _tMinF = Number(timelineOfficialValue(t, 'temperature_2m_min', daily.temperature_2m_min?.[i]));
                         const _windF = Number(timelineOfficialValue(t, 'wind_speed_10m_max', daily.wind_speed_10m_max?.[i]));
                         const _gustF = Number(timelineOfficialValue(t, 'wind_gusts_10m_max', shownGustMax));
-                        const _precipF = Number(timelineOfficialValue(t, 'precipitation_sum', daily.precipitation_sum?.[i]));
+                        const _precipWrfF = (window.__wrfPrecipByDate && Number.isFinite(Number(window.__wrfPrecipByDate[String(t).slice(0,10)]))) ? Number(window.__wrfPrecipByDate[String(t).slice(0,10)]) : NaN;
+                        const _precipAccuF = (typeof window.__accuPrecipMm==='function') ? Number(window.__accuPrecipMm(t)) : NaN;
+                        let _precipF = (typeof window.__worstPrecip==='function') ? Number(window.__worstPrecip(Number.isFinite(_precipWrfF)?_precipWrfF:null, Number.isFinite(_precipAccuF)?_precipAccuF:null)) : (Number.isFinite(_precipWrfF)?_precipWrfF:_precipAccuF);
+                        if(!Number.isFinite(_precipF)){ const _pdF=Number(daily && daily.precipitation_sum ? daily.precipitation_sum[i] : NaN); if(Number.isFinite(_pdF)) _precipF=_pdF; }
                         const _sensMaxF = Number(timelineOfficialValue(t, 'apparent_temperature_max', daily.apparent_temperature_max?.[i]));
                         const _tMaxStr = Number.isFinite(_tMaxF) ? Math.round(_tMaxF)+'°' : '--';
                         const _tMinStr = Number.isFinite(_tMinF) ? Math.round(_tMinF)+'°' : '--';
@@ -11131,6 +11184,7 @@ function _uApply(d){
   _us('uavPrecip',precip!=null?precip+'%':'--%');_us('uavCloud',cloud!=null?cloud+'%':'--%');
   _us('uavVis',visKm!=null?(visKm>=10?'>10 km':visKm.toFixed(1)+' km'):'-- km');
   _us('uavTemp',_uf(temp,0,'°C'));_us('uavKp',isNaN(kpVal)?'--':kpVal.toFixed(1));
+  try{ var _wt=(window.__dmcCurrentData&&window.__dmcCurrentData.today&&window.__dmcCurrentData.today.wrf)||null; _us('uavGeo500',(_wt&&Number.isFinite(_wt.h500))?Math.round(_wt.h500)+' m':'-- m'); _us('uavJet200',(_wt&&Number.isFinite(_wt.vv200_max))?Math.round(_wt.vv200_max)+' m/s':'-- m/s'); }catch(_e){}
   _us('uavLastUpdate','Últ. act.: '+new Date().toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'}));
   _us('uavSourceNote','📡 Sin TFRs ni NFZs · Fuente: '+(src||'--'));
   const tW=+document.getElementById('threshWind')?.value||38,tG=+document.getElementById('threshGusts')?.value||46;
