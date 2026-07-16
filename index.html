@@ -4398,7 +4398,7 @@ body.role-user #cmpPanel { display:block !important; }
             </div>
             <div class="map-hint">CLICK EN EL MAPA PARA ACTUALIZAR LA UBICACIÓN (ACTIVA COORD. MANUALES GMS Y EJECUTA ACTUALIZACIÓN) &nbsp;|&nbsp; CLICK DERECHO: FIJAR PUNTO B (COMPARACION)</div>
             <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
-              <button id="btnQuickForecast" type="button" onclick="quickDmcForecast()" style="align-self:flex-start;font-size:10px;font-weight:600;letter-spacing:.4px;padding:4px 11px;cursor:pointer;background:#fff;border:1px solid #cbd5e1;color:#111;border-radius:3px;white-space:nowrap;box-shadow:none;">FORECAST DMC · PRÓXIMOS DÍAS</button>
+              <button id="btnQuickForecast" type="button" onclick="quickDmcForecast()" style="align-self:flex-start;font-size:10px;font-weight:600;letter-spacing:.4px;padding:4px 11px;cursor:pointer;background:#fff;border:1px solid #cbd5e1;color:#111;border-radius:3px;white-space:nowrap;box-shadow:none;">FORECAST DMC 5 DÍAS</button>
               <button id="btnQuickForecastAccu" type="button" onclick="quickAccuForecast()" style="align-self:flex-start;font-size:10px;font-weight:600;letter-spacing:.4px;padding:4px 11px;cursor:pointer;background:#fff;border:1px solid #cbd5e1;color:#111;border-radius:3px;white-space:nowrap;box-shadow:none;">FORECAST ACCUWEATHER · 5 DÍAS</button>
               <div id="quickForecastMsg" style="font-size:9px;color:var(--muted);"></div>
               <div id="quickForecastOut" style="overflow-x:auto;"></div>
@@ -7728,11 +7728,45 @@ function __dqDailyMinFromHourly(js, field){
                 if(/open[-_ ]?meteo/i.test(_pstat) || /open[-_ ]?meteo/i.test(_tail)) _fuentes.push('GFS/ECMWF');
                 if(!_fuentes.length && js.__source_label) _fuentes.push(String(js.__source_label));
                 const srcLine = 'Modelos: ' + (_fuentes.length ? _fuentes.join(', ') : (js.__model_label || 'WRF-DMC'));
+                                // ===== FORECAST DMC 5 DÍAS: solo datos reales del modelo/pronóstico DMC-WRF =====
+                var _wrfMap = (d && d.__wrf) ? d.__wrf : null;
+                var _wnum = function(v){ return (v!=null && isFinite(v)) ? Number(v) : null; };
+                var _wget = function(o,k,arr,i){ var a=(o&&o[k]!=null)?_wnum(o[k]):null; if(a!=null) return a; return (arr&&arr[i]!=null)?_wnum(arr[i]):null; };
+                var _wcolsBase = [
+                    {h:'T. MÁX', s:'°', get:function(o,i){ return _wget(o,'tmax',d.temperature_2m_max,i); }},
+                    {h:'T. MÍN', s:'°', get:function(o,i){ return _wget(o,'tmin',d.temperature_2m_min,i); }},
+                    {h:'PRECIP', s:' mm', get:function(o,i){ return _wget(o,'precip',d.precipitation_sum,i); }},
+                    {h:'HUM. MÁX', s:'%', get:function(o,i){ return _wget(o,'hr_max',d.relative_humidity_2m_max,i); }},
+                    {h:'HUM. MÍN', s:'%', get:function(o,i){ return _wget(o,'hr_min',d.relative_humidity_2m_min,i); }},
+                    {h:'VIENTO MÁX', s:' km/h', get:function(o,i){ return _wget(o,'wind_max_kmh',d.wind_speed_10m_max,i); }}
+                ];
+                var _wcolsAlt = [
+                    {h:'H500 (gpm)', s:'', get:function(o,i){ return (o&&o.h500!=null)?_wnum(o.h500):null; }},
+                    {h:'VV200', s:'', get:function(o,i){ return (o&&o.vv200_max!=null)?_wnum(o.vv200_max):null; }}
+                ];
+                var _wall = _wcolsBase.concat(_wcolsAlt);
+                var _wcols = _wall.filter(function(c){ for(var _i=0;_i<n;_i++){ var o=_wrfMap?_wrfMap[String(d.time[_i]).slice(0,10)]:null; if(c.get(o,_i)!=null) return true; } return false; });
+                var _wthc = '<th style="'+TH+'text-align:left;">DÍA</th>' + _wcols.map(function(c){ return '<th style="'+TH+'">'+c.h+'</th>'; }).join('');
+                var _wbodyc = '';
+                for(var wi=0; wi<n; wi++){
+                    var _wkey=String(d.time[wi]).slice(0,10);
+                    var _wo=_wrfMap?(_wrfMap[_wkey]||null):null;
+                    var _pp=String(d.time[wi]).split('-'); var _do=new Date(Number(_pp[0]),Number(_pp[1])-1,Number(_pp[2])); var _dow=wd[_do.getDay()]||''; var _dd=_pp[2]+'/'+_pp[1];
+                    var _tds=_wcols.map(function(c){ var v=c.get(_wo,wi); return '<td style="'+CC+'">'+fmt(v,c.s)+'</td>'; }).join('');
+                    _wbodyc += '<tr><td style="'+C+'font-weight:700;white-space:nowrap;">'+_dow+' '+_dd+'</td>'+_tds+'</tr>';
+                }
+                var _wstat = js.__wrf_station || js.__wrf_locality || null;
+                var _wdist = (js.__wrf_dist_km!=null) ? (' · a '+Math.round(Number(js.__wrf_dist_km))+' km') : '';
+                var _wfb = js.__wrf_fallback ? ' · (estación cercana)' : '';
+                var _wsrc = _wstat ? ('Modelo WRF-DMC · Estación: '+String(_wstat).toUpperCase()+_wdist+_wfb) : '';
+                var _wrfHtml = (_wsrc ? '<div style="font-size:10px;color:#64748b;margin:0 0 10px;">'+_wsrc+'</div>' : '')
+                    + '<table style="border-collapse:collapse;background:#fff;color:#111827;font-size:11px;"><thead><tr>'+_wthc+'</tr></thead><tbody>'+_wbodyc+'</tbody></table>';
                 const html = '<div style="margin:0 0 8px;"><button type="button" onclick="saveForecastImage()" style="cursor:pointer;font-family:inherit;padding:4px 11px;border:1px solid #cbd5e1;border-radius:3px;background:#fff;color:#111;font-weight:600;font-size:10px;">GUARDAR IMAGEN</button></div>'
                   + '<div id="forecastCard" style="display:inline-block;background:#ffffff;color:#111827;padding:16px 18px;border:1px solid '+BRD+';border-radius:10px;font-family:Consolas,monospace;">'
                   +   '<div style="font-size:15px;font-weight:800;color:#0f766e;margin-bottom:2px;letter-spacing:.3px;">FORECAST · '+headerLabel+'</div>'
-                  +   '<div style="font-size:10px;color:#64748b;margin-bottom:10px;">Pronóstico próximos días · '+srcLine+'</div>'
-                  +   '<table style="border-collapse:collapse;background:#ffffff;color:#111827;font-size:11px;">' + thead + '<tbody>'+rows+'</tbody></table>'
+                  +   '<div style="font-size:10px;color:#64748b;margin-bottom:10px;">Pronóstico 5 días</div>'
+                  +   ''
+                  +   _wrfHtml
                   +   '<div style="font-size:9px;color:#94a3b8;margin-top:8px;">Generado '+genStr+'</div>'
                   + '</div>';
                 if(out) out.innerHTML = html;
