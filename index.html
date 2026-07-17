@@ -8649,16 +8649,16 @@ globalData = data;
                         if (_ar0 && Array.isArray(_ar0.DailyForecasts)) window.__accuDailyRaw = _ar0.DailyForecasts;
                     } catch(_e2) {}
                 } catch(_eU) {}
-                renderHeader(name, country, usedModel, latitude, longitude);
-                renderCurrent(data, latitude, longitude);
-                renderTimeline(data, latitude, longitude);
-                renderTemp7dChart(data);
-                await updateChart();
-                populateHourDaySelect();
-                renderPrintCharts(data);
-                generateTacticalSummary(data);
-                checkVolcanoes();
-                                loadUAV15Day();
+                try{ renderHeader(name, country, usedModel, latitude, longitude); }catch(_e){ console.warn("arranque:renderHeader",_e); }
+                try{ renderCurrent(data, latitude, longitude); }catch(_e){ console.warn("arranque:renderCurrent",_e); }
+                try{ renderTimeline(data, latitude, longitude); }catch(_e){ console.warn("arranque:renderTimeline",_e); }
+                try{ renderTemp7dChart(data); }catch(_e){ console.warn("arranque:renderTemp7dChart",_e); }
+                try{ await updateChart(); }catch(_e){ console.warn("arranque:updateChart",_e); }
+                try{ populateHourDaySelect(); }catch(_e){ console.warn("arranque:populateHourDaySelect",_e); }
+                try{ renderPrintCharts(data); }catch(_e){ console.warn("arranque:renderPrintCharts",_e); }
+                try{ generateTacticalSummary(data); }catch(_e){ console.warn("arranque:generateTacticalSummary",_e); }
+                try{ checkVolcanoes(); }catch(_e){ console.warn("arranque:checkVolcanoes",_e); }
+                try{ loadUAV15Day(); }catch(_e){ console.warn("arranque:loadUAV15Day",_e); }
 
                                 try{ await fetchAlerts(); }catch(e){}
                 // Notificar al módulo comparativo que el punto A se actualizó
@@ -8678,11 +8678,11 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
         }
 
         function generateTacticalSummary(data) {
-            const todayIdx = 7;
-            const cur = data.current;
-            const maxTemp = data.daily.temperature_2m_max[todayIdx];
-            const maxWind = data.daily.wind_speed_10m_max[todayIdx];
-            const uv = data.daily.uv_index_max[todayIdx];
+            const todayIdx = 7; const _dd=(data&&data.daily)?data.daily:{}; const _ar=(a)=>Array.isArray(a)?a:[];
+            const cur = (data&&data.current)?data.current:{};
+            const maxTemp = _ar(_dd.temperature_2m_max)[todayIdx];
+            const maxWind = _ar(_dd.wind_speed_10m_max)[todayIdx];
+            const uv = _ar(_dd.uv_index_max)[todayIdx];
 
             let summary = [];
 
@@ -8699,7 +8699,7 @@ statusMsg.innerText = "SISTEMA ACTIVO - DATOS RECIBIDOS";
 
             if (uv > 8) summary.push("RADIACIÓN: Índice UV Extremo. Protección solar obligatoria para personal en terreno.");
 
-            document.getElementById('conclusionText').innerText = summary.join("\n");
+            { const _c=document.getElementById('conclusionText'); if(_c) _c.innerText = summary.join("\n"); }
         }
 
         function renderHeader(city, country, model, lat, lon) {
@@ -10531,8 +10531,8 @@ chartInstance = new Chart(ctx, {
 
         // GENERADOR DE GRÁFICOS DE IMPRESIÓN (SIN FILTRO INVERT - NEGRO PURO)
         function renderPrintCharts(data) {
-            const daily = data.daily;
-            const labels = daily.time.map(t => t.slice(8,10));
+            const daily = (data&&data.daily)?data.daily:{}; const _hly=(data&&data.hourly)?data.hourly:{};
+            const labels = Array.isArray(daily.time)?daily.time.map(t => String(t).slice(8,10)):[];
             const commonOptions = {
                 responsive: true, maintainAspectRatio: false, animation: false,
                 plugins: { legend: { display: false } },
@@ -10546,20 +10546,20 @@ chartInstance = new Chart(ctx, {
             if(pcTemp) pcTemp.destroy();
             pcTemp = new Chart(document.getElementById('pChartTemp'), {
                 type: 'line',
-                data: { labels: labels, datasets: [{ data: daily.temperature_2m_max, borderColor: 'var(--panel)', fill: false }] },
+                data: { labels: labels, datasets: [{ data: daily.temperature_2m_max || [], borderColor: 'var(--panel)', fill: false }] },
                 options: { ...commonOptions, plugins: { title: { display: true, text: 'TEMPERATURA MAX (°C)', color: 'var(--panel)' } } }
             });
 
             if(pcWind) pcWind.destroy();
             pcWind = new Chart(document.getElementById('pChartWind'), {
                 type: 'bar',
-                data: { labels: labels, datasets: [{ data: daily.wind_speed_10m_max, backgroundColor: 'var(--panel)' }] },
+                data: { labels: labels, datasets: [{ data: daily.wind_speed_10m_max || [], backgroundColor: 'var(--panel)' }] },
                 options: { ...commonOptions, plugins: { title: { display: true, text: 'VIENTO MAX (KM/H)', color: 'var(--panel)' } } }
             });
 
             let humArr = [];
-            if(data.hourly.relative_humidity_2m) {
-                 humArr = daily.time.map((_, i) => { let s=0; for(let h=0;h<24;h++) s+=data.hourly.relative_humidity_2m[i*24+h]; return Math.round(s/24); });
+            if(_hly.relative_humidity_2m && Array.isArray(daily.time)) {
+                 humArr = daily.time.map((_, i) => { let s=0; for(let h=0;h<24;h++) s+=(_hly.relative_humidity_2m[i*24+h]||0); return Math.round(s/24); });
             }
             if(pcHum) pcHum.destroy();
             pcHum = new Chart(document.getElementById('pChartHum'), {
@@ -10569,8 +10569,8 @@ chartInstance = new Chart(ctx, {
             });
 
             let cloudArr = [];
-            if(data.hourly.cloud_cover) {
-                 cloudArr = daily.time.map((_, i) => { let s=0; for(let h=0;h<24;h++) s+=data.hourly.cloud_cover[i*24+h]; return Math.round(s/24); });
+            if(_hly.cloud_cover && Array.isArray(daily.time)) {
+                 cloudArr = daily.time.map((_, i) => { let s=0; for(let h=0;h<24;h++) s+=(_hly.cloud_cover[i*24+h]||0); return Math.round(s/24); });
             }
             if(pcClouds) pcClouds.destroy();
             pcClouds = new Chart(document.getElementById('pChartClouds'), {
