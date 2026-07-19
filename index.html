@@ -7742,7 +7742,7 @@ function __dqDailyMinFromHourly(js, field){
                   + '<th style="'+TH+'">UV</th>'
                   + '</tr></thead>';
                 const nowD = new Date();
-                const genStr = nowD.toLocaleDateString('es-CL') + ' ' + nowD.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'});
+                const __GM=['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];const __gp=function(x){return('0'+x).slice(-2);};const genStr = __gp(nowD.getDate())+__GM[nowD.getMonth()]+__gp(nowD.getFullYear()%100)+' a las '+__gp(nowD.getHours())+__gp(nowD.getMinutes());
                 const _pstat = String(js.__parse_status || '');
                 const _tail = String(js.__tail_source || '');
                 const _modelLbl = js.__model_label || js.__source_label || 'WRF DMC';
@@ -7791,7 +7791,7 @@ function __dqDailyMinFromHourly(js, field){
                   +   '<div style="font-size:10px;color:#64748b;margin-bottom:10px;">Pronóstico 5 días</div>'
                   +   ''
                   +   _wrfHtml
-                  +   '<div style="font-size:9px;color:#94a3b8;margin-top:8px;">Generado '+genStr+'</div>'
+                  +   '<div style="font-size:9px;color:#94a3b8;margin-top:8px;">Generado el '+genStr+'</div>'
                   + '</div>';
                 if(out) out.innerHTML = html;
                 setMsg('');
@@ -7954,14 +7954,14 @@ function __dqDailyMinFromHourly(js, field){
                   + '<th style="'+TH+'">LUNA</th>'
                   + '</tr></thead>';
                 const nowD = new Date();
-                const genStr = nowD.toLocaleDateString('es-CL') + ' ' + nowD.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'});
+                const __GM=['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];const __gp=function(x){return('0'+x).slice(-2);};const genStr = __gp(nowD.getDate())+__GM[nowD.getMonth()]+__gp(nowD.getFullYear()%100)+' a las '+__gp(nowD.getHours())+__gp(nowD.getMinutes());
                 const html = '<div style="margin:0 0 8px;"><button type="button" onclick="saveAccuForecastImage()" style="cursor:pointer;font-family:inherit;padding:4px 11px;border:1px solid #cbd5e1;border-radius:3px;background:#fff;color:#111;font-weight:600;font-size:10px;">GUARDAR IMAGEN</button></div>'
                   + '<div id="forecastCardAccu" style="display:inline-block;background:#ffffff;color:#111827;padding:16px 18px;border:1px solid '+BRD+';border-radius:10px;font-family:Consolas,monospace;">'
                   +   '<div style="font-size:15px;font-weight:800;color:#ea6a1e;margin-bottom:2px;letter-spacing:.3px;">FORECAST ACCUWEATHER · '+headerLabel+'</div>'
                   +   '<div style="font-size:10px;color:#64748b;margin-bottom:10px;">Pronóstico 5 días · Fuente: AccuWeather (Core)</div>'
                   +   curBlock
                   +   '<table style="border-collapse:collapse;background:#ffffff;color:#111827;font-size:11px;">' + thead + '<tbody>'+rows+'</tbody></table>'
-                  +   '<div style="font-size:9px;color:#94a3b8;margin-top:8px;">Generado '+genStr+'</div>'
+                  +   '<div style="font-size:9px;color:#94a3b8;margin-top:8px;">Generado el '+genStr+'</div>'
                   + '</div>';
                 if(out) out.innerHTML = html;
                 setMsg('');
@@ -20751,7 +20751,7 @@ window.__openMatrizOpsEditor=function(){var old=document.getElementById('matrizO
   const lvlP=p=>(p==null||isNaN(p))?-1:(p>13?2:(p>=3?1:0));const VF={V:lvlV,F:lvlF,U:lvlU,I:lvlI,H:lvlH,P:lvlP};
   const EMOA={1:'☀️',2:'🌤️',3:'⛅',4:'⛅',5:'🌥️',6:'☁️',7:'☁️',8:'☁️',11:'🌫️',12:'🌦️',13:'🌦️',14:'🌦️',15:'⛈️',16:'⛈️',17:'⛈️',18:'🌧️',19:'🌨️',20:'🌨️',21:'🌨️',22:'❄️',23:'❄️',24:'🧊',25:'🌨️',26:'🌧️',29:'🌨️',30:'🥵',31:'🥶',32:'💨',33:'🌙',34:'🌙',35:'☁️',36:'☁️',37:'🌫️',38:'☁️',39:'🌧️',40:'🌧️',41:'⛈️',42:'⛈️',43:'🌨️',44:'❄️'};
   const EMOD={0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌦️',55:'🌧️',61:'🌦️',63:'🌧️',65:'🌧️',71:'🌨️',73:'🌨️',75:'❄️',80:'🌦️',81:'🌧️',82:'⛈️',95:'⛈️'};
-  function moonIllum(dt){const syn=29.530588853,ref=Date.UTC(2000,0,6,18,14)/86400000,dd=dt.getTime()/86400000;let a=(dd-ref)%syn;if(a<0)a+=syn;const p=a/syn;return (1-Math.cos(2*Math.PI*p))/2*100;}function _sunEv(lat,lon,dObj){var rad=Math.PI/180,deg=180/Math.PI;var tzMin=-dObj.getTimezoneOffset();var start=Date.UTC(dObj.getFullYear(),0,0);var doy=Math.floor((Date.UTC(dObj.getFullYear(),dObj.getMonth(),dObj.getDate())-start)/86400000);function calc(angle){var gamma=2*Math.PI/365*(doy-1+0.5);var eqtime=229.18*(0.000075+0.001868*Math.cos(gamma)-0.032077*Math.sin(gamma)-0.014615*Math.cos(2*gamma)-0.040849*Math.sin(2*gamma));var decl=0.006918-0.399912*Math.cos(gamma)+0.070257*Math.sin(gamma)-0.006758*Math.cos(2*gamma)+0.000907*Math.sin(2*gamma)-0.002697*Math.cos(3*gamma)+0.00148*Math.sin(3*gamma);var za=(90+angle)*rad;var cosH=(Math.cos(za)-Math.sin(lat*rad)*Math.sin(decl))/(Math.cos(lat*rad)*Math.cos(decl));if(cosH>1||cosH<-1)return{rise:null,set:null};var ha=Math.acos(cosH)*deg;return{rise:720-4*(lon+ha)-eqtime,set:720-4*(lon-ha)-eqtime};}function fmt(mUTC){if(mUTC==null)return'--';var m=mUTC+tzMin;m=((m%1440)+1440)%1440;var hh=Math.floor(m/60),mm=Math.round(m-hh*60);if(mm===60){mm=0;hh=(hh+1)%24;}return('0'+hh).slice(-2)+':'+('0'+mm).slice(-2);}var s=calc(0.833),n=calc(6);return{orto:fmt(s.rise),ocaso:fmt(s.set),iccm:fmt(n.rise),tccv:fmt(n.set)};}
+  function moonRiseSet(lat,lon,dObj){var Y=dObj.getFullYear(),Mo=dObj.getMonth()+1,Da=dObj.getDate();var off=dObj.getTimezoneOffset()/60;var h0=0.125,DR=Math.PI/180;function jd(y,m,d,hh){if(m<=2){y-=1;m+=12;}var A=Math.floor(y/100),B=2-A+Math.floor(A/4);return Math.floor(365.25*(y+4716))+Math.floor(30.6001*(m+1))+d+B-1524.5+hh/24;}function alt(lh){var J=jd(Y,Mo,Da,lh+off);var T=J-2451545.0;var L=218.316+13.176396*T,M=134.963+13.064993*T,F=93.272+13.229350*T;var el=(L+6.289*Math.sin(M*DR))*DR;var eb=(5.128*Math.sin(F*DR))*DR;var ob=(23.439-0.0000004*T)*DR;var ra=Math.atan2(Math.sin(el)*Math.cos(ob)-Math.tan(eb)*Math.sin(ob),Math.cos(el));var de=Math.asin(Math.sin(eb)*Math.cos(ob)+Math.cos(eb)*Math.sin(ob)*Math.sin(el));var G=280.46061837+360.98564736629*T;G=((G%360)+360)%360;var Hh=(G+lon)*DR-ra;return Math.asin(Math.sin(lat*DR)*Math.sin(de)+Math.cos(lat*DR)*Math.cos(de)*Math.cos(Hh))/DR;}var rise=null,set=null,pa=alt(0);for(var lh=0.5;lh<=24.0001;lh+=0.5){var ca=alt(lh);if(pa<h0&&ca>=h0&&rise===null)rise=lh-0.5+(h0-pa)/(ca-pa)*0.5;if(pa>=h0&&ca<h0&&set===null)set=lh-0.5+(pa-h0)/(pa-ca)*0.5;pa=ca;}function fm(x){if(x===null)return'--';var mm=Math.round(x*60);mm=((mm%1440)+1440)%1440;return('0'+Math.floor(mm/60)).slice(-2)+':'+('0'+(mm%60)).slice(-2);}return{rise:fm(rise),set:fm(set)};}function moonIllum(dt){const syn=29.530588853,ref=Date.UTC(2000,0,6,18,14)/86400000,dd=dt.getTime()/86400000;let a=(dd-ref)%syn;if(a<0)a+=syn;const p=a/syn;return (1-Math.cos(2*Math.PI*p))/2*100;}function _sunEv(lat,lon,dObj){var rad=Math.PI/180,deg=180/Math.PI;var tzMin=-dObj.getTimezoneOffset();var start=Date.UTC(dObj.getFullYear(),0,0);var doy=Math.floor((Date.UTC(dObj.getFullYear(),dObj.getMonth(),dObj.getDate())-start)/86400000);function calc(angle){var gamma=2*Math.PI/365*(doy-1+0.5);var eqtime=229.18*(0.000075+0.001868*Math.cos(gamma)-0.032077*Math.sin(gamma)-0.014615*Math.cos(2*gamma)-0.040849*Math.sin(2*gamma));var decl=0.006918-0.399912*Math.cos(gamma)+0.070257*Math.sin(gamma)-0.006758*Math.cos(2*gamma)+0.000907*Math.sin(2*gamma)-0.002697*Math.cos(3*gamma)+0.00148*Math.sin(3*gamma);var za=(90+angle)*rad;var cosH=(Math.cos(za)-Math.sin(lat*rad)*Math.sin(decl))/(Math.cos(lat*rad)*Math.cos(decl));if(cosH>1||cosH<-1)return{rise:null,set:null};var ha=Math.acos(cosH)*deg;return{rise:720-4*(lon+ha)-eqtime,set:720-4*(lon-ha)-eqtime};}function fmt(mUTC){if(mUTC==null)return'--';var m=mUTC+tzMin;m=((m%1440)+1440)%1440;var hh=Math.floor(m/60),mm=Math.round(m-hh*60);if(mm===60){mm=0;hh=(hh+1)%24;}return('0'+hh).slice(-2)+':'+('0'+mm).slice(-2);}var s=calc(0.833),n=calc(6);return{orto:fmt(s.rise),ocaso:fmt(s.set),iccm:fmt(n.rise),tccv:fmt(n.set)};}
   const num=v=>(v==null||v==='')?null:Number(v);
   function agg(H,field,i,isDay,mode){const arr=H&&H[field];if(!arr||!Array.isArray(arr))return null;const base=i*24;const hrs=isDay?[6,7,8,9,10,11,12,13,14,15,16,17]:[18,19,20,21,22,23,24,25,26,27,28,29];let s=0,c=0,ac=null;for(const hh of hrs){const v=arr[base+hh];if(v==null||Number.isNaN(v))continue;if(mode==='mean'){s+=v;c++;}else if(mode==='max'){ac=(ac==null||v>ac)?v:ac;}else{ac=(ac==null||v<ac)?v:ac;}}return mode==='mean'?(c?s/c:null):ac;}
   const cls=l=>l===2?'r':(l===1?'y':(l===0?'g':'nd'));
@@ -20818,7 +20818,7 @@ function omGustAgg(ds,isDay){if(!omH||!Array.isArray(omH.time)||!Array.isArray(o
         if((!icD||!icN)&&i>=0&&d&&d.weather_code){const wc=d.weather_code[i];const im=__dmcIco(wc);if(im){if(!icD)icD=im;if(!icN)icN=im;}else{if(!icD)icD=(wc!=null)?EMOD[wc]:null;if(!icN)icN=icD;}}
         if(!icD&&af){icD=(day.Icon!=null)?EMOA[num(day.Icon)]:null;}
         if(!icN&&af){icN=(night.Icon!=null)?EMOA[num(night.Icon)]:null;}
-        return {ds:ds,dow:wd[dObj.getDay()]||'',dd:(p.length===3?p[2]+'/'+p[1]:'--'),tmax,tmin,smax,smin,uv,precip,gD,gN,hD,hN,illum,icD:icD||'',icN:icN||'',su:(function(){var _se=_sunEv(lat,lon,dObj);try{if(af&&af.Sun){if(af.Sun.Rise)_se.orto=String(af.Sun.Rise).slice(11,16);if(af.Sun.Set)_se.ocaso=String(af.Sun.Set).slice(11,16);}}catch(_e){}return _se;})(),visD:omVisAgg(ds,true),visN:omVisAgg(ds,false),vD:{V:gD,F:smax,U:uv,I:illum,H:hD,P:precip},vN:{V:gN,F:smin,U:0,I:illum,H:hN,P:precip}};
+        return {ds:ds,dow:wd[dObj.getDay()]||'',dd:(p.length===3?p[2]+'/'+p[1]:'--'),tmax,tmin,smax,smin,uv,precip,gD,gN,hD,hN,illum,lsale:(function(){try{return moonRiseSet(lat,lon,dObj).rise;}catch(_e){return null;}})(),lpone:(function(){try{return moonRiseSet(lat,lon,dObj).set;}catch(_e){return null;}})(),icD:icD||'',icN:icN||'',su:(function(){var _se=_sunEv(lat,lon,dObj);try{if(af&&af.Sun){if(af.Sun.Rise)_se.orto=String(af.Sun.Rise).slice(11,16);if(af.Sun.Set)_se.ocaso=String(af.Sun.Set).slice(11,16);}}catch(_e){}return _se;})(),visD:omVisAgg(ds,true),visN:omVisAgg(ds,false),vD:{V:gD,F:smax,U:uv,I:illum,H:hD,P:precip},vN:{V:gN,F:smin,U:0,I:illum,H:hN,P:precip}};
       });
       const f1=(v,s)=>(v==null||isNaN(v))?'--':(Math.round(v*10)/10)+(s||'');
       let h='';
@@ -20834,17 +20834,306 @@ function omGustAgg(ds,isDay){if(!omH||!Array.isArray(omH.time)||!Array.isArray(o
       h+=rDN('Humedad (%)',x=>f1(x.hD),x=>f1(x.hN));
       h+=rD('Índice UV',x=>f1(x.uv));
       h+=rD('Precip (mm)',x=>f1(x.precip));
-      h+=rD('Iluminación lunar',x=>f1(x.illum,'%'));h+=rDN('Visibilidad (km)',x=>(x.visD==null?'--':f1(x.visD/1000)),x=>(x.visN==null?'--':f1(x.visN/1000)));h+=rD('Salida sol (orto)',x=>x.su.orto);h+=rD('Puesta sol (ocaso)',x=>x.su.ocaso);h+=rD('ICCM (crep. civil AM)',x=>x.su.iccm);h+=rD('TCCV (crep. civil PM)',x=>x.su.tccv);
+      h+=rDN('Visibilidad (km)',x=>(x.visD==null?'--':f1(x.visD/1000)),x=>(x.visN==null?'--':f1(x.visN/1000)));h+=rD('Salida sol (orto)',x=>x.su.orto);h+=rD('Puesta sol (ocaso)',x=>x.su.ocaso);h+=rD('ICCM (crep. civil AM)',x=>x.su.iccm);h+=rD('TCCV (crep. civil PM)',x=>x.su.tccv);(function(){var _hm=function(s){s=String(s==null?'':s);var i=s.indexOf(':');if(i<0)return null;var H=parseInt(s.slice(0,i),10),M=parseInt(s.slice(i+1,i+3),10);if(isNaN(H)||isNaN(M))return null;return H+M/60;};var _ivl=function(a,b){if(a==null||b==null)return [];return b>a?[[a,b]]:[[a,24],[0,b]];};var _night=function(o,c){if(o==null||c==null)return [[0,24]];var r=[];if(o>0)r.push([0,o]);if(c<24)r.push([c,24]);return r;};var _isect=function(A,B){var r=[];A.forEach(function(a){B.forEach(function(b){var s=Math.max(a[0],b[0]),e=Math.min(a[1],b[1]);if(e>s)r.push([s,e]);});});return r;};var band='<tr><td class="rl">Iluminación lunar</td><td colspan="'+(D.length*2)+'" style="padding:0;"><span style="display:flex;">';D.forEach(function(x){var orto=_hm(x.su&&x.su.orto),ocaso=_hm(x.su&&x.su.ocaso);var lr=_hm(x.lsale),lp=_hm(x.lpone);var il=(x.illum==null||isNaN(x.illum))?0:Math.max(0,Math.min(100,Math.round(x.illum)));var day=(orto!=null&&ocaso!=null)?[[orto,ocaso]]:[];var moonNight=_isect(_ivl(lr,lp),_night(orto,ocaso));var svg='<svg viewBox="0 0 240 24" preserveAspectRatio="none" width="100%" height="24" style="display:block;">';svg+='<rect x="0" y="0" width="240" height="24" fill="#111111"/>';moonNight.forEach(function(m){svg+='<rect x="'+(m[0]*10)+'" y="0" width="'+((m[1]-m[0])*10)+'" height="24" fill="#c7ccd1"/>';});day.forEach(function(d){svg+='<rect x="'+(d[0]*10)+'" y="0" width="'+((d[1]-d[0])*10)+'" height="24" fill="#f5c518"/>';});svg+='<rect x="1.5" y="7" width="27" height="11" rx="2" fill="#000" opacity="0.62"/><text x="4.5" y="15.5" font-size="8.5" font-weight="700" fill="#ffffff">'+il+'%</text>';svg+='</svg>';band+='<span style="flex:1;min-width:0;border-left:1px solid #333;">'+svg+'</span>';});band+='</span></td></tr>';h+=band;})();h+='<tr><td class="rl">Hora (Local)</td><td colspan="'+(D.length*2)+'" class="mono" style="border-left:none;border-right:none;padding:3px 0;font-size:11px;font-weight:700;letter-spacing:.5px;"><span style="display:flex;justify-content:space-between;">';for(var _di=0;_di<D.length;_di++){h+='<span>00</span><span>06</span><span>12</span><span>18</span>';}h+='<span>00</span></span></td></tr>';h+='<tr><td class="rl">Hora (Zulu)</td><td colspan="'+(D.length*2)+'" class="mono" style="border-left:none;border-right:none;padding:3px 0;font-size:11px;font-weight:700;letter-spacing:.5px;"><span style="display:flex;justify-content:space-between;">';var _zp=function(n){return ('0'+((Math.round(n)%24+24)%24)).slice(-2);};for(var _dj=0;_dj<D.length;_dj++){var _zo=4;try{_zo=new Date(D[_dj].ds+'T12:00:00').getTimezoneOffset()/60;}catch(_e){_zo=4;}h+='<span>'+_zp(0+_zo)+'</span><span>'+_zp(6+_zo)+'</span><span>'+_zp(12+_zo)+'</span><span>'+_zp(18+_zo)+'</span>';}var _zof=4;try{_zof=new Date(D[D.length-1].ds+'T12:00:00').getTimezoneOffset()/60;}catch(_e){_zof=4;}h+='<span>'+_zp(0+_zof)+'</span></span></td></tr>';
       h+='<tr><td class="rl" style="background:#e9edf1;color:#0f172a;">OPERACIÓN</td>';D.forEach(()=>h+='<td class="sb">DÍA</td><td class="sb">NOCHE</td>');h+='</tr>';
-      (window.__getMatrizOps?window.__getMatrizOps():OPS).forEach(op=>{let r='<tr><td class="op">'+op.n+'</td>';D.forEach(x=>{var _opTh=window.__opTh(op);const cd=frj(op.d,x.vD,_opTh),cn=frj(op.x,x.vN,_opTh);r+='<td class="'+cls(cd.l)+'">'+cd.t+'</td><td class="'+cls(cn.l)+'">'+cn.t+'</td>';});h+=r+'</tr>';});h+='<tr><td class="rl">Hora local</td><td colspan="'+(D.length*2)+'" class="mono" style="border-left:none;border-right:none;padding:3px 0;font-size:13px;font-weight:700;letter-spacing:.5px;"><span style="display:flex;justify-content:space-between;">';for(var _di=0;_di<D.length;_di++){h+='<span>00</span><span>06</span><span>12</span><span>18</span>';}h+='<span>00</span></span></td></tr>';h+='<tr><td class="rl">Hora Zulú</td><td colspan="'+(D.length*2)+'" class="mono" style="border-left:none;border-right:none;padding:3px 0;font-size:13px;font-weight:700;letter-spacing:.5px;"><span style="display:flex;justify-content:space-between;">';var _zp=function(n){return ('0'+((Math.round(n)%24+24)%24)).slice(-2);};for(var _dj=0;_dj<D.length;_dj++){var _zo=4;try{_zo=new Date(D[_dj].ds+'T12:00:00').getTimezoneOffset()/60;}catch(_e){_zo=4;}h+='<span>'+_zp(0+_zo)+'</span><span>'+_zp(6+_zo)+'</span><span>'+_zp(12+_zo)+'</span><span>'+_zp(18+_zo)+'</span>';}var _zof=4;try{_zof=new Date(D[D.length-1].ds+'T12:00:00').getTimezoneOffset()/60;}catch(_e){_zof=4;}h+='<span>'+_zp(0+_zof)+'</span></span></td></tr>';
+      (window.__getMatrizOps?window.__getMatrizOps():OPS).forEach(op=>{let r='<tr><td class="op">'+op.n+'</td>';D.forEach(x=>{var _opTh=window.__opTh(op);const cd=frj(op.d,x.vD,_opTh),cn=frj(op.x,x.vN,_opTh);r+='<td class="'+cls(cd.l)+'" data-op="'+op.n+'" data-lv="'+cd.l+'" data-fac="'+cd.t+'" data-ph="d">'+cd.t+'</td><td class="'+cls(cn.l)+'" data-op="'+op.n+'" data-lv="'+cn.l+'" data-fac="'+cn.t+'" data-ph="n">'+cn.t+'</td>';});h+=r+'</tr>';});
       const now=new Date();
-      var cg='<colgroup><col style="width:132px;">';for(var _cgi=0;_cgi<D.length*2;_cgi++){cg+='<col style="width:93px;">';}cg+='</colgroup>';var __mh=(window.__getMatrizHeader?window.__getMatrizHeader():{});var __mhE=function(t){return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};var __mhTit=(__mh.tOn&&(__mh.tTxt||'').trim())?__mhE(__mh.tTxt):'PRONÓSTICO · 5 DÍAS';var __mhResp=(__mh.rOn&&(__mh.rTxt||'').trim())?'<div style="font-size:10px;color:#334155;"><b>Responsable:</b> '+__mhE(__mh.rTxt)+'</div>':'';var __mhBan=(__mh.bOn&&(__mh.bTxt||'').trim())?__mhE(__mh.bTxt):'PRONÓSTICO';const card='<div id="matrizCard" style="display:inline-block;background:#fff;color:#111;padding:14px 16px;border:1px solid #d0d5dd;border-radius:10px;font-family:Arial,Helvetica,sans-serif;">'+'<div style="font-size:15px;font-weight:800;color:#0f172a;margin-bottom:2px;">'+__mhTit+'</div>'+'<div style="font-size:11px;color:#475569;margin-bottom:10px;">ZONA: '+(function(){try{var mz=(window.__manualGridGet&&window.__manualGridGet());if(mz&&mz.on&&mz.zona)return mz.zona;}catch(_e){}return zona;})()+(function(){var g=(window.__manualGridGet&&window.__manualGridGet())||{on:false,cells:{}};var hm=!!(g&&g.on&&g.cells&&Object.keys(g.cells).some(function(k){return g.cells[k]&&Object.keys(g.cells[k]).length;}));return hm?'':' · Fuente: DMC y AccuWeather';})()+'</div>'+'<table class="mtx">'+cg+'<tbody>'+h+'</tbody></table>'+'<div style="font-size:9px;padding:6px 2px;color:#334155;line-height:1.6;"><b>Factor limitante:</b> V — Viento/Ráfagas · F — Frío/Sens. térmica · U — Índice UV · I — Iluminación lunar · H — Humedad · P — Precipitación<br><b>Semáforo:</b> <span class="g" style="padding:1px 8px;border-radius:3px;">Sin restricción</span> <span class="y" style="padding:1px 8px;border-radius:3px;">Precaución / restricción parcial</span> <span class="r" style="padding:1px 8px;border-radius:3px;">Crítico / suspender o mitigar</span><br><b>Umbrales:</b> límites configurables por operación (botón Umbrales) · Amarillo = precaución · Rojo = crítico</div>'+'<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:10px;color:#334155;padding:4px 2px;">'+__mhResp+'<div style="font-size:9px;color:#94a3b8;">Generado '+now.toLocaleDateString('es-CL')+' '+now.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'})+'</div></div>'+'<div class="bn">'+__mhBan+'</div>'+'</div>';
+      var cg='<colgroup><col style="width:132px;">';for(var _cgi=0;_cgi<D.length*2;_cgi++){cg+='<col style="width:93px;">';}cg+='</colgroup>';var __mh=(window.__getMatrizHeader?window.__getMatrizHeader():{});var __mhE=function(t){return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};var __mhTit=(__mh.tOn&&(__mh.tTxt||'').trim())?__mhE(__mh.tTxt):'PRONÓSTICO · 5 DÍAS';var __mhResp=(__mh.rOn&&(__mh.rTxt||'').trim())?'<div style="font-size:10px;color:#334155;"><b>Responsable:</b> '+__mhE(__mh.rTxt)+'</div>':'';var __mhBan=(__mh.bOn&&(__mh.bTxt||'').trim())?__mhE(__mh.bTxt):'PRONÓSTICO';const card='<div id="matrizCard" style="display:inline-block;background:#fff;color:#111;padding:14px 16px;border:1px solid #d0d5dd;border-radius:10px;font-family:Arial,Helvetica,sans-serif;">'+'<div style="font-size:15px;font-weight:800;color:#0f172a;margin-bottom:2px;">'+__mhTit+'</div>'+'<div style="font-size:11px;color:#475569;margin-bottom:10px;">ZONA: '+(function(){try{var mz=(window.__manualGridGet&&window.__manualGridGet());if(mz&&mz.on&&mz.zona)return mz.zona;}catch(_e){}return zona;})()+(function(){var g=(window.__manualGridGet&&window.__manualGridGet())||{on:false,cells:{}};var hm=!!(g&&g.on&&g.cells&&Object.keys(g.cells).some(function(k){return g.cells[k]&&Object.keys(g.cells[k]).length;}));return hm?'':' · Fuente: DMC y AccuWeather';})()+'</div>'+'<table class="mtx">'+cg+'<tbody>'+h+'</tbody></table>'+'<div style="font-size:9px;padding:6px 2px;color:#334155;line-height:1.6;"><b>Factor limitante:</b> V — Viento/Ráfagas · F — Frío/Sens. térmica · U — Índice UV · I — Iluminación lunar · H — Humedad · P — Precipitación<br><b>Semáforo:</b> <span class="g" style="padding:1px 8px;border-radius:3px;">Sin restricción</span> <span class="y" style="padding:1px 8px;border-radius:3px;">Precaución / restricción parcial</span> <span class="r" style="padding:1px 8px;border-radius:3px;">Crítico / suspender o mitigar</span></div>'+'<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:10px;color:#334155;padding:4px 2px;">'+__mhResp+'<div style="font-size:9px;color:#94a3b8;">Generado el '+(function(){var M=['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];var p=function(x){return('0'+x).slice(-2);};return p(now.getDate())+M[now.getMonth()]+p(now.getFullYear()%100)+' a las '+p(now.getHours())+p(now.getMinutes());})()+'</div></div>'+'<div class="bn">'+__mhBan+'</div>'+'</div>';
       if(out)out.innerHTML='<div style="margin:0 0 8px;"><button type="button" onclick="saveMatrizImage()" style="cursor:pointer;font-family:inherit;padding:4px 11px;border:1px solid #cbd5e1;border-radius:3px;background:#fff;color:#111;font-weight:600;font-size:10px;">GUARDAR IMAGEN</button></div>'+card;
       setMsg('');
       setTimeout(()=>{try{out.scrollIntoView({behavior:'smooth',block:'start'});}catch(_e){}},50);
     }catch(e){console.error(e);setMsg('No se pudo generar la matriz. Verifique la ubicación en el mapa y la conexión.');}
   };
 })();
+</script>
+
+<script>
+/* === Tooltip de afectación POR OPERACIÓN en la matriz (hover) ===
+   Base: MDI-70002 (Cap. IV "Efectos del tiempo atmosférico sobre unidades y operaciones"
+   y Anexo 3 "Valores meteorológicos críticos"). Reconoce CUALQUIER operación por
+   palabras clave (militar o civil) y la asocia a su familia; el texto habla de la
+   operación sobre la que se pasa el mouse. UV e Iluminación lunar adaptados; no fija
+   modelos de equipo (p. ej. RPAS configurable). */
+(function(){
+  if(window.__matrizTipInit) return; window.__matrizTipInit=true;
+
+  var FACN={V:'Viento/Ráfaga',F:'Frío/Sens. térmica',U:'Índice UV',I:'Iluminación lunar',H:'Humedad',P:'Precipitación'};
+  function facName(ch){ try{ if(window.__FACTOR_META&&window.__FACTOR_META[ch]&&window.__FACTOR_META[ch].n) return window.__FACTOR_META[ch].n; }catch(e){} return FACN[ch]||ch; }
+
+  function norm(s){ try{ return String(s==null?'':s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }catch(e){ return String(s==null?'':s).toLowerCase(); } }
+
+  // Clasificador: asocia el NOMBRE de la operación (militar o civil) a una familia.
+  var RULES=[
+    ['ew',['guerra electr','electronic warfare',' ew','ew ','jamming','interferencia electr','inhibi','sigint','elint','contramedidas electr']],
+    ['telecom',['telecom','comunicac','antena','radioenlace','radiocomunic','enlace','transmis']],
+    ['rpas',['rpas','dron','drone','uav','uas','vant','no tripulad']],
+    ['aereo',['aeronav','aviac','avion','helicopter','helic','vuelo','aerotransport','aerolanz','paracaid']],
+    ['maritimo',['maritim','naval','portuar','buque','embarcac','navegac','nautic','anfibi']],
+    ['montada',['montad','caballer','jinete','equino','mula','hipo']],
+    ['montana',['montan','montañ','andinism','alpinism','escalad','expedic','senderis','trekking','cumbre','glaciar']],
+    ['obs',['pof','observ','puesto de obs','vigilanc']],
+    ['isr',['isr','intelig','reconoc','sensor']],
+    ['sar',['rescate','salvament','busqueda y rescate','sar','socorr']],
+    ['incendio',['incendi','bomber','forestal','extinci','conato']],
+    ['sanitario',['sanit','medic','medev','casevac','evacuac med','samu','hospital','paramed']],
+    ['veh',['vehic','veh.','veh ','motoriz','rodado','transport','convoy','columna','camion','blindad','mecaniz','motor']],
+    ['construccion',['construc','edificac','hormig','andami','albanil','izaje','grua','faena civil']],
+    ['mineria',['miner','rajo','tronadura','faena minera']],
+    ['agricola',['agricol','agropec','cosecha','siembra','fumigac','cultivo','ganader']],
+    ['arti',['artiller','obus','canon','mortero']],
+    ['ing',['ingenier','zapador','puente','demolic','desmin','fortific','pontoner']],
+    ['aa',['antiaere','defensa aerea','misil']],
+    ['nbc',['nbc','quimic','biolog','nuclear','radiolog','qbn']],
+    ['evento',['evento','concierto','festival','masiv','espectacul','recital','feria']],
+    ['pie',['a pie','infant','marcha','tropa','peloton']]
+  ];
+  function classify(op){ var n=norm(op); for(var i=0;i<RULES.length;i++){ var ws=RULES[i][1]; for(var j=0;j<ws.length;j++){ if(n.indexOf(ws[j])>=0) return RULES[i][0]; } } return 'gen'; }
+
+  // Afectación genérica por variable (familia no tipificada).
+  var GEN={
+    V:{1:'El viento y el polvo dificultan las tareas expuestas y la visibilidad; precaución.',2:'Viento fuerte: Reduce visibilidad y control de los medios; mitigar o suspender lo expuesto.'},
+    F:{1:'El frío reduce el rendimiento del personal y del material; prever abrigo y calentamiento.',2:'Frío extremo (windchill): Riesgo de congelamiento y fallas de material; extremar la protección.'},
+    U:{1:'UV moderado a alto: Proteger al personal en exposición prolongada; hidratación.',2:'UV muy alto: Riesgo de quemadura; limitar la exposición e hidratar.'},
+    I:{1:'Iluminación reducida: Degrada la observación y el trabajo nocturno; apoyarse en visión nocturna.',2:'Oscuridad casi total: Sin referencia visual; las tareas nocturnas dependen de medios de visión nocturna.'},
+    H:{1:'Aire seco: Favorece el polvo en suspensión y la estática; vigilar sensores y equipos.',2:'Aire muy seco: Polvo y estática marcados; riesgo para óptica y mecanismos.'},
+    P:{1:'La lluvia reduce la vialidad y la visibilidad; precaución en caminos y sensores.',2:'Precipitación intensa: Afecta movilidad, visibilidad y equipos; suspender o mitigar.'}
+  };
+
+  var OPAF={
+    telecom:{
+      V:{1:'Dificulta instalar y orientar antenas y tensar las líneas de transmisión; vigilar el montaje.',2:'Viento fuerte: Puede dañar antenas y líneas y provocar caída de cables; asegurar mástiles o suspender el montaje.'},
+      F:{1:'El frío acorta la vida útil de las baterías; prever recambio y abrigo del material.',2:'Frío extremo: Puede quebrar el cable físico y agotar baterías; climatizar y proteger el tendido.'},
+      U:{1:'Sin efecto en el enlace; proteger al personal en montajes prolongados de antena.',2:'UV muy alto: Riesgo de quemadura en trabajos expuestos; sombra e hidratación.'},
+      I:{1:'Dificulta el montaje y la reparación nocturna de enlaces; usar iluminación artificial.',2:'Oscuridad casi total: Montaje y mantenimiento nocturnos muy limitados; operar con luz propia.'},
+      H:{1:'Aire seco: Mayor estática y polvo en conectores; vigilar los equipos.',2:'Aire muy seco: Estática y polvo marcados; riesgo de fallas en circuitos y conectores.'},
+      P:{1:'La lluvia afecta la propagación electromagnética; vigilar los enlaces sensibles.',2:'Precipitación intensa: Degrada la propagación y expone los equipos; proteger o usar rutas de enlace alternas.'}
+    },
+    ew:{
+      V:{1:'El viento dificulta instalar y orientar antenas de interferencia y escucha; vigilar el despliegue.',2:'Viento fuerte: Daña o impide montar antenas de guerra electrónica; degrada la emisión y la escucha.'},
+      F:{1:'El frío afecta la electrónica y las baterías de los equipos; controlar el material.',2:'Frío extremo: Riesgo de fallas en emisores, receptores y baterías; extremar el control.'},
+      U:{1:'Sin efecto en los equipos; proteger al personal en despliegue prolongado.',2:'UV muy alto: Riesgo al personal expuesto; sombra e hidratación.'},
+      I:{1:'Sin efecto en la señal; la poca luz dificulta el montaje nocturno de antenas.',2:'Oscuridad casi total: Montaje y ajuste nocturno de antenas muy limitados.'},
+      H:{1:'Aire seco: Estática que afecta la electrónica sensible; vigilar conectores y equipos.',2:'Aire muy seco: Estática marcada; riesgo para emisores y receptores.'},
+      P:{1:'La lluvia afecta la propagación electromagnética de escucha e interferencia; vigilar el rendimiento.',2:'Precipitación intensa: Degrada la propagación y expone los equipos; proteger o mitigar.'}
+    },
+    pie:{
+      V:{1:'El viento y el polvo dificultan el desplazamiento y la observación a pie; mayor desgaste del personal.',2:'Viento fuerte con arena: Reduce visibilidad y movilidad; extremar protección y avanzar por tramos.'},
+      F:{1:'El frío baja el rendimiento y la operacionalidad de la tropa; abrigo y relevos.',2:'Windchill: Riesgo de congelamiento; el personal prioriza protegerse del frío sobre la misión. Limitar exposición.'},
+      U:{1:'UV moderado a alto: Protección solar, hidratación y relevos en marchas prolongadas.',2:'UV muy alto: Quemadura posible en poco tiempo; sombra e hidratación reforzada.'},
+      I:{1:'Iluminación reducida: Dificulta el desplazamiento y la orientación nocturna; apoyarse en visión nocturna.',2:'Oscuridad casi total: Marcha nocturna solo con medios de visión nocturna.'},
+      H:{1:'Aire seco: Mayor deshidratación y polvo; reforzar la hidratación.',2:'Aire muy seco: Deshidratación acelerada y polvo intenso; extremar hidratación y protección respiratoria.'},
+      P:{1:'La lluvia reduce la vialidad y la movilidad a pie; terreno resbaladizo.',2:'Precipitación intensa: Fuerte pérdida de movilidad y visibilidad; riesgo en cauces y terreno anegado.'}
+    },
+    montada:{
+      V:{1:'El viento y el polvo inquietan al ganado y dificultan la marcha montada; mayor desgaste de jinete y animal.',2:'Viento fuerte con arena: Altera al ganado y reduce visibilidad y control; extremar precaución o detener.'},
+      F:{1:'El frío exige mayor cuidado y forraje del ganado y abrigo del jinete; prever relevos.',2:'Frío extremo (windchill): Riesgo para jinete y ganado; limitar la exposición y resguardar los animales.'},
+      U:{1:'UV moderado a alto: Proteger e hidratar a jinete y ganado en marchas prolongadas.',2:'UV muy alto: Riesgo de quemadura y estrés térmico del ganado; sombra e hidratación reforzada.'},
+      I:{1:'Iluminación reducida: Dificulta la marcha y el control del ganado de noche; apoyarse en visión nocturna.',2:'Oscuridad casi total: Desplazamiento montado nocturno de alto riesgo; solo con medios de visión nocturna.'},
+      H:{1:'Aire seco: Deshidratación de jinete y ganado y polvo en suspensión; reforzar el agua.',2:'Aire muy seco: Deshidratación acelerada y polvo intenso; extremar hidratación y cuidado del ganado.'},
+      P:{1:'La lluvia reduce la vialidad y hace resbaladizo el terreno para el ganado.',2:'Precipitación intensa: Terreno anegado y peligroso para el ganado; riesgo en cauces y movilidad muy comprometida.'}
+    },
+    montana:{
+      V:{1:'El viento aumenta el desgaste y el windchill en altura; precaución en zonas expuestas.',2:'Viento fuerte: Riesgo de caída y windchill severo en cumbre; extremar protección o retirarse.'},
+      F:{1:'El frío de altura desgasta rápido al personal; abrigo, relevos y control de tiempos.',2:'Frío extremo (windchill): Riesgo de congelamiento e hipotermia; limitar la exposición.'},
+      U:{1:'UV alto por altura: Proteger piel y ojos; hidratación reforzada.',2:'UV muy alto (altura): Riesgo de quemadura y daño ocular; máxima protección.'},
+      I:{1:'Iluminación reducida: Progresión nocturna en montaña degradada; apoyarse en visión nocturna.',2:'Oscuridad casi total: Progresión nocturna de alto riesgo; solo con medios de visión nocturna.'},
+      H:{1:'Aire seco de altura: Deshidratación acelerada; reforzar hidratación.',2:'Aire muy seco de altura: Deshidratación severa y polvo; extremar hidratación y protección.'},
+      P:{1:'La lluvia o nieve reduce visibilidad y adherencia; riesgo en terreno inclinado.',2:'Precipitación intensa: Terreno peligroso, riesgo de aludes y crecidas; suspender la progresión.'}
+    },
+    obs:{
+      V:{1:'El viento transversal degrada la adquisición de objetivos y el uso del telémetro láser.',2:'Viento fuerte: Dificulta la observación estable y la designación; el polvo oculta el campo.'},
+      F:{1:'El frío reduce la eficacia del observador y el rendimiento de óptica y baterías; abrigo y relevos.',2:'Frío extremo: Riesgo al personal y fallas en óptica y electrónica; limitar los turnos de observación.'},
+      U:{1:'Proteger al observador en exposición prolongada; sin efecto en la óptica.',2:'UV muy alto: Riesgo de quemadura; sombra e hidratación.'},
+      I:{1:'Poca luz lunar: Degrada la observación nocturna a la vista; usar visión nocturna o IR.',2:'Oscuridad casi total: Observación nocturna dependiente de medios IR o de visión nocturna.'},
+      H:{1:'Aire seco: Polvo en suspensión que reduce el contraste; vigilar la óptica.',2:'Aire muy seco: Polvo intenso que degrada la observación y la óptica.'},
+      P:{1:'La lluvia obstruye la visión y degrada la adquisición de objetivos.',2:'Precipitación intensa: Visión muy limitada y óptica o IR degradados; adquisición comprometida.'}
+    },
+    isr:{
+      V:{1:'El viento puede afectar las plataformas y sensores de obtención aéreos y la instalación de antenas.',2:'Viento fuerte: Impide instalar antenas y degrada las plataformas de obtención aéreas.'},
+      F:{1:'El frío puede afectar la fiabilidad de los sistemas de obtención; controlar equipos y baterías.',2:'Frío extremo: Riesgo de fallas en sensores y electrónica de obtención.'},
+      U:{1:'Sin efecto en los sensores; proteger al personal en despliegue prolongado.',2:'UV muy alto: Riesgo al personal expuesto; sombra e hidratación.'},
+      I:{1:'Poca luz lunar: Degrada la obtención óptica y fotográfica nocturna; priorizar IR o electroóptico.',2:'Oscuridad casi total: Obtención nocturna dependiente de IR y sensores activos.'},
+      H:{1:'Aire seco: Polvo en suspensión que degrada óptica y sensores; vigilar los equipos.',2:'Aire muy seco: Polvo intenso que reduce el rendimiento de los sistemas de obtención.'},
+      P:{1:'La lluvia obstruye la visión y degrada los sistemas fotográficos, IR y radar.',2:'Precipitación intensa: Obtención óptica, IR o radar fuertemente degradada; suspender o mitigar.'}
+    },
+    sar:{
+      V:{1:'El viento y el polvo reducen la visibilidad y dificultan el rastreo; precaución en zonas expuestas.',2:'Viento fuerte: Compromete el rastreo, el helitransporte y la seguridad del equipo; mitigar o esperar ventana.'},
+      F:{1:'El frío agrava el estado de las víctimas y desgasta al equipo; abrigo, relevos y control de tiempos.',2:'Frío extremo (windchill): Riesgo vital para víctimas y rescatistas; extremar protección y acortar exposición.'},
+      U:{1:'UV moderado a alto: Proteger e hidratar al equipo en búsquedas prolongadas.',2:'UV muy alto: Riesgo de quemadura; sombra, hidratación y relevos.'},
+      I:{1:'Iluminación reducida: Dificulta la búsqueda visual nocturna; apoyarse en visión nocturna e IR.',2:'Oscuridad casi total: Búsqueda nocturna dependiente de medios IR y visión nocturna.'},
+      H:{1:'Aire seco: Deshidratación y polvo que reducen visibilidad; reforzar hidratación.',2:'Aire muy seco: Deshidratación acelerada y polvo intenso; extremar hidratación y protección.'},
+      P:{1:'La lluvia reduce la visibilidad y complica el terreno; riesgo de crecidas en la zona de búsqueda.',2:'Precipitación intensa: Terreno peligroso y crecidas; riesgo alto para el equipo, reevaluar la operación.'}
+    },
+    incendio:{
+      V:{1:'El viento aviva y propaga el fuego y cambia su dirección; vigilar de cerca el comportamiento.',2:'Viento fuerte: Propagación rápida e imprevisible del fuego; riesgo alto para el personal, extremar seguridad.'},
+      F:{1:'El frío desgasta al personal en turnos largos; abrigo y relevos.',2:'Frío extremo: Riesgo para el personal y el equipo; limitar exposición.'},
+      U:{1:'UV moderado a alto: Sumado al calor del fuego, extremar hidratación y relevos.',2:'UV muy alto: Riesgo de golpe de calor combinado con el frente de fuego; relevos frecuentes e hidratación.'},
+      I:{1:'Iluminación reducida: Dificulta ver el frente de fuego de noche; usar iluminación y visión nocturna.',2:'Oscuridad casi total: Combate nocturno de alto riesgo; requiere iluminación adecuada.'},
+      H:{1:'Aire seco: Favorece la ignición y propagación; extremar la vigilancia del fuego.',2:'Aire muy seco: Riesgo extremo de propagación y reignición; máxima precaución.'},
+      P:{1:'La lluvia ligera ayuda a controlar el fuego pero reduce la visibilidad por humo y vapor.',2:'Precipitación intensa: Ayuda a la extinción pero genera terreno resbaladizo y riesgo de crecidas.'}
+    },
+    sanitario:{
+      V:{1:'El viento dificulta el helitransporte sanitario y la atención en terreno; precaución.',2:'Viento fuerte: Compromete la evacuación aérea y la atención expuesta; buscar alternativa terrestre.'},
+      F:{1:'El frío agrava el estado de los pacientes; abrigo y control de tiempos de traslado.',2:'Frío extremo: Riesgo vital para pacientes; extremar protección térmica en el traslado.'},
+      U:{1:'UV moderado a alto: Proteger a pacientes y personal en atención prolongada al descubierto.',2:'UV muy alto: Riesgo al personal y pacientes expuestos; sombra e hidratación.'},
+      I:{1:'Iluminación reducida: Dificulta la atención y evacuación nocturna; usar iluminación y visión nocturna.',2:'Oscuridad casi total: Evacuación nocturna dependiente de medios de visión nocturna.'},
+      H:{1:'Aire seco: Deshidratación de pacientes y personal; vigilar hidratación.',2:'Aire muy seco: Deshidratación acelerada; reforzar hidratación y cuidado de pacientes.'},
+      P:{1:'La lluvia complica el traslado y reduce la visibilidad; caminos degradados.',2:'Precipitación intensa: Traslado terrestre y aéreo comprometido; planificar rutas alternas.'}
+    },
+    veh:{
+      V:{1:'El viento con polvo o arena reduce la visibilidad en ruta; precaución en tramos abiertos.',2:'Viento fuerte: Arena en suspensión y riesgo de vuelco; reducir velocidad o detener.'},
+      F:{1:'El frío exige arranques y calentamiento del motor; verificar el lubricante.',2:'Frío extremo: Dificulta el arranque y compromete mecánica y batería; precalentar y usar anticongelante.'},
+      U:{1:'Sin efecto en el vehículo; proteger al personal fuera de cabina.',2:'UV muy alto: Riesgo al personal expuesto; sombra e hidratación.'},
+      I:{1:'Poca luz: Conducción nocturna degradada; apoyarse en iluminación y visión nocturna.',2:'Oscuridad casi total: Conducción nocturna de alto riesgo; velocidad mínima y medios de visión nocturna.'},
+      H:{1:'Aire seco: Polvo en caminos que reduce visibilidad y ensucia los filtros.',2:'Aire muy seco: Polvo intenso; riesgo para filtros y óptica del vehículo.'},
+      P:{1:'La lluvia reduce la vialidad en caminos no pavimentados; precaución en tierra.',2:'Precipitación intensa: Caminos anegados y riesgo en cauces; movilidad muy limitada.'}
+    },
+    construccion:{
+      V:{1:'El viento dificulta trabajos en altura, grúas y maniobras de izaje; precaución.',2:'Viento fuerte: Riesgo en grúas, andamios y estructuras; suspender trabajos en altura.'},
+      F:{1:'El frío afecta el fraguado del hormigón y el rendimiento del personal; prever tiempos y abrigo.',2:'Frío extremo: Fraguado comprometido y terreno helado; faenas muy limitadas.'},
+      U:{1:'UV moderado a alto: Proteger al personal en faenas prolongadas al descubierto.',2:'UV muy alto: Riesgo de quemadura; sombra, hidratación y relevos.'},
+      I:{1:'Iluminación reducida: Faenas nocturnas degradadas; requiere iluminación de obra.',2:'Oscuridad casi total: Trabajos nocturnos de alto riesgo; solo con iluminación adecuada.'},
+      H:{1:'Aire seco: Polvo en faenas y movimiento de tierra; proteger al personal y los equipos.',2:'Aire muy seco: Polvo intenso en obra; visibilidad y equipos afectados.'},
+      P:{1:'La lluvia inunda excavaciones y reduce la transitabilidad de la obra.',2:'Precipitación intensa: Excavaciones anegadas y riesgo de crecidas; suspender faenas expuestas.'}
+    },
+    mineria:{
+      V:{1:'El viento levanta polvo en rajos y caminos, reduciendo la visibilidad; precaución en tránsito.',2:'Viento fuerte: Polvo intenso y riesgo en izaje y trabajos en altura; mitigar o suspender lo expuesto.'},
+      F:{1:'El frío afecta el arranque de equipos pesados y el rendimiento del personal; precalentar y abrigar.',2:'Frío extremo: Equipos y personal comprometidos; caminos helados, extremar precaución.'},
+      U:{1:'UV moderado a alto: Proteger e hidratar al personal en faena a cielo abierto.',2:'UV muy alto: Riesgo de quemadura; sombra, hidratación y relevos.'},
+      I:{1:'Iluminación reducida: Operación nocturna degradada; apoyarse en iluminación de faena.',2:'Oscuridad casi total: Tránsito y operación nocturna de alto riesgo; iluminación indispensable.'},
+      H:{1:'Aire seco: Polvo en suspensión en la faena; proteger vías respiratorias y equipos.',2:'Aire muy seco: Polvo intenso; visibilidad y equipos muy afectados.'},
+      P:{1:'La lluvia reduce la estabilidad de taludes y caminos; precaución en rajos y rampas.',2:'Precipitación intensa: Riesgo de deslizamientos y anegamiento; suspender faenas en zonas expuestas.'}
+    },
+    agricola:{
+      V:{1:'El viento dificulta las faenas y la aplicación de productos; riesgo de deriva en fumigación.',2:'Viento fuerte: Deriva alta e imposibilidad de aplicar productos; suspender fumigación.'},
+      F:{1:'El frío y las heladas afectan cultivos y faenas; prever protección de las plantas.',2:'Frío extremo (helada): Daño severo a cultivos sensibles; activar medidas antiheladas.'},
+      U:{1:'UV moderado a alto: Proteger e hidratar al personal en faenas prolongadas.',2:'UV muy alto: Riesgo de quemadura; sombra, hidratación y relevos.'},
+      I:{1:'Iluminación reducida: Faenas nocturnas degradadas; requiere iluminación.',2:'Oscuridad casi total: Faena nocturna muy limitada; iluminación indispensable.'},
+      H:{1:'Aire seco: Mayor estrés hídrico de cultivos y polvo; ajustar riego.',2:'Aire muy seco: Estrés hídrico severo y polvo intenso; reforzar riego y protección.'},
+      P:{1:'La lluvia limita las faenas y la aplicación de productos; suelo saturado.',2:'Precipitación intensa: Anegamiento y daño a cultivos; suspender faenas y vigilar drenaje.'}
+    },
+    rpas:{
+      V:{1:'Ráfagas cercanas al límite de despegue y aterrizaje del RPAS empleado: Mayor deriva y consumo; extremar el control.',2:'Ráfagas sobre el límite operacional del RPAS empleado: Riesgo de pérdida de control; no despegar o suspender.'},
+      F:{1:'El frío reduce la autonomía de las baterías y puede formar escarcha; precalentar baterías y acortar vuelos.',2:'Bajo la temperatura mínima homologada del RPAS empleado: Pérdida severa de autonomía; no operar.'},
+      U:{1:'Sin efecto en el RPAS; proteger al operador en exposición prolongada.',2:'UV muy alto: Riesgo al operador expuesto; sombra e hidratación.'},
+      I:{1:'Poca luz lunar: Vuelo nocturno con referencia visual reducida; apoyarse en sensores o IR y luces anticolisión.',2:'Oscuridad casi total: Vuelo nocturno solo por instrumentos o IR con tripulación habilitada.'},
+      H:{1:'Aire seco: Polvo y estática; vigilar óptica y sensores en el despegue.',2:'Aire muy seco: Polvo intenso y estática; riesgo para la optrónica y los motores.'},
+      P:{1:'Lluvia ligera a moderada: Vigilar el grado de protección (IP) del RPAS, la óptica y las ráfagas asociadas.',2:'Precipitación intensa: Supera el uso seguro y baja la visibilidad; no operar o suspender.'}
+    },
+    aereo:{
+      V:{1:'El viento y las ráfagas afectan despegue, aterrizaje y estabilidad de la aeronave; extremar el control.',2:'Viento fuerte: Supera límites de operación; riesgo en vuelo y en tierra; no operar o suspender.'},
+      F:{1:'El frío favorece el engelamiento y reduce el rendimiento; verificar deshielo y sistemas.',2:'Frío extremo con engelamiento: Riesgo grave de vuelo; no operar sin protección antihielo.'},
+      U:{1:'Sin efecto en la aeronave; proteger a la tripulación en espera prolongada.',2:'UV muy alto: Riesgo al personal expuesto; sombra e hidratación.'},
+      I:{1:'Poca luz lunar: Vuelo nocturno con referencia visual reducida; requiere instrumentos y visión nocturna.',2:'Oscuridad casi total: Vuelo nocturno solo por instrumentos con tripulación habilitada.'},
+      H:{1:'Aire seco: Polvo en pistas y zonas de aterrizaje (brownout); vigilar óptica y motores.',2:'Aire muy seco: Polvo intenso y brownout en aterrizaje; riesgo severo a baja altura.'},
+      P:{1:'La lluvia reduce la visibilidad y el techo de nubes; vigilar las condiciones de vuelo.',2:'Precipitación intensa: Visibilidad y techo muy bajos; operación aérea comprometida, suspender.'}
+    },
+    maritimo:{
+      V:{1:'El viento aumenta el oleaje y dificulta maniobras de embarcaciones; precaución.',2:'Viento fuerte: Oleaje y riesgo en navegación y faenas portuarias; restringir o suspender salidas.'},
+      F:{1:'El frío desgasta a la tripulación y afecta equipos de cubierta; abrigo y control del material.',2:'Frío extremo: Riesgo de engelamiento en cubierta y fallas de equipo; extremar precaución.'},
+      U:{1:'UV moderado a alto: El reflejo en el agua aumenta la exposición; proteger e hidratar.',2:'UV muy alto: Riesgo de quemadura reforzado por el reflejo; sombra e hidratación.'},
+      I:{1:'Iluminación reducida: Navegación nocturna degradada; apoyarse en instrumentos y luces.',2:'Oscuridad casi total: Navegación nocturna dependiente de instrumentos y radar.'},
+      H:{1:'Aire seco: Menor efecto marítimo; vigilar equipos de cubierta.',2:'Aire muy seco: Menor efecto marítimo; vigilar equipos y personal.'},
+      P:{1:'La lluvia reduce la visibilidad en navegación y faenas de cubierta.',2:'Precipitación intensa: Visibilidad muy baja y cubierta peligrosa; restringir maniobras.'}
+    },
+    arti:{
+      V:{1:'El viento desvía la trayectoria de los proyectiles y afecta la corrección del tiro; ajustar datos.',2:'Viento fuerte: Fuerte dispersión y errores de tiro; recalcular o limitar el fuego.'},
+      F:{1:'El frío altera la temperatura de la carga y el rendimiento del material; controlar la munición.',2:'Frío extremo: Variaciones balísticas marcadas y fallas del material; extremar el control del tiro.'},
+      U:{1:'Sin efecto en el tiro; proteger a los sirvientes en exposición prolongada.',2:'UV muy alto: Riesgo al personal expuesto; sombra e hidratación.'},
+      I:{1:'Poca luz: Dificulta la observación y corrección del tiro nocturno; usar observación por otros medios.',2:'Oscuridad casi total: Corrección visual del tiro muy limitada; depender de observación instrumental.'},
+      H:{1:'Aire seco: Polvo al disparar que reduce visibilidad y delata la posición.',2:'Aire muy seco: Polvo intenso al disparar; observación y disimulo comprometidos.'},
+      P:{1:'La lluvia afecta la carga, la observación del tiro y la movilidad de las piezas.',2:'Precipitación intensa: Observación del tiro muy degradada y asentamiento del material afectado; mitigar.'}
+    },
+    ing:{
+      V:{1:'El viento dificulta trabajos en altura, puentes y tareas de organización del terreno.',2:'Viento fuerte: Riesgo en montaje de puentes y estructuras; suspender trabajos expuestos.'},
+      F:{1:'El frío endurece el terreno y afecta materiales y fraguado; prever tiempos y equipos.',2:'Frío extremo: Terreno helado y materiales comprometidos; trabajos de zapa muy limitados.'},
+      U:{1:'UV moderado a alto: Proteger al personal en faenas prolongadas al descubierto.',2:'UV muy alto: Riesgo de quemadura; sombra e hidratación reforzada.'},
+      I:{1:'Poca luz: Faenas nocturnas degradadas; requiere iluminación de obra y visión nocturna.',2:'Oscuridad casi total: Trabajos de ingenieros nocturnos de alto riesgo; solo con iluminación adecuada.'},
+      H:{1:'Aire seco: Polvo en faenas y movimiento de tierra; proteger al personal y los equipos.',2:'Aire muy seco: Polvo intenso en obra; visibilidad y equipos afectados.'},
+      P:{1:'La lluvia inunda excavaciones y reduce la transitabilidad de la obra; crecidas en cauces.',2:'Precipitación intensa: Excavaciones anegadas y crecidas peligrosas; suspender faenas en cauces.'}
+    },
+    aa:{
+      V:{1:'El viento puede afectar la puntería y la instalación de sistemas y antenas de defensa aérea.',2:'Viento fuerte: Degrada seguimiento y montaje de sistemas y antenas; extremar precaución.'},
+      F:{1:'El frío afecta baterías, electrónica y munición de los sistemas; controlar el material.',2:'Frío extremo: Riesgo de fallas en electrónica y munición; extremar el control de los sistemas.'},
+      U:{1:'Sin efecto en los sistemas; proteger al personal en servicio prolongado.',2:'UV muy alto: Riesgo al personal expuesto; sombra e hidratación.'},
+      I:{1:'Poca luz: Adquisición visual de aeronaves degradada; depender de radar e IR.',2:'Oscuridad casi total: Adquisición visual nula; empleo dependiente de radar y sensores.'},
+      H:{1:'Aire seco: Polvo y estática que afectan óptica y electrónica; vigilar equipos.',2:'Aire muy seco: Polvo y estática intensos; riesgo para sensores y sistemas.'},
+      P:{1:'La lluvia degrada sensores ópticos e IR y la observación del espacio aéreo.',2:'Precipitación intensa: Sensores ópticos e IR muy degradados; empleo dependiente de radar.'}
+    },
+    nbc:{
+      V:{1:'El viento dispersa y desplaza agentes y nubes tóxicas; vigilar dirección y velocidad.',2:'Viento fuerte: Dispersión rápida e imprevisible de agentes; extremar la protección y el control de la zona.'},
+      F:{1:'El frío prolonga la persistencia de los agentes y exige mayor cuidado del equipo de protección.',2:'Frío extremo: Mayor persistencia de agentes y merma del equipo; extremar protección y descontaminación.'},
+      U:{1:'Sin efecto directo; proteger al personal con equipo puesto en exposición prolongada al sol.',2:'UV muy alto: Estrés térmico con el equipo de protección; relevos e hidratación.'},
+      I:{1:'Poca luz: Dificulta la detección y la descontaminación nocturna; usar iluminación y visión nocturna.',2:'Oscuridad casi total: Detección y descontaminación nocturnas muy limitadas.'},
+      H:{1:'Aire seco: Altera la persistencia esperada de los agentes; ajustar la evaluación.',2:'Aire muy seco: Cambia marcadamente la persistencia y detección de agentes; reevaluar.'},
+      P:{1:'La lluvia lava y desplaza agentes, modificando la contaminación del terreno.',2:'Precipitación intensa: Redistribuye la contaminación y complica la descontaminación; reevaluar la zona.'}
+    },
+    evento:{
+      V:{1:'El viento afecta estructuras temporales (carpas, escenarios) y el confort; vigilar el montaje.',2:'Viento fuerte: Riesgo en escenarios y estructuras temporales; asegurar o suspender.'},
+      F:{1:'El frío afecta el confort y la permanencia del público; prever abrigo y puntos de resguardo.',2:'Frío extremo: Riesgo para el público expuesto; habilitar resguardo y evaluar suspensión.'},
+      U:{1:'UV moderado a alto: Prever sombra e hidratación para el público.',2:'UV muy alto: Riesgo de golpe de calor; sombra, hidratación y puntos de atención.'},
+      I:{1:'Iluminación reducida: Requiere iluminación adecuada del recinto para circulación segura.',2:'Oscuridad casi total: Iluminación artificial indispensable para la seguridad del público.'},
+      H:{1:'Aire seco: Polvo y deshidratación; prever hidratación y control de polvo.',2:'Aire muy seco: Polvo intenso y deshidratación; reforzar hidratación y control.'},
+      P:{1:'La lluvia afecta el confort y la seguridad de circulación; prever cubiertas y drenaje.',2:'Precipitación intensa: Riesgo de anegamiento y aglomeración insegura; evaluar suspensión.'}
+    }
+  };
+
+  var LVNAME={'-1':'Sin datos','0':'Sin restricción','1':'Precaución / restricción parcial','2':'Crítico / suspender o mitigar'};
+  var LVCOL={'-1':'#64748b','0':'#16a34a','1':'#b7791f','2':'#dc2626'};
+
+  function esc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function affect(op,ch,lv){
+    if(lv==='0'||lv==='-1') return '';
+    var cat=classify(op);
+    if(OPAF[cat]&&OPAF[cat][ch]&&OPAF[cat][ch][lv]) return OPAF[cat][ch][lv];
+    if(GEN[ch]&&GEN[ch][lv]) return GEN[ch][lv];
+    return '';
+  }
+
+  var tip=null;
+  function ensureTip(){
+    if(tip) return tip;
+    tip=document.createElement('div'); tip.id='matrizTip';
+    tip.style.cssText='position:fixed;z-index:100000;max-width:340px;background:#ffffff;color:#0f172a;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 8px 28px rgba(15,23,42,.22);padding:9px 11px;font-family:Arial,Helvetica,sans-serif;font-size:11.5px;line-height:1.4;pointer-events:none;display:none;';
+    document.body.appendChild(tip); return tip;
+  }
+  function tipHtml(op,lv,fac,ph){
+    var col=(LVCOL[lv]!=null)?LVCOL[lv]:'#64748b';
+    var phTxt=ph==='d'?'Franja diurna':(ph==='n'?'Franja nocturna':'');
+    var head='';
+    if(op) head+='<div style="font-weight:800;color:#0f172a;font-size:12px;">'+esc(op)+'</div>';
+    head+='<div style="font-weight:800;color:'+col+';font-size:11px;margin-top:1px;">'+esc(LVNAME[lv]||'Sin datos')+(phTxt?(' · '+esc(phTxt)):'')+'</div>';
+    var body='';
+    if(fac){
+      for(var i=0;i<fac.length;i++){
+        var ch=fac.charAt(i); var af=affect(op,ch,lv);
+        body+='<div style="margin-top:5px;"><span style="font-weight:700;color:#0f172a;">'+esc(facName(ch))+'</span>'+(af?('<div style="color:#334155;font-size:11px;margin-top:1px;">'+esc(af)+'</div>'):'')+'</div>';
+      }
+    } else if(String(lv)==='0'){
+      body='<div style="margin-top:4px;color:#334155;font-size:11px;">Todas las variables dentro de límites para esta operación.</div>';
+    } else {
+      body='<div style="margin-top:4px;color:#64748b;font-size:11px;">Sin datos para esta franja.</div>';
+    }
+    return head+body;
+  }
+  function pos(e){
+    if(!tip) return; var pad=14,w=tip.offsetWidth,h=tip.offsetHeight,vw=window.innerWidth,vh=window.innerHeight;
+    var x=e.clientX+pad,y=e.clientY+pad;
+    if(x+w+6>vw) x=e.clientX-w-pad; if(y+h+6>vh) y=e.clientY-h-pad;
+    if(x<4)x=4; if(y<4)y=4; tip.style.left=x+'px'; tip.style.top=y+'px';
+  }
+  function cellOf(t){ return (t&&t.closest)?t.closest('td[data-lv]'):null; }
+  function show(td,e){
+    var lv=td.getAttribute('data-lv'); if(lv==null||lv==='') lv='-1';
+    var fac=td.getAttribute('data-fac')||''; var ph=td.getAttribute('data-ph')||''; var op=td.getAttribute('data-op')||'';
+    var t=ensureTip(); t.innerHTML=tipHtml(op,lv,fac,ph); t.style.display='block'; pos(e);
+  }
+  function hide(){ if(tip) tip.style.display='none'; }
+  document.addEventListener('mouseover',function(e){ var td=cellOf(e.target); if(td) show(td,e); });
+  document.addEventListener('mousemove',function(e){ if(tip&&tip.style.display!=='none'){ var td=cellOf(e.target); if(td) pos(e); else hide(); } });
+  document.addEventListener('mouseout',function(e){ var td=cellOf(e.target); if(td) hide(); });
+})();
+
 </script>
 </body>
 </html>
