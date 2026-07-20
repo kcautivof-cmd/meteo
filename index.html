@@ -20780,7 +20780,7 @@ window.quickMatrizImpacto=async function(){
       const _ad=(accuRaw&&accuRaw.data)?accuRaw.data:accuRaw;
       const df=(_ad&&Array.isArray(_ad.DailyForecasts))?_ad.DailyForecasts:[];
       if((!d||!Array.isArray(d.time)||!d.time.length)&&!df.length)throw new Error('sin datos');
-      const accuBy={};df.forEach(f=>{const ds=String(f.Date||'').slice(0,10);if(ds)accuBy[ds]=f;});
+      const accuBy={};df.forEach(f=>{const ds=f.Date?new Date(f.Date).toLocaleDateString('sv-SE'):'';if(ds)accuBy[ds]=f;});
       const cur=(curRaw&&!curRaw.official_station&&curRaw.dmc)?curRaw.dmc:curRaw;
       const stn=cur&&cur.official_station?cur.official_station:null;
       const _loc=(js&&js.__dmc)?js.__dmc:{};
