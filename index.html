@@ -20816,8 +20816,8 @@ function omGustAgg(ds,isDay){if(!omH||!Array.isArray(omH.time)||!Array.isArray(o
         let icD=null,icN=null;
         try{var _sgM=(window.__dmcSegments)?window.__dmcSegments(H,ds):null;if(_sgM&&_sgM.length){var _sT=_sgM.find(function(x){return x.label==='Tarde';});var _sN=_sgM.find(function(x){return x.label==='Noche';});if(_sT&&_sT.cat)icD=window.__dmcIcoCat(_sT.cat,30)+window.__dmcTxt(_sT.cat);if(_sN&&_sN.cat)icN=window.__dmcIcoCat(_sN.cat,30)+window.__dmcTxt(_sN.cat);}}catch(_e){}
         if((!icD||!icN)&&i>=0&&d&&d.weather_code){const wc=d.weather_code[i];const im=__dmcIco(wc);if(im){if(!icD)icD=im;if(!icN)icN=im;}else{if(!icD)icD=(wc!=null)?EMOD[wc]:null;if(!icN)icN=icD;}}
-        if(af&&day.Icon!=null){const _aid=EMOA[num(day.Icon)];if(_aid)icD=_aid;}
-        if(af&&night.Icon!=null){const _ain=EMOA[num(night.Icon)];if(_ain)icN=_ain;}
+        if(!icD&&af){icD=(day.Icon!=null)?EMOA[num(day.Icon)]:null;}
+        if(!icN&&af){icN=(night.Icon!=null)?EMOA[num(night.Icon)]:null;}
         return {ds:ds,dow:wd[dObj.getDay()]||'',dd:(p.length===3?p[2]+'/'+p[1]:'--'),tmax,tmin,smax,smin,uv,precip,gD,gN,hD,hN,illum,lsale:(function(){try{return moonRiseSet(lat,lon,dObj).rise;}catch(_e){return null;}})(),lpone:(function(){try{return moonRiseSet(lat,lon,dObj).set;}catch(_e){return null;}})(),icD:icD||'',icN:icN||'',su:(function(){var _se=_sunEv(lat,lon,dObj);try{if(af&&af.Sun){if(af.Sun.Rise)_se.orto=String(af.Sun.Rise).slice(11,16);if(af.Sun.Set)_se.ocaso=String(af.Sun.Set).slice(11,16);}}catch(_e){}return _se;})(),visD:omVisAgg(ds,true),visN:omVisAgg(ds,false),vD:{V:gD,F:smax,T:tmax,U:uv,I:illum,H:hD,P:precip},vN:{V:gN,F:smin,T:tmin,U:0,I:illum,H:hN,P:precip}};
       });
       const f1=(v,s)=>(v==null||isNaN(v))?'--':(Math.round(v*10)/10)+(s||'');
