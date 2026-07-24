@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-24T14:30:38.998703Z",
+  "generated_at": "2026-07-24T18:08:14.551208Z",
   "localities": {
     "visviri": {
       "indice": "visviri",
@@ -3503,8 +3503,8 @@
         ],
         "wind_speed_10m_max": [
           null,
-          null,
-          50.0,
+          60.0,
+          60.0,
           null,
           null
         ],
@@ -3522,12 +3522,14 @@
             "NUBLADO Y CHUBASCOS D&EACUTE;BILES"
           ],
           [
-            "CUBIERTO Y LLUVIA D&EACUTE;BIL"
+            "CUBIERTO Y LLUVIA D&EACUTE;BIL",
+            "CUBIERTO Y LLUVIA D&EACUTE;BIL CON VIENTO ENTRE 25 Y 40 KM/H Y R&AACUTE;FAGAS DE VIENTO HASTA 60 KM/H",
+            "CUBIERTO Y LLUVIA D&EACUTE;BIL CON VIENTO ENTRE 25 Y 40 KM/H Y R&AACUTE;FAGAS DE VIENTO HASTA 50 KM/H"
           ],
           [
             "CUBIERTO Y LLUVIA D&EACUTE;BIL",
             "NUBLADO Y CHUBASCOS CON VIENTO ENTRE 25 Y 40 KM/H Y R&AACUTE;FAGAS DE VIENTO HASTA 50 KM/H",
-            "NUBLADO Y CHUBASCOS AISLADOS",
+            "NUBLADO Y CHUBASCOS AISLADOS CON VIENTO ENTRE 40 Y 60 KM/H",
             "NUBLADO Y CHUBASCOS D&EACUTE;BILES"
           ],
           [
@@ -3580,7 +3582,7 @@
         ],
         "wind_speed_10m_max": [
           null,
-          50.0,
+          60.0,
           50.0,
           null,
           null
@@ -3598,7 +3600,7 @@
           ],
           [
             "CUBIERTO Y LLUVIA D&EACUTE;BIL",
-            "CUBIERTO Y LLUVIA CON VIENTO ENTRE 25 Y 40 KM/H Y R&AACUTE;FAGAS DE VIENTO HASTA 50 KM/H"
+            "CUBIERTO Y LLUVIA CON VIENTO ENTRE 25 Y 40 KM/H Y R&AACUTE;FAGAS DE VIENTO HASTA 60 KM/H"
           ],
           [
             "CUBIERTO Y LLUVIA D&EACUTE;BIL",
@@ -3748,7 +3750,7 @@
           ],
           [
             "CUBIERTO Y LLUVIA CON VIENTO ENTRE 40 Y 60 KM/H",
-            "NUBLADO Y CHUBASCOS CON VIENTO ENTRE 25 Y 40 KM/H Y R&AACUTE;FAGAS DE VIENTO HASTA 50 KM/H",
+            "NUBLADO Y CHUBASCOS CON VIENTO ENTRE 40 Y 60 KM/H",
             "NUBLADO"
           ],
           [
@@ -3814,7 +3816,7 @@
         ],
         "weather_code": [
           61,
-          61,
+          95,
           61,
           61,
           2
@@ -3826,7 +3828,7 @@
           ],
           [
             "CUBIERTO Y LLUVIA",
-            "CUBIERTO Y LLUVIA VARIANDO A NUBLADO",
+            "CUBIERTO, LLUVIA Y PROBABLE TORMENTA EL&EACUTE;CTRICA VARIANDO A NUBLADO",
             "NUBLADO"
           ],
           [
