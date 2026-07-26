@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-26T22:45:53.504655Z",
+  "generated_at": "2026-07-26T23:48:20.652379Z",
   "localities": {
     "visviri": {
       "indice": "visviri",
@@ -3080,7 +3080,7 @@
           40.0,
           null,
           null,
-          40.0,
+          null,
           40.0
         ],
         "weather_code": [
@@ -3093,15 +3093,14 @@
         "__summary_text": [
           [
             "CUBIERTO, LLUVIA Y PROBABLE TORMENTA EL&EACUTE;CTRICA CON VIENTO ENTRE 25 Y 40 KM/H",
-            "CUBIERTO, CHUBASCOS Y PROBABLE TORMENTA EL&EACUTE;CTRICA",
-            "CUBIERTO Y LLUVIA CON VIENTO ENTRE 25 Y 40 KM/H",
+            "CUBIERTO, LLUVIA Y PROBABLE TORMENTA EL&EACUTE;CTRICA",
+            "CUBIERTO Y LLUVIA",
             "CUBIERTO Y CHUBASCOS D&EACUTE;BILES"
           ],
           [
             "CUBIERTO Y CHUBASCOS",
             "CUBIERTO Y CHUBASCOS D&EACUTE;BILES",
-            "NUBLADO Y CHUBASCOS AISLADOS",
-            "NUBLADO"
+            "NUBLADO Y CHUBASCOS AISLADOS"
           ],
           [
             "NUBLADO",
@@ -3109,8 +3108,7 @@
           ],
           [
             "CUBIERTO",
-            "NUBLADO",
-            "CUBIERTO CON VIENTO ENTRE 25 Y 40 KM/H"
+            "NUBLADO"
           ],
           [
             "CUBIERTO CON VIENTO ENTRE 25 Y 40 KM/H",
@@ -3128,6 +3126,85 @@
       "reg": "07",
       "lat": -35.426,
       "lon": -71.655,
+      "daily": {
+        "time": [
+          "2026-07-26",
+          "2026-07-27",
+          "2026-07-28",
+          "2026-07-29",
+          "2026-07-30"
+        ],
+        "temperature_2m_max": [
+          12.0,
+          13.0,
+          14.0,
+          16.0,
+          12.0
+        ],
+        "temperature_2m_min": [
+          10.0,
+          9.0,
+          6.0,
+          7.0,
+          9.0
+        ],
+        "precipitation_sum": [
+          2.0,
+          2.0,
+          0.0,
+          0.0,
+          2.0
+        ],
+        "wind_speed_10m_max": [
+          40.0,
+          null,
+          null,
+          null,
+          40.0
+        ],
+        "weather_code": [
+          95,
+          61,
+          3,
+          3,
+          61
+        ],
+        "__summary_text": [
+          [
+            "CUBIERTO, LLUVIA Y PROBABLE TORMENTA EL&EACUTE;CTRICA CON VIENTO ENTRE 25 Y 40 KM/H",
+            "CUBIERTO, LLUVIA Y PROBABLE TORMENTA EL&EACUTE;CTRICA",
+            "CUBIERTO Y LLUVIA",
+            "CUBIERTO Y CHUBASCOS D&EACUTE;BILES"
+          ],
+          [
+            "CUBIERTO Y CHUBASCOS",
+            "CUBIERTO Y CHUBASCOS D&EACUTE;BILES",
+            "NUBLADO Y CHUBASCOS AISLADOS"
+          ],
+          [
+            "NUBLADO",
+            "CUBIERTO"
+          ],
+          [
+            "CUBIERTO",
+            "NUBLADO"
+          ],
+          [
+            "CUBIERTO CON VIENTO ENTRE 25 Y 40 KM/H",
+            "CUBIERTO Y LLUVIA",
+            "CUBIERTO, LLUVIA Y CHUBASCOS CON VIENTO ENTRE 25 Y 40 KM/H",
+            "CUBIERTO Y CHUBASCOS CON VIENTO ENTRE 25 Y 40 KM/H"
+          ]
+        ]
+      },
+      "horizon_days": 5
+    },
+    "linares": {
+      "indice": "linares",
+      "ciudad": "Linares",
+      "reg": "07",
+      "lat": -35.846,
+      "lon": -71.593,
       "daily": {
         "time": [
           "2026-07-26",
@@ -3165,84 +3242,7 @@
           40.0
         ],
         "weather_code": [
-          61,
-          61,
-          3,
-          3,
-          61
-        ],
-        "__summary_text": [
-          [
-            "CUBIERTO Y LLUVIA CON VIENTO ENTRE 25 Y 40 KM/H",
-            "CUBIERTO Y LLUVIA",
-            "CUBIERTO Y CHUBASCOS"
-          ],
-          [
-            "CUBIERTO Y CHUBASCOS AISLADOS",
-            "NUBLADO Y CHUBASCOS AISLADOS"
-          ],
-          [
-            "NUBLADO",
-            "CUBIERTO"
-          ],
-          [
-            "CUBIERTO",
-            "NUBLADO"
-          ],
-          [
-            "CUBIERTO CON VIENTO ENTRE 25 Y 40 KM/H",
-            "CUBIERTO Y LLUVIA",
-            "CUBIERTO Y LLUVIA CON VIENTO ENTRE 25 Y 40 KM/H",
-            "CUBIERTO Y CHUBASCOS CON VIENTO ENTRE 25 Y 40 KM/H"
-          ]
-        ]
-      },
-      "horizon_days": 5
-    },
-    "linares": {
-      "indice": "linares",
-      "ciudad": "Linares",
-      "reg": "07",
-      "lat": -35.846,
-      "lon": -71.593,
-      "daily": {
-        "time": [
-          "2026-07-26",
-          "2026-07-27",
-          "2026-07-28",
-          "2026-07-29",
-          "2026-07-30"
-        ],
-        "temperature_2m_max": [
-          12.0,
-          11.0,
-          13.0,
-          16.0,
-          11.0
-        ],
-        "temperature_2m_min": [
-          10.0,
-          9.0,
-          5.0,
-          6.0,
-          8.0
-        ],
-        "precipitation_sum": [
-          2.0,
-          2.0,
-          0.0,
-          0.0,
-          2.0
-        ],
-        "wind_speed_10m_max": [
-          40.0,
-          null,
-          null,
-          null,
-          40.0
-        ],
-        "weather_code": [
-          61,
+          95,
           61,
           3,
           3,
@@ -3250,13 +3250,14 @@
         ],
         "__summary_text": [
           [
-            "CUBIERTO Y LLUVIA CON VIENTO ENTRE 25 Y 40 KM/H",
+            "CUBIERTO, LLUVIA Y PROBABLE TORMENTA EL&EACUTE;CTRICA CON VIENTO ENTRE 25 Y 40 KM/H",
+            "CUBIERTO, LLUVIA Y PROBABLE TORMENTA EL&EACUTE;CTRICA",
             "CUBIERTO Y LLUVIA",
-            "CUBIERTO Y CHUBASCOS"
+            "CUBIERTO Y CHUBASCOS D&EACUTE;BILES"
           ],
           [
-            "CUBIERTO Y CHUBASCOS AISLADOS",
             "CUBIERTO Y CHUBASCOS",
+            "CUBIERTO Y CHUBASCOS D&EACUTE;BILES",
             "NUBLADO Y CHUBASCOS AISLADOS"
           ],
           [
@@ -3270,7 +3271,7 @@
           [
             "CUBIERTO CON VIENTO ENTRE 25 Y 40 KM/H",
             "CUBIERTO Y LLUVIA",
-            "CUBIERTO Y LLUVIA CON VIENTO ENTRE 25 Y 40 KM/H",
+            "CUBIERTO, LLUVIA Y CHUBASCOS CON VIENTO ENTRE 25 Y 40 KM/H",
             "CUBIERTO Y CHUBASCOS CON VIENTO ENTRE 25 Y 40 KM/H"
           ]
         ]
