@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-07T22:22:31.746605Z",
+  "generated_at": "2026-08-07T23:21:48.821088Z",
   "localities": {
     "visviri": {
       "indice": "visviri",
@@ -252,7 +252,7 @@
         ],
         "temperature_2m_max": [
           18.0,
-          18.0,
+          19.0,
           14.0,
           10.0,
           10.0
@@ -272,7 +272,7 @@
           2.0
         ],
         "wind_speed_10m_max": [
-          40.0,
+          60.0,
           60.0,
           40.0,
           40.0,
@@ -288,6 +288,7 @@
         "__summary_text": [
           [
             "DESPEJADO",
+            "DESPEJADO CON VIENTO ENTRE 40 Y 60 KM/H",
             "DESPEJADO CON VIENTO ENTRE 25 Y 40 KM/H"
           ],
           [
@@ -480,22 +481,22 @@
         "temperature_2m_max": [
           17.0,
           19.0,
-          17.0,
           14.0,
-          14.0
+          10.0,
+          9.0
         ],
         "temperature_2m_min": [
-          -12.0,
-          -13.0,
+          -8.0,
+          -14.0,
           -10.0,
-          -4.0,
-          -4.0
+          1.0,
+          2.0
         ],
         "precipitation_sum": [
           0.0,
           0.0,
           2.0,
-          2.0,
+          0.0,
           2.0
         ],
         "wind_speed_10m_max": [
@@ -520,7 +521,6 @@
             "DESPEJADO CON VIENTO ENTRE 40 Y 60 KM/H"
           ],
           [
-            "DESPEJADO CON VIENTO ENTRE 25 Y 40 KM/H",
             "DESPEJADO",
             "NUBOSIDAD PARCIAL CON VIENTO ENTRE 40 Y 60 KM/H",
             "NUBOSIDAD PARCIAL CON VIENTO ENTRE 25 Y 40 KM/H"
@@ -530,8 +530,8 @@
             "CUBIERTO Y LLUVIA CON VIENTO ENTRE 25 Y 40 KM/H"
           ],
           [
-            "CUBIERTO Y CHUBASCOS DE AGUANIEVE",
-            "CUBIERTO Y CHUBASCOS DE AGUANIEVE CON VIENTO ENTRE 25 Y 40 KM/H"
+            "CUBIERTO Y AGUANIEVE",
+            "CUBIERTO Y AGUANIEVE CON VIENTO ENTRE 25 Y 40 KM/H"
           ],
           [
             "CUBIERTO Y CHUBASCOS DE AGUANIEVE",
@@ -557,18 +557,18 @@
           "2026-08-11"
         ],
         "temperature_2m_max": [
-          21.0,
           20.0,
-          21.0,
+          19.0,
           20.0,
-          20.0
+          19.0,
+          19.0
         ],
         "temperature_2m_min": [
           16.0,
           16.0,
           16.0,
-          15.0,
-          15.0
+          16.0,
+          16.0
         ],
         "precipitation_sum": [
           0.0,
@@ -640,15 +640,15 @@
           23.0,
           23.0,
           21.0,
-          19.0,
-          19.0
+          17.0,
+          20.0
         ],
         "temperature_2m_min": [
           -1.0,
-          0.0,
-          4.0,
+          -2.0,
           5.0,
-          5.0
+          8.0,
+          4.0
         ],
         "precipitation_sum": [
           0.0,
@@ -666,7 +666,7 @@
         ],
         "weather_code": [
           0,
-          0,
+          3,
           3,
           61,
           61
@@ -678,7 +678,9 @@
           ],
           [
             "DESPEJADO CON VIENTO ENTRE 40 Y 60 KM/H",
-            "DESPEJADO CON VIENTO ENTRE 25 Y 40 KM/H"
+            "DESPEJADO CON VIENTO ENTRE 25 Y 40 KM/H",
+            "NUBOSIDAD PARCIAL CON VIENTO ENTRE 25 Y 40 KM/H",
+            "NUBLADO CON VIENTO ENTRE 25 Y 40 KM/H"
           ],
           [
             "NUBLADO CON VIENTO ENTRE 25 Y 40 KM/H",
@@ -712,18 +714,18 @@
           "2026-08-11"
         ],
         "temperature_2m_max": [
-          24.0,
-          24.0,
-          20.0,
-          17.0,
-          17.0
+          22.0,
+          22.0,
+          21.0,
+          18.0,
+          19.0
         ],
         "temperature_2m_min": [
-          -3.0,
+          -4.0,
           -4.0,
           0.0,
-          2.0,
-          2.0
+          4.0,
+          3.0
         ],
         "precipitation_sum": [
           0.0,
