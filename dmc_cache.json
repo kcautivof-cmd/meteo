@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-22T22:08:03.458530Z",
+  "generated_at": "2026-08-22T23:08:24.240852Z",
   "localities": {
     "visviri": {
       "indice": "visviri",
@@ -277,14 +277,14 @@
           0.0
         ],
         "wind_speed_10m_max": [
-          40.0,
+          60.0,
           60.0,
           60.0,
           40.0,
           40.0
         ],
         "weather_code": [
-          61,
+          71,
           3,
           2,
           0,
@@ -294,8 +294,8 @@
           [
             "NUBOSIDAD PARCIAL",
             "NUBLADO",
-            "CUBIERTO CON VIENTO ENTRE 25 Y 40 KM/H",
-            "CUBIERTO Y CHUBASCOS CON VIENTO ENTRE 25 Y 40 KM/H"
+            "CUBIERTO, CHUBASCOS Y AGUANIEVE CON VIENTO ENTRE 40 Y 60 KM/H",
+            "CUBIERTO, CHUBASCOS Y AGUANIEVE CON VIENTO ENTRE 25 Y 40 KM/H"
           ],
           [
             "CUBIERTO",
@@ -514,7 +514,7 @@
           60.0
         ],
         "weather_code": [
-          61,
+          71,
           3,
           0,
           0,
@@ -524,8 +524,8 @@
           [
             "DESPEJADO",
             "NUBOSIDAD PARCIAL",
-            "NUBLADO CON VIENTO ENTRE 40 Y 60 KM/H",
-            "CUBIERTO Y CHUBASCOS CON VIENTO ENTRE 25 Y 40 KM/H"
+            "CUBIERTO CON VIENTO ENTRE 40 Y 60 KM/H",
+            "CUBIERTO, CHUBASCOS Y AGUANIEVE CON VIENTO ENTRE 25 Y 40 KM/H"
           ],
           [
             "CUBIERTO",
@@ -590,7 +590,7 @@
         "wind_speed_10m_max": [
           null,
           40.0,
-          40.0,
+          null,
           null,
           null
         ],
@@ -604,9 +604,8 @@
         "__summary_text": [
           [
             "CUBIERTO Y LLOVIZNA",
-            "CUBIERTO VARIANDO A NUBLADO",
-            "NUBLADO",
-            "CUBIERTO"
+            "CUBIERTO",
+            "NUBLADO"
           ],
           [
             "CUBIERTO",
@@ -615,8 +614,8 @@
           ],
           [
             "CUBIERTO",
-            "DESPEJADO VARIANDO A NUBLADO CON VIENTO ENTRE 25 Y 40 KM/H",
-            "CUBIERTO CON VIENTO ENTRE 25 Y 40 KM/H"
+            "DESPEJADO",
+            "NUBLADO"
           ],
           [
             "CUBIERTO",
@@ -725,7 +724,7 @@
         "temperature_2m_max": [
           24.0,
           24.0,
-          24.0,
+          26.0,
           26.0,
           27.0
         ],
@@ -744,7 +743,7 @@
           0.0
         ],
         "wind_speed_10m_max": [
-          null,
+          40.0,
           40.0,
           null,
           null,
@@ -760,6 +759,7 @@
         "__summary_text": [
           [
             "NUBOSIDAD PARCIAL",
+            "NUBLADO CON VIENTO ENTRE 25 Y 40 KM/H",
             "NUBLADO"
           ],
           [
@@ -911,6 +911,7 @@
         "__summary_text": [
           [
             "CUBIERTO Y LLOVIZNA",
+            "CUBIERTO Y LLOVIZNA VARIANDO A NUBLADO",
             "NUBLADO",
             "CUBIERTO"
           ],
