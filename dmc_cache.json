@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-24T22:12:23.639165Z",
+  "generated_at": "2026-08-24T23:12:16.061925Z",
   "localities": {
     "visviri": {
       "indice": "visviri",
@@ -405,11 +405,11 @@
           32.0
         ],
         "temperature_2m_min": [
-          15.0,
-          16.0,
-          15.0,
-          14.0,
-          12.0
+          11.0,
+          12.0,
+          11.0,
+          10.0,
+          8.0
         ],
         "precipitation_sum": [
           0.0,
@@ -2791,18 +2791,18 @@
           "2026-08-28"
         ],
         "temperature_2m_max": [
-          15.0,
-          12.0,
           14.0,
+          13.0,
+          15.0,
           12.0,
           12.0
         ],
         "temperature_2m_min": [
           9.0,
-          8.0,
+          7.0,
+          4.0,
           5.0,
-          6.0,
-          6.0
+          5.0
         ],
         "precipitation_sum": [
           2.0,
@@ -2812,7 +2812,7 @@
           2.0
         ],
         "wind_speed_10m_max": [
-          40.0,
+          50.0,
           null,
           null,
           null,
@@ -2828,11 +2828,11 @@
         "__summary_text": [
           [
             "CUBIERTO Y CHUBASCOS AISLADOS",
-            "CUBIERTO Y CHUBASCOS D&EACUTE;BILES",
-            "CUBIERTO Y CHUBASCOS AISLADOS CON VIENTO ENTRE 25 Y 40 KM/H"
+            "CUBIERTO Y CHUBASCOS D&EACUTE;BILES Y R&AACUTE;FAGAS DE VIENTO HASTA 40 KM/H",
+            "CUBIERTO Y CHUBASCOS AISLADOS CON VIENTO ENTRE 25 Y 40 KM/H Y R&AACUTE;FAGAS DE VIENTO HASTA 50 KM/H"
           ],
           [
-            "CUBIERTO Y CHUBASCOS AISLADOS",
+            "CUBIERTO Y CHUBASCOS D&EACUTE;BILES",
             "CUBIERTO Y LLUVIA",
             "NUBLADO Y CHUBASCOS AISLADOS",
             "NUBLADO"
@@ -2871,27 +2871,27 @@
         ],
         "temperature_2m_max": [
           15.0,
-          12.0,
           14.0,
-          12.0,
-          12.0
+          15.0,
+          16.0,
+          16.0
         ],
         "temperature_2m_min": [
-          9.0,
-          8.0,
+          10.0,
+          7.0,
+          4.0,
           5.0,
-          6.0,
-          6.0
+          5.0
         ],
         "precipitation_sum": [
           2.0,
           2.0,
-          2.0,
+          0.0,
           2.0,
           2.0
         ],
         "wind_speed_10m_max": [
-          40.0,
+          50.0,
           null,
           null,
           null,
@@ -2900,7 +2900,7 @@
         "weather_code": [
           61,
           61,
-          61,
+          3,
           61,
           61
         ],
@@ -2908,17 +2908,18 @@
           [
             "CUBIERTO Y CHUBASCOS AISLADOS",
             "CUBIERTO Y CHUBASCOS D&EACUTE;BILES",
-            "CUBIERTO Y CHUBASCOS AISLADOS CON VIENTO ENTRE 25 Y 40 KM/H"
+            "CUBIERTO Y CHUBASCOS AISLADOS CON VIENTO ENTRE 25 Y 40 KM/H",
+            "CUBIERTO Y CHUBASCOS AISLADOS CON VIENTO ENTRE 25 Y 40 KM/H Y R&AACUTE;FAGAS DE VIENTO HASTA 50 KM/H"
           ],
           [
-            "CUBIERTO Y CHUBASCOS AISLADOS",
+            "CUBIERTO Y LLUVIA D&EACUTE;BIL",
             "CUBIERTO Y LLUVIA",
             "NUBLADO Y CHUBASCOS AISLADOS",
             "NUBLADO"
           ],
           [
             "NUBLADO",
-            "NUBLADO Y CHUBASCOS AISLADOS"
+            "NUBOSIDAD PARCIAL"
           ],
           [
             "NUBLADO",
