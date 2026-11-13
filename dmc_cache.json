@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-13T10:10:08.748637Z",
+  "generated_at": "2026-11-13T18:11:46.704043Z",
   "localities": {
     "visviri": {
       "indice": "visviri",
@@ -364,7 +364,7 @@
         ],
         "__summary_text": [
           [
-            "NUBOSIDAD PARCIAL",
+            "NUBLADO VARIANDO A NUBOSIDAD PARCIAL",
             "NUBOSIDAD PARCIAL VARIANDO A NUBLADO",
             "NUBLADO"
           ],
@@ -2566,7 +2566,7 @@
           null
         ],
         "weather_code": [
-          45,
+          0,
           3,
           3,
           3,
@@ -2574,8 +2574,6 @@
         ],
         "__summary_text": [
           [
-            "NUBLADO VARIANDO A CUBIERTO Y NEBLINA",
-            "NUBOSIDAD PARCIAL VARIANDO A DESPEJADO",
             "DESPEJADO"
           ],
           [
@@ -3559,7 +3557,7 @@
           null
         ],
         "weather_code": [
-          0,
+          45,
           2,
           61,
           61,
@@ -3567,6 +3565,7 @@
         ],
         "__summary_text": [
           [
+            "NUBLADO Y NIEBLA VARIANDO A DESPEJADO",
             "DESPEJADO"
           ],
           [
@@ -3776,7 +3775,7 @@
           null
         ],
         "weather_code": [
-          2,
+          3,
           0,
           61,
           61,
@@ -3784,7 +3783,7 @@
         ],
         "__summary_text": [
           [
-            "NUBOSIDAD PARCIAL",
+            "NUBLADO",
             "DESPEJADO CON VIENTO ENTRE 25 Y 40 KM/H Y R&AACUTE;FAGAS DE VIENTO HASTA 50 KM/H",
             "DESPEJADO"
           ],
@@ -3851,7 +3850,7 @@
           null
         ],
         "weather_code": [
-          0,
+          3,
           0,
           61,
           61,
@@ -3859,6 +3858,7 @@
         ],
         "__summary_text": [
           [
+            "NUBLADO",
             "DESPEJADO"
           ],
           [
@@ -4792,62 +4792,59 @@
           1.0,
           0.0,
           -1.0,
-          1.0,
+          0.0,
           1.0
         ],
         "temperature_2m_min": [
           null,
+          -1.0,
           -2.0,
-          -2.0,
-          -2.0,
-          -2.0
+          -3.0,
+          0.0
         ],
         "precipitation_sum": [
           2.0,
           2.0,
           0.0,
           2.0,
-          2.0
+          0.0
         ],
         "wind_speed_10m_max": [
           70.0,
-          100.0,
+          70.0,
           null,
           null,
           null
         ],
         "weather_code": [
-          71,
-          71,
+          61,
+          61,
           3,
-          71,
-          71
+          61,
+          45
         ],
         "__summary_text": [
           [
             "CUBIERTO, LLUVIA D&EACUTE;BIL Y NEBLINA CON VIENTO ENTRE 40 Y 60 KM/H Y R&AACUTE;FAGAS DE VIENTO HASTA 70 KM/H",
-            "CUBIERTO Y CHUBASCOS DE AGUANIEVE OCASIONALES CON VIENTO ENTRE 40 Y 60 KM/H Y R&AACUTE;FAGAS DE VIENTO HASTA 70 KM/H"
+            "CUBIERTO Y CHUBASCOS CON VIENTO ENTRE 40 Y 60 KM/H Y R&AACUTE;FAGAS DE VIENTO HASTA 70 KM/H"
           ],
           [
-            "CUBIERTO Y CHUBASCOS DE NIEVE AISLADOS CON VIENTO ENTRE 60 Y 80 KM/H Y R&AACUTE;FAGAS DE VIENTO HASTA 100 KM/H VARIANDO A NUBLADO CON VIENTO ENTRE 60 Y 80 KM/H",
-            "NUBOSIDAD PARCIAL CON VIENTO ENTRE 40 Y 60 KM/H",
-            "NUBOSIDAD PARCIAL, OCASIONALMENTE NUBLADO",
-            "NUBOSIDAD PARCIAL"
+            "CUBIERTO Y CHUBASCOS AISLADOS CON VIENTO ENTRE 40 Y 60 KM/H Y R&AACUTE;FAGAS DE VIENTO HASTA 70 KM/H VARIANDO A NUBLADO",
+            "NUBLADO CON VIENTO ENTRE 40 Y 60 KM/H VARIANDO A CUBIERTO Y CHUBASCOS AISLADOS",
+            "NUBLADO Y CHUBASCOS AISLADOS",
+            "NUBLADO, OCASIONALMENTE NUBOSIDAD PARCIAL"
           ],
           [
-            "NUBOSIDAD PARCIAL",
-            "NUBLADO VARIANDO A NUBLADO",
-            "NUBLADO"
-          ],
-          [
-            "CUBIERTO",
-            "CUBIERTO Y CHUBASCOS DE AGUANIEVE",
-            "CUBIERTO, LLUVIA Y NEBLINA"
+            "NUBLADO",
+            "CUBIERTO"
           ],
           [
             "CUBIERTO",
-            "CUBIERTO Y CHUBASCOS DE AGUANIEVE",
-            "CUBIERTO, LLUVIA Y NEBLINA"
+            "CUBIERTO VARIANDO A CUBIERTO, NEBLINA Y LLUVIA",
+            "CUBIERTO, CHUBASCOS Y NEBLINA"
+          ],
+          [
+            "CUBIERTO Y NEBLINA"
           ]
         ]
       },
